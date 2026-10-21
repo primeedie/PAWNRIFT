@@ -68,6 +68,8 @@ git push
 
 The user authorized ongoing GitHub pushes and Cloudflare deployments for completed, verified updates. This does not authorize beginning additional gameplay stages.
 
+After pushing, verify the current build at `https://pawnrift.pages.dev`. If Git integration has not published it, deploy the tested `dist` directly to the existing `pawnrift` project on branch `main`, then verify live assets. Do not leave publication pending on Git integration.
+
 ## Cloudflare Pages
 
 Cloudflare Pages setup (deployment is authorized):

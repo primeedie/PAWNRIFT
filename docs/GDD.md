@@ -1,6 +1,6 @@
 # PAWNRIFT — Game Design
 
-This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 6.1: beginner card UI and keyword tooltips**, preserving Stage 6 rules and balance. GitHub updates and Cloudflare publication of verified changes are authorized; use the existing Git integration without a separate deployment when it handles the push. **Provisional** items require validation. **Open** items are unresolved, not permission to invent systems. Stage 5 supersedes earlier requirements for dice-based movement or separate exploration/combat turn structures.
+This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 6.1: beginner card UI and keyword tooltips**, preserving Stage 6 rules and balance. GitHub updates and Cloudflare publication of verified changes are authorized. The latest standing instruction requires direct publication of the tested build if the current update is not live, rather than leaving it pending on Git integration. **Provisional** items require validation. **Open** items are unresolved, not permission to invent systems. Stage 5 supersedes earlier requirements for dice-based movement or separate exploration/combat turn structures.
 
 ## Concept and pillars
 
