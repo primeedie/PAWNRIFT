@@ -6,6 +6,8 @@ function describeEvent(event: CombatEvent) {
     case 'hit': return event.actor === 'pawn' ? `Katana · ${event.amount} damage` : event.amount ? `Pawn −${event.amount} HP` : 'Guarded'
     case 'counter': return `Counter · ${event.amount} damage`
     case 'guard': return 'Guard ready'
+    case 'heal': return `Restored ${event.amount} HP`
+    case 'focus': return 'Focus gained'
     case 'windup': return 'Rookling readies a strike'
     case 'miss': return 'Rookling misses'
     case 'defeat': return event.actor === 'pawn' ? 'Defeated' : 'Rookling defeated'
@@ -18,7 +20,12 @@ export function CombatStatus() {
   const { hp, maxHp, turn, phase } = usePawnStore()
   return (
     <div className="combat-status" aria-label={`Player health ${hp} of ${maxHp}. Turn ${turn}.`}>
-      <span className={hp <= maxHp / 3 ? 'low-health' : ''}>HP {hp}/{maxHp}</span>
+      <span className={`player-health ${hp <= maxHp / 3 ? 'low-health' : ''}`}>
+        <span>HP {hp}/{maxHp}</span>
+        <span className="health-track" role="progressbar" aria-label="Pawn health" aria-valuemin={0} aria-valuemax={maxHp} aria-valuenow={hp}>
+          <span style={{ width: `${100 * hp / maxHp}%` }} />
+        </span>
+      </span>
       <span>TURN {turn}</span>
       <span className="turn-indicator" aria-label={phase === 'ready' ? 'Awaiting your action' : 'Resolving action'} data-busy={phase !== 'ready'} />
     </div>

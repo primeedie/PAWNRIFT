@@ -1,14 +1,14 @@
 # PAWNRIFT — Game Design
 
-This document records confirmed design and a proposed delivery plan. The user has authorized implementation through **Stage 5.5: Game Over, camera polish, and deployment preparation**, followed by the initial private GitHub upload. Later systems and Cloudflare deployment require authorization. **Provisional** items require validation. **Open** items are unresolved, not permission to invent systems. Stage 5 supersedes earlier requirements for dice-based movement or separate exploration/combat turn structures.
+This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 6: deckbuilding foundation and combat feedback**. The initial GitHub upload and public visibility were authorized separately; the user subsequently authorized GitHub updates and Cloudflare deployment as part of completed, verified changes. **Provisional** items require validation. **Open** items are unresolved, not permission to invent systems. Stage 5 supersedes earlier requirements for dice-based movement or separate exploration/combat turn structures.
 
 ## Concept and pillars
 
-A single-player isometric, chess-inspired roguelite about a tiny living Pawn with a signature crimson katana. Explore compact chessboard dungeons with a shared player-driven clock, defeat chess bosses, and carry permanent essences back to a walkable lobby. A separate deck and optional lightweight 2d6 effects remain future systems; neither is required for basic movement or attacks.
+A single-player isometric, chess-inspired roguelite about a tiny living Pawn with a signature crimson katana. Explore compact chessboard dungeons with a shared player-driven clock, defeat chess bosses, and carry permanent essences back to a future walkable lobby. A separate deck complements basic movement and attacks; optional lightweight 2d6 effects remain future work.
 
 - Readable tactics: compact spaces, clear silhouettes, consequential positioning.
 - Route choices: explore through fog, navigate obstacles, and weigh treasure against danger.
-- Build expression: future cards and optional dice effects complement tactics; consumable boss forms create temporary power windows.
+- Build expression: cards and future optional dice effects complement tactics; consumable boss forms create temporary power windows.
 - Persistent purpose: collect all eight boss essences to unlock the boss rush and Mirror.
 
 No multiplayer. Avoid adding systems beyond this scope without an explicit design decision.
@@ -19,7 +19,7 @@ No multiplayer. Avoid adding systems beyond this scope without an explicit desig
 - Fog of war reveals a **one-tile radius**, including diagonals where line of sight permits. Solid walls occlude sight; diagonal sight requires both orthogonal flanking cells to be clear (no corner-peeking). Unexplored terrain is hidden; explored terrain remains dimly visible. Future enemies, loot, and traps require current sight, never exploration memory.
 - Exploration and combat use the same board and synchronized player-driven turns, with no separate battle screen or artificial combat rounds.
 - One valid move, attack, defend/counter, wait, or future time-consuming ability advances the world once. Menus, inspection, hovering, camera movement/zoom, invalid actions, and debug controls do not advance time.
-- A future **separate deckbuilding system** may contain attack, defense, utility, and dice-manipulation cards. Optional **2d6** may support bonuses, special abilities, card effects, and risk/reward events; never mandatory movement rolls or accuracy rolls for basic attacks. Transformations are consumables, never cards.
+- The **separate deckbuilding system** contains attack, defense, and utility cards; dice manipulation remains future work. Optional **2d6** may support bonuses, special abilities, card effects, and risk/reward events; never mandatory movement rolls or accuracy rolls for basic attacks. Transformations are consumables, never cards.
 - Chess identities should inform enemy movement and threat readability. Exact movement, attacks, telegraphs, and exceptions remain **open**; standard chess rules are not automatically binding.
 - The red katana defines Pawn's visual identity, worn sheathed at its left hip. Pawn moves one orthogonal tile per accepted click or WASD/arrow keypress; obstacles, occupancy, missing cells, and board bounds block movement. Basic attacks reliably hit an adjacent orthogonal living enemy in current sight. Health/damage values are provisional.
 
@@ -27,7 +27,31 @@ No multiplayer. Avoid adding systems beyond this scope without an explicit desig
 
 The base action economy is confirmed: one valid action advances one synchronized turn, independently of dice. Future dice use (individual values, sum, allocation, timing windows) and card interactions remain **open**.
 
-**Open:** starting deck, draw/hand/discard rules, reshuffling, card costs, deck growth, reward selection, and whether deck changes persist through death. No starting card counts, damage values, probabilities beyond ordinary 2d6, or economy values are confirmed.
+Stage 6 settles the starting deck, hand, and resource timing below. **Open:** deck growth, rewards, upgrades/removals, persistence through death, and future dice/card interactions. Damage, individual card costs, and effect strengths remain provisional.
+
+### Stage 6 cards and combat feedback
+
+- Start with **12 cards**, a **4-card hand**, and draw/discard piles. Each physical card has a stable instance ID separate from its typed definition. A floor seed determines the initial shuffle and every subsequent reshuffle; rendering never consumes that randomness.
+- After a valid play, discard that instance and immediately draw to four. If a draw is needed and the draw pile is empty, shuffle the entire discard pile, including the just-played card, using the next deterministic shuffle index. Basic actions do not draw or discard. Unplayed cards remain in hand.
+- Start at **3 energy maximum** (configurable). Validate and spend the full cost before the effect; recover **1 energy once at world completion**, capped at maximum. Regeneration cannot make an unaffordable card playable. Cost-1 cards therefore have zero net energy change after completion; cost-3 cards leave 1 from a full pool. Basic actions also recover 1; energy never resets to full per action.
+- Every valid card consumes one world turn and receives exactly one response per surviving eligible enemy. Invalid targets, unaffordable plays, inspection, selection, and cancellation change no resources, cards, or time. Existing phase/action-ID guards apply to cards too. Basic actions always remain available.
+- Damage cards target a currently visible, living orthogonal neighbor with clear sight and no blocking terrain/occupancy. Slip uses ordinary one-tile Pawn movement into a currently visible unoccupied cell; it never jumps obstacles or reveals hidden contents. Self cards require an applicable effect: Mend at full HP and Focus at its cap are invalid.
+- **Provisional starter composition and effects**, centralized in `src/data/cards.ts`:
+
+| Card | Copies | Cost | Effect |
+| --- | --- | --- | --- |
+| Cut | 3 | 1 | Deal 4 to an adjacent foe |
+| Ward | 2 | 1 | Block a total of 3 during this enemy response |
+| Riposte | 2 | 1 | Block a total of 1; counter the first actual strike for 4 |
+| Slip | 2 | 1 | Move one clear orthogonal tile; block 1 this response |
+| Focus | 1 | 0 | Gain 1 Focus, capped at 3; each point adds 1 to the next basic/card strike, then all are consumed |
+| Crimson | 1 | 3 | Deal 7 to an adjacent foe |
+| Mend | 1 | 2 | Heal 4, capped at maximum HP |
+
+- Card block is a shared pool across incoming strikes; block and prepared counters expire after the coming response, even if foes only telegraph or miss. A prepared counter requires a real strike and a surviving Pawn, and triggers once. Basic Q guard/counter retains its existing behavior. Focus persists until a successful strike or run reset.
+- The compact bottom hand sits in reserved screen space below the Canvas. Click to inspect/select; click a highlighted foe/tile to target, or use Play for self cards. Cancel/Escape is free. Names, costs, effects, playability, energy, Focus, and pile counts remain readable. Normal controls can still submit basic actions.
+- Player HP has a muted crimson bar plus current/max numbers. Living enemies expose compact bars only in current sight, including under debug reveal. Stable event IDs drive damage/healing/BLOCKED values that rise/fade, stagger per recipient, expire after 850 ms, and are capped at 12 concurrent indicators. Labels follow recipients and obey current sight. Pawn recoil and the existing enemy hit flash provide restrained feedback; no attack animation is implemented.
+- Defeat and fresh-run/same-seed floor reset preserve their existing semantics and reset deck, resources, targeting, and event IDs atomically. There are no card rewards, upgrades, removals, saving, transformations, Light/Dark modifiers, dice effects, or synergies yet. Definition/instance separation and the discriminated effect/action types provide extension points without implementing those systems.
 
 ### Stage 5 turn and combat rules
 
@@ -128,12 +152,12 @@ Avoid photorealism, generic AI-generated fantasy aesthetics, and excessive clutt
 
 Confirmed stack: **TypeScript, React/Vite, Three.js / React Three Fiber, Zustand, Vitest**. Local saved progression; no multiplayer.
 
-- **Rules:** pure TypeScript movement, collision, sight, perception/pathfinding, and explicit turn resolution; no React or Three.js dependencies. Future dice/cards, alignment, transformation lifecycle, and progression extend these rules.
+- **Rules:** pure TypeScript movement, collision, sight, perception/pathfinding, cards/deck cycling, and explicit turn resolution; no React or Three.js dependencies. Future dice, alignment, transformation lifecycle, and progression extend these rules.
 - **Generation:** seeded board generation and validation. Route all gameplay randomness through an explicit seeded source; rendering must not consume gameplay randomness.
 - **Application state:** Zustand coordinates rule state and player commands. React handles menus/HUD; React Three Fiber renders the board and characters from rule state.
 - **Persistence:** a versioned local save for confirmed permanent progression, transformation ownership/charges, and any later-approved persistent fields. **Open:** mid-run saving, autosave timing, and recovery from invalid saves.
 - **Verification:** Vitest for deterministic rules and generation invariants, alignment majorities, transformation timing/depletion/reconstruction, and save round trips. Verify visual readability separately once implementation is authorized.
-- **Static deployment preparation:** Node 24, Vite base `/`, `npm run build` → `dist`, Cloudflare Pages production branch `main`. No backend or Workers. Lockfile and local assets remain in version control; dependencies/output/secrets are ignored. Publishing requires explicit approval.
+- **Static deployment preparation:** Node 24, Vite base `/`, `npm run build` → `dist`, Cloudflare Pages production branch `main`. No backend or Workers. Lockfile and local assets remain in version control; dependencies/output/secrets are ignored. The standing user instruction authorizes publishing completed, verified updates to GitHub and Cloudflare Pages.
 
 These are responsibilities, not a requirement to create a large framework or finalize a directory tree now.
 
@@ -150,7 +174,7 @@ Use focused rules tests or developer scenarios to verify five-charge exhaustion,
 ## Milestones and decision gates
 
 1. **Planning — completed:** initial GDD and repository guidance, followed by foundation, visual board, Pawn movement/polish, procedural dungeons/fog, and Stage 5 player-driven combat/branding. Optional dice/card rules and transformation lifecycle ambiguities remain unresolved.
-2. **Core rules — Stage 5 implemented:** deterministic generation, fog, movement, one basic enemy, attack/defend/wait, and synchronized turns with focused Vitest coverage. Any further systems require explicit authorization.
+2. **Core rules — through Stage 6:** deterministic generation, fog, movement, one basic enemy, attack/defend/wait, synchronized card actions, seeded starter deck, and health/combat feedback with focused Vitest coverage. Further systems require explicit authorization.
 3. **Playable slice:** build the six-floor loop above, presentation, lobby, and local saves; playtest and revise provisional balance.
 4. **Main content:** expand to four biomes, all eight variants and essences, approved card/enemy content, and transformation forms. Confirm replay progression supports collecting every essence.
 5. **Endgame and polish:** implement the eight-variant boss rush and Mirror; tune progression and readability. King remains a separate late-postgame decision.

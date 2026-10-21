@@ -1,4 +1,7 @@
 import { combatBalance as balance } from '../../data/combatBalance'
+import { cardBalance, cards } from '../../data/cards'
+import { createStarterDeck, discardAndRefill, type DeckState } from './deck'
+import { validCardTarget, type CardTarget } from './cardRules'
 import { BOARD_SIZE } from '../../utils/grid'
 import { cellId, distancesFrom, type Dungeon } from './dungeon'
 import { gridDistance, hasLineOfSight, nextPathStep } from './enemyAI'
@@ -6,6 +9,7 @@ import { canMove, canOccupy, directionTo, sameCell, type Cell, type Direction, t
 import { canSeeContent, updateFog, type FogState } from './visibility'
 
 export type PlayerAction =
+  | { kind: 'card'; cardInstanceId: string; target: CardTarget }
   | { kind: 'move'; destination: Cell }
   | { kind: 'attack'; targetId: string }
   | { kind: 'defend' }
@@ -23,7 +27,9 @@ export type Enemy = {
   searchLeft: number
 }
 export type CombatEvent = {
-  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory'
+  id: number
+  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory' | 'heal' | 'focus'
+  targetId?: string
   actor: 'pawn' | string
   cell: Cell
   amount?: number
@@ -41,6 +47,13 @@ export type GameState = FogState & {
   turn: number
   status: 'playing' | 'defeat' | 'victory'
   guarding: boolean
+  deck: DeckState
+  energy: number
+  maxEnergy: number
+  focus: number
+  block: number
+  preparedCounter: number
+  eventSerial: number
   lastAction?: PlayerAction['kind']
   events: CombatEvent[]
 }
@@ -58,7 +71,9 @@ export function createGame(dungeon: Dungeon): GameState {
     dungeon, cell: dungeon.spawn, facing: 'south', hp: balance.playerMaxHp, maxHp: balance.playerMaxHp,
     enemies: cell ? [{ id: 'rookling-1', kind: 'rookling', cell, from: cell, hp: balance.enemyMaxHp,
       maxHp: balance.enemyMaxHp, intent: 'idle', searchLeft: 0 }] : [],
-    occupied: [], turn: 0, status: 'playing', guarding: false, events: [],
+    occupied: [], turn: 0, status: 'playing', guarding: false, events: [], eventSerial: 0,
+    deck: createStarterDeck(dungeon.seed), energy: cardBalance.maxEnergy, maxEnergy: cardBalance.maxEnergy,
+    focus: 0, block: 0, preparedCounter: 0,
     ...updateFog(dungeon.tiles, dungeon.spawn),
   }
 }
@@ -80,25 +95,61 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
   let cell = state.cell, facing = state.facing
   const enemies = state.enemies.map((enemy) => ({ ...enemy }))
   const events: CombatEvent[] = []
+  let eventSerial = state.eventSerial
+  const emit = (event: Omit<CombatEvent, 'id'>) => events.push({ ...event, id: ++eventSerial })
+  let { hp, energy, focus, deck } = state
+  let block = 0, preparedCounter = 0
+  const strike = (enemy: Enemy, damage: number) => {
+    facing = directionTo(cell, enemy.cell)
+    const amount = Math.min(enemy.hp, damage + focus)
+    focus = 0
+    enemy.hp -= amount
+    emit({ kind: 'hit', actor: 'pawn', targetId: enemy.id, cell: enemy.cell, amount, seen: true })
+    if (enemy.hp === 0) emit({ kind: 'defeat', actor: enemy.id, cell: enemy.cell, seen: true })
+  }
   if (action.kind === 'move') {
     const board = movementBoard(state)
     if (!canOccupy(action.destination, board) || !movement(state.cell, action.destination, board)) return null
     cell = { ...action.destination }
     facing = directionTo(state.cell, cell)
-    events.push({ kind: 'move', actor: 'pawn', cell, seen: true })
+    emit({ kind: 'move', actor: 'pawn', cell, seen: true })
   } else if (action.kind === 'attack') {
     const target = attackTargets(state).find((enemy) => enemy.id === action.targetId)
     if (!target) return null
     const enemy = enemies.find((candidate) => candidate.id === target.id)!
-    facing = directionTo(cell, enemy.cell)
-    const amount = Math.min(enemy.hp, balance.playerDamage)
-    enemy.hp -= amount
-    events.push({ kind: 'hit', actor: 'pawn', cell: enemy.cell, amount, seen: true })
-    if (enemy.hp === 0) events.push({ kind: 'defeat', actor: enemy.id, cell: enemy.cell, seen: true })
+    strike(enemy, balance.playerDamage)
+  } else if (action.kind === 'card') {
+    if (!validCardTarget(state, action.cardInstanceId, action.target)) return null
+    const instance = state.deck.hand.find((entry) => entry.instanceId === action.cardInstanceId)!
+    const card = cards[instance.definitionId]
+    energy -= card.cost // Validate against pre-action energy; recovery belongs to the completed world turn.
+    const effect = card.effect
+    if (effect.kind === 'damage' && action.target.kind === 'enemy') {
+      const targetId = action.target.enemyId
+      strike(enemies.find((enemy) => enemy.id === targetId)!, effect.amount)
+    } else if (effect.kind === 'move' && action.target.kind === 'tile') {
+      cell = { ...action.target.cell }
+      facing = directionTo(state.cell, cell)
+      block = effect.block
+      emit({ kind: 'move', actor: 'pawn', cell, seen: true })
+    } else if (effect.kind === 'block' || effect.kind === 'counter') {
+      block = effect.kind === 'block' ? effect.amount : effect.block
+      preparedCounter = effect.kind === 'counter' ? effect.amount : 0
+      emit({ kind: 'guard', actor: 'pawn', cell, seen: true })
+    } else if (effect.kind === 'focus') {
+      focus = Math.min(cardBalance.maxFocus, focus + effect.amount)
+      emit({ kind: 'focus', actor: 'pawn', cell, amount: effect.amount, seen: true })
+    } else if (effect.kind === 'heal') {
+      const amount = Math.min(state.maxHp - hp, effect.amount)
+      hp += amount
+      emit({ kind: 'heal', actor: 'pawn', targetId: 'pawn', cell, amount, seen: true })
+    }
+    deck = discardAndRefill(deck, action.cardInstanceId)
   } else if (action.kind === 'defend' || action.kind === 'wait') {
-    events.push({ kind: action.kind === 'defend' ? 'guard' : 'wait', actor: 'pawn', cell, seen: true })
+    emit({ kind: action.kind === 'defend' ? 'guard' : 'wait', actor: 'pawn', cell, seen: true })
   } else return null
-  return { ...state, cell, facing, enemies, events, guarding: action.kind === 'defend', lastAction: action.kind,
+  return { ...state, cell, facing, enemies, events, eventSerial, hp, energy, focus, deck, block, preparedCounter,
+    guarding: action.kind === 'defend', lastAction: action.kind,
     ...updateFog(state.dungeon.tiles, cell, state.explored) }
 }
 
@@ -110,7 +161,8 @@ export function resolveEnemyPhase(state: GameState): GameState {
   const enemies = state.enemies.map((enemy) => ({ ...enemy, from: enemy.cell }))
   const events = [...state.events]
   let hp = state.hp
-  const emit = (event: Omit<CombatEvent, 'seen'>) => events.push({ ...event,
+  let block = state.block, preparedCounter = state.preparedCounter, eventSerial = state.eventSerial
+  const emit = (event: Omit<CombatEvent, 'seen' | 'id'>) => events.push({ ...event, id: ++eventSerial,
     seen: event.actor === 'pawn' || canSeeContent(cellId(event.cell), state) })
   for (const enemy of [...enemies].sort((a, b) => a.id.localeCompare(b.id))) {
     if (enemy.hp <= 0 || hp <= 0) continue
@@ -118,13 +170,17 @@ export function resolveEnemyPhase(state: GameState): GameState {
       const hits = sameCell(enemy.attackTarget, state.cell) && gridDistance(enemy.cell, state.cell) === 1
         && hasLineOfSight(state.dungeon, enemy.cell, state.cell)
       if (hits) {
-        const damage = Math.min(hp, Math.max(0, balance.enemyDamage - (state.guarding ? balance.guardReduction : 0)))
+        const incoming = Math.max(0, balance.enemyDamage - (state.guarding ? balance.guardReduction : 0))
+        const absorbed = Math.min(block, incoming)
+        block -= absorbed
+        const damage = Math.min(hp, incoming - absorbed)
         hp -= damage
-        emit({ kind: 'hit', actor: enemy.id, cell: state.cell, amount: damage })
-        if (state.guarding) {
-          const counter = Math.min(enemy.hp, balance.counterDamage)
+        emit({ kind: 'hit', actor: enemy.id, targetId: 'pawn', cell: state.cell, amount: damage })
+        if (hp > 0 && (state.guarding || preparedCounter > 0)) {
+          const counter = Math.min(enemy.hp, state.guarding ? balance.counterDamage : preparedCounter)
+          preparedCounter = 0
           enemy.hp -= counter
-          emit({ kind: 'counter', actor: 'pawn', cell: enemy.cell, amount: counter })
+          emit({ kind: 'counter', actor: 'pawn', targetId: enemy.id, cell: enemy.cell, amount: counter })
           if (enemy.hp === 0) emit({ kind: 'defeat', actor: enemy.id, cell: enemy.cell })
         }
       } else emit({ kind: 'miss', actor: enemy.id, cell: enemy.attackTarget })
@@ -160,8 +216,9 @@ export function resolveEnemyPhase(state: GameState): GameState {
   // Status/hazard tick hook: future effects belong here, once per accepted action, before terminal checks.
   const status = hp <= 0 ? 'defeat' : sameCell(state.cell, state.dungeon.exit)
     && enemies.every((enemy) => enemy.hp <= 0) ? 'victory' : 'playing'
-  if (status !== 'playing') events.push({ kind: status, actor: 'pawn', cell: state.cell, seen: true })
-  return { ...state, enemies, hp, status, events, guarding: false, turn: state.turn + 1 }
+  if (status !== 'playing') emit({ kind: status, actor: 'pawn', cell: state.cell })
+  return { ...state, enemies, hp, status, events, eventSerial, guarding: false, block: 0, preparedCounter: 0,
+    energy: Math.min(state.maxEnergy, state.energy + cardBalance.energyPerTurn), turn: state.turn + 1 }
 }
 
 export function resolveTurn(state: GameState, action: PlayerAction, movement?: MovementRule): GameState | null {

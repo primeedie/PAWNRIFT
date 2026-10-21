@@ -5,6 +5,7 @@ import { CombatHUD, CombatStatus } from './ui/CombatHUD'
 import { useTurnPlayback } from './ui/useTurnPlayback'
 import { usePawnStore } from './game/state/pawnStore'
 import { GameOver } from './ui/GameOver'
+import { CardHand } from './ui/CardHand'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
 const DungeonDevTools = import.meta.env.DEV ? lazy(() => import('./ui/dev/DungeonDevTools')) : null
@@ -60,6 +61,7 @@ export function App() {
           </div>
         </div>
       </footer>
+      <CardHand />
       {defeated && <GameOver />}
     </main>
   )

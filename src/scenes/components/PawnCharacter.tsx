@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Group, MathUtils } from 'three'
 import { usePawnStore } from '../../game/state/pawnStore'
@@ -14,7 +14,14 @@ export function PawnCharacter() {
   const root = useRef<Group>(null)
   const body = useRef<Group>(null)
   const progress = useRef(0)
-  const { cell, from, facing, isMoving } = usePawnStore()
+  const { cell, from, facing, isMoving, hp, dungeon } = usePawnStore()
+  const lastHealth = useRef({ hp, dungeon })
+  const recoil = useRef(0)
+  useEffect(() => {
+    if (lastHealth.current.dungeon !== dungeon) recoil.current = 0
+    if (lastHealth.current.dungeon === dungeon && hp < lastHealth.current.hp) recoil.current = 0.2
+    lastHealth.current = { hp, dungeon }
+  }, [hp, dungeon])
   usePawnKeyboard()
 
   useLayoutEffect(() => {
@@ -39,6 +46,8 @@ export function PawnCharacter() {
     const difference = Math.atan2(Math.sin(angle - root.current.rotation.y), Math.cos(angle - root.current.rotation.y))
     root.current.rotation.y += difference * (1 - Math.exp(-18 * delta))
     body.current.position.y = Math.sin(clock.elapsedTime * 2.4) * 0.012
+    recoil.current = Math.max(0, recoil.current - delta)
+    body.current.rotation.x = Math.sin(recoil.current / 0.2 * Math.PI) * 0.12
     body.current.rotation.z = Math.sin(clock.elapsedTime * (isMoving ? 18 : 1.7)) * (isMoving ? 0.035 : 0.012)
     invalidate() // Keep only this small idle animation alive in the demand-rendered scene.
   })

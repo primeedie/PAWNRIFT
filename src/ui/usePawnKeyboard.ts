@@ -15,12 +15,13 @@ export function usePawnKeyboard() {
         || (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select')))) return
       const direction = directions[event.key.toLowerCase()]
       const key = event.key.toLowerCase()
-      if (!direction && !['e', 'q', ' ', '.'].includes(key)) return
+      if (!direction && !['e', 'q', ' ', '.', 'escape'].includes(key)) return
       if (key === ' ' && target instanceof HTMLElement && target.closest('button, summary')) return
       event.preventDefault()
       if (event.repeat) return // One keypress = one tile; no queued moves.
       const state = usePawnStore.getState()
-      if (direction) state.tryMove(adjacentCell(state.cell, direction))
+      if (key === 'escape') state.selectCard(undefined)
+      else if (direction) state.tryMove(adjacentCell(state.cell, direction))
       else if (key === 'e') state.tryAttack()
       else state.submitAction({ kind: key === 'q' ? 'defend' : 'wait' })
     }

@@ -8,6 +8,9 @@ import { cellId } from '../../game/logic/dungeon'
 import { canSeeContent } from '../../game/logic/visibility'
 import { usePawnStore, type TurnPhase } from '../../game/state/pawnStore'
 import { gridToWorld } from '../../utils/grid'
+import { cardOptions } from '../../game/logic/cardRules'
+import { LegalTileHighlight } from './LegalTileHighlight'
+import { visibleEnemies } from '../../game/logic/combatIndicators'
 
 function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhase; interpolate: boolean }) {
   const root = useRef<Group>(null)
@@ -15,7 +18,6 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
   const progress = useRef(0)
   const flash = useRef(0)
   const lastHp = useRef(enemy.hp)
-  const tryAttack = usePawnStore((state) => state.tryAttack)
   useLayoutEffect(() => {
     progress.current = 0
     const origin = phase === 'enemies' && interpolate ? enemy.from : enemy.cell
@@ -36,7 +38,12 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
     material.current?.color.set(flash.current ? '#b46864' : '#626d78')
   })
   return (
-    <group ref={root} name={enemy.id} onClick={(event) => { event.stopPropagation(); tryAttack(enemy.id) }}>
+    <group ref={root} name={enemy.id} onClick={(event) => {
+      event.stopPropagation()
+      const state = usePawnStore.getState()
+      if (state.selectedCardId) state.playSelectedCard({ kind: 'enemy', enemyId: enemy.id })
+      else state.tryAttack(enemy.id)
+    }}>
       <mesh position={[0, 0.08, 0]}>
         <cylinderGeometry args={[0.26, 0.29, 0.16, 8]} />
         <meshLambertMaterial color="#46515f" flatShading />
@@ -59,7 +66,9 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
       </mesh>
       <Html position={[0, 1.05, 0]} center className="enemy-label" style={{ pointerEvents: 'none' }}>
         <span>Rookling · {enemy.hp}/{enemy.maxHp}</span>
-        <meter aria-label="Rookling health" min={0} max={enemy.maxHp} value={enemy.hp} />
+        <span className="health-track" role="progressbar" aria-label="Rookling health" aria-valuemin={0} aria-valuemax={enemy.maxHp} aria-valuenow={enemy.hp}>
+          <span style={{ width: `${100 * enemy.hp / enemy.maxHp}%` }} />
+        </span>
         <small data-threat={enemy.intent === 'attack'}>{enemyIntentLabel(enemy)}</small>
       </Html>
     </group>
@@ -68,9 +77,12 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
 
 export function DungeonEnemies() {
   const state = usePawnStore()
+  const targets = state.selectedCardId && state.phase === 'ready' ? cardOptions(state, state.selectedCardId).targets : []
   return <group name="dungeon-enemies">
-    {state.enemies.filter((enemy) => enemy.hp > 0 && canSeeContent(cellId(enemy.cell), state)).map((enemy) => (
+    {visibleEnemies(state).map((enemy) => (
       <group key={enemy.id}>
+        {targets.some((target) => target.kind === 'enemy' && target.enemyId === enemy.id)
+          && <group position={gridToWorld(enemy.cell.column, enemy.cell.row)}><LegalTileHighlight /></group>}
         <Rookling enemy={enemy} phase={state.phase} interpolate={canSeeContent(cellId(enemy.from), state)} />
         {enemy.intent === 'attack' && enemy.attackTarget && canSeeContent(cellId(enemy.attackTarget), state) && (
           <mesh position={gridToWorld(enemy.attackTarget.column, enemy.attackTarget.row).map((v, i) => i === 1 ? 0.025 : v) as [number, number, number]}

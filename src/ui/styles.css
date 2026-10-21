@@ -71,6 +71,29 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .combat-feedback { font-size: 0.65rem; color: #d3bda6; min-height: 1.5em; max-width: 42rem; margin: 7px 0 0; }
 .enemy-label { pointer-events: none; display: grid; justify-items: center; gap: 2px; white-space: nowrap; padding: 4px 6px; background: #1b2534d9; border-radius: 4px; color: #e1e3d6; font-size: 0.55rem; }
 .enemy-label meter { width: 64px; height: 5px; }
+.health-track { display: block; width: 112px; height: 6px; overflow: hidden; border-radius: 2px; background: #303441; }
+.health-track > span { display: block; height: 100%; background: #a45c68; transition: width 140ms ease; }
+.player-health { display: grid; gap: 5px; }
+.enemy-label .health-track { width: 64px; height: 4px; }
+.combat-number { display: block; white-space: nowrap; font-size: 0.9rem; font-weight: 700; color: #e69a9f; text-shadow: 0 2px 3px #101724; animation: combat-rise 850ms ease-out forwards; }
+.combat-number.heal { color: #a5c6a3; }
+.combat-number.blocked { color: #d2d7ca; font-size: 0.65rem; }
+@keyframes combat-rise { 0% { opacity: 0; transform: translateY(5px); } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
+.scene-screen { --hand-height: 144px; grid-template-rows: auto minmax(0, 1fr) auto var(--hand-height); }
+.card-hand { grid-row: 4; z-index: 4; padding: 6px clamp(14px, 4vw, 56px) 12px; background: linear-gradient(#151d2af2, #121923); border-top: 1px solid #58626b66; min-width: 0; }
+.hand-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; max-width: 850px; margin: 0 auto 6px; min-height: 26px; font-size: 0.6rem; color: #b7c3c7; }
+.hand-meta strong { color: #e3bf98; }
+.hand-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 850px; margin: auto; }
+.hand-card { min-width: 0; height: 90px; display: flex; flex-direction: column; gap: 6px; text-align: left; color: #c5c9c9; background: #222a35; border: 1px solid #4a535f; border-radius: 5px; padding: 8px 10px; }
+.hand-card[data-playable="true"] { border-color: #93767c; color: #ede3d9; background: linear-gradient(135deg, #332b36, #222c38); }
+.hand-card[aria-pressed="true"] { border-color: #e1bb89; box-shadow: inset 0 0 0 1px #e1bb8966; }
+.hand-card:hover:not(:disabled) { background: #3c3541; }
+.hand-card:disabled { opacity: 0.55; cursor: default; }
+.card-heading { display: flex; align-items: center; justify-content: space-between; gap: 3px; width: 100%; font-size: 0.75rem; }
+.card-cost { display: grid; place-items: center; flex-shrink: 0; width: 20px; height: 20px; border: 1px solid #7f6d78; border-radius: 50%; color: #edc5a3; background: #161d2b; font-size: 0.65rem; }
+.card-description { font-size: 0.6rem; line-height: 1.5; }
+.card-targeting { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.card-targeting button { background: #343340; border: 1px solid #9c7c82; border-radius: 3px; padding: 3px 7px; color: #e6dccc; font-size: inherit; }
 .enemy-label small { color: #bac9c6; font-size: 0.52rem; }
 .enemy-label small[data-threat="true"] { color: #e5ba7c; }
 .scene-loading { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; padding: 24px; text-align: center; }
@@ -91,7 +114,7 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .game-over-actions .restart-run-button:hover { background: #803647; }
 @media (min-width: 1100px) and (min-aspect-ratio: 8/5) {
   .scene-screen { --board-full-bleed: 1; }
-  .scene-viewport { position: absolute; inset: 0; }
+  .scene-viewport { position: absolute; inset: 0 0 var(--hand-height); }
   .scene-header { grid-row: 1; z-index: 3; pointer-events: none; }
   .scene-footer { grid-row: 3; z-index: 3; pointer-events: none; }
   .scene-footer button { pointer-events: auto; }
@@ -100,6 +123,14 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
   .dungeon-dev-tools { top: 112px; }
 }
 @media (max-width: 650px) {
+  .scene-screen { --hand-height: 164px; }
+  .card-hand { padding-inline: 10px; }
+  .hand-meta { flex-wrap: wrap; gap: 3px; font-size: 0.52rem; min-height: 42px; }
+  .hand-cards { gap: 5px; }
+  .hand-card { height: 97px; padding: 5px; gap: 4px; }
+  .card-heading { font-size: 0.56rem; flex-wrap: wrap; }
+  .card-description { font-size: 0.5rem; }
+  .card-cost { width: 16px; height: 16px; font-size: 0.55rem; }
   .scene-footer { padding: 10px 14px 14px; }
   .scene-controls { gap: 7px; }
   .key-cluster { grid-template-columns: repeat(3, 23px); grid-template-rows: repeat(2, 23px); gap: 2px; }
@@ -114,6 +145,11 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
   .scene-controls { margin-left: auto; }
   .combat-actions button { padding: 7px 8px; font-size: 0.62rem; }
 }
+@media (prefers-reduced-motion: reduce) {
+  .health-track > span { transition: none; }
+  .combat-number { animation-name: combat-fade; }
+}
+@keyframes combat-fade { from { opacity: 1; } to { opacity: 0; } }
 @media (max-width: 410px) {
   .scene-footer { flex-direction: column; align-items: stretch; }
   .scene-footer .secondary-button { align-self: flex-start; }

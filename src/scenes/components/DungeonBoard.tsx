@@ -9,12 +9,15 @@ import { TerrainTile } from './TerrainTile'
 import { LegalTileHighlight } from './LegalTileHighlight'
 import { FoggedTerrain } from './FoggedTerrain'
 import { ExitMarker } from './ExitMarker'
+import { cardOptions } from '../../game/logic/cardRules'
 
 export function DungeonBoard() {
   const state = usePawnStore()
   const { cell, tryMove, dungeon } = state
   const debugReveal = import.meta.env.DEV && state.revealAll
-  const destinations = state.phase === 'ready' && state.status === 'playing' ? legalDestinations(cell, movementBoard(state)) : []
+  const destinations = state.phase === 'ready' && state.status === 'playing'
+    ? state.selectedCardId ? cardOptions(state, state.selectedCardId).targets.flatMap((target) => target.kind === 'tile' ? [target.cell] : [])
+      : legalDestinations(cell, movementBoard(state)) : []
   return (
     <group name="dungeon-board" key={`${dungeon.seed}:${dungeon.style}`}>
       {dungeon.tiles.map((tile) => {
@@ -25,7 +28,8 @@ export function DungeonBoard() {
           <group key={id} position={gridToWorld(tile.column, tile.row)} onClick={(event) => {
             if (!canInteract) return
             event.stopPropagation()
-            tryMove(tile)
+            if (state.selectedCardId) state.playSelectedCard({ kind: 'tile', cell: tile })
+            else tryMove(tile)
           }}>
             <FoggedTerrain visibility={visibility}>
               <TerrainTile column={tile.column} row={tile.row} />
