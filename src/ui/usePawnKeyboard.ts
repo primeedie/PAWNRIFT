@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
-import { adjacentCell, type Direction } from '../game/logic/movement'
+import { type Direction } from '../game/logic/movement'
+import { formKeyDestination } from '../game/logic/chessMovement'
+import { currentForm } from '../game/logic/transformations'
 import { usePawnStore } from '../game/state/pawnStore'
 
 const directions: Record<string, Direction | undefined> = {
@@ -21,7 +23,7 @@ export function usePawnKeyboard() {
       if (event.repeat) return // One keypress = one tile; no queued moves.
       const state = usePawnStore.getState()
       if (key === 'escape') state.selectCard(undefined)
-      else if (direction) state.tryMove(adjacentCell(state.cell, direction))
+      else if (direction) state.tryMove(formKeyDestination(currentForm(state.transformations), state.cell, direction, event.shiftKey))
       else if (key === 'e') state.tryAttack()
       else state.submitAction({ kind: key === 'q' ? 'defend' : 'wait' })
     }

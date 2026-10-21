@@ -3,7 +3,8 @@ import { usePawnStore } from '../game/state/pawnStore'
 
 function describeEvent(event: CombatEvent) {
   switch (event.kind) {
-    case 'hit': return event.actor === 'pawn' ? `Katana · ${event.amount} damage` : event.amount ? `Pawn −${event.amount} HP` : 'Guarded'
+    case 'hit': return event.actor === 'pawn' ? `Strike · ${event.amount} damage` : event.amount ? `−${event.amount} HP` : 'Guarded'
+    case 'transform': return 'Transformation activated'
     case 'counter': return `Counter · ${event.amount} damage`
     case 'guard': return 'Guard ready'
     case 'heal': return `Restored ${event.amount} HP`

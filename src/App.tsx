@@ -6,6 +6,8 @@ import { useTurnPlayback } from './ui/useTurnPlayback'
 import { usePawnStore } from './game/state/pawnStore'
 import { GameOver } from './ui/GameOver'
 import { CardHand } from './ui/CardHand'
+import { TransformationHUD } from './ui/TransformationHUD'
+import { TooltipProvider } from './ui/KeywordTooltip'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
 const DungeonTools = lazy(() => import('./ui/DungeonTools'))
@@ -15,13 +17,14 @@ export function App() {
   const screen = useAppStore((state) => state.screen)
   const showTitle = useAppStore((state) => state.showTitle)
   const defeated = usePawnStore((state) => state.status === 'defeat' || state.hp <= 0)
+  const floor = usePawnStore((state) => state.floorNumber)
 
   if (screen === 'title') return <TitleScreen />
 
   return (
-    <main className="scene-screen">
+    <TooltipProvider><main className="scene-screen">
       <header className="scene-header">
-        <div><h1>PAWNRIFT</h1><p className="level-label">LEVEL 1</p></div>
+        <div><h1>PAWNRIFT</h1><p className="level-label">LEVEL {floor}</p><TransformationHUD /></div>
         <CombatStatus />
       </header>
       <div className="scene-viewport">
@@ -35,7 +38,7 @@ export function App() {
           <CombatHUD />
           <button className="secondary-button" onClick={showTitle}>Return to menu</button>
         </div>
-        <div className="scene-controls" role="img" aria-label="Move with W A S D or arrow keys. Click a glowing adjacent tile to move. Scroll the mouse wheel to zoom.">
+        <div className="scene-controls" role="img" aria-label="Move with W A S D or arrow keys using the current chess form. Shift mirrors Knight jumps or chooses Queen diagonals. Click a highlighted destination; faint outlines are unscouted attempts. Scroll the mouse wheel to zoom.">
           <div className="key-cluster" aria-hidden="true">
             <kbd className="key-up">W</kbd><kbd className="key-left">A</kbd><kbd className="key-down">S</kbd><kbd className="key-right">D</kbd>
           </div>
@@ -63,6 +66,6 @@ export function App() {
       </footer>
       <CardHand />
       {defeated && <GameOver />}
-    </main>
+    </main></TooltipProvider>
   )
 }

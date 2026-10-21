@@ -4,7 +4,7 @@ import { type CardTextToken } from '../data/glossary'
 import { cardOptions } from '../game/logic/cardRules'
 import { usePawnStore } from '../game/state/pawnStore'
 import { EnergyIcon } from './EnergyIcon'
-import { KeywordTooltip, TooltipProvider } from './KeywordTooltip'
+import { KeywordTooltip } from './KeywordTooltip'
 
 export function CardDescription({ tokens }: { tokens: readonly CardTextToken[] }) {
   return <p className="card-description">{tokens.map((token, index) => typeof token === 'string' ? token
@@ -17,7 +17,7 @@ export function CardHand() {
   const options = selected ? cardOptions(state, selected.instanceId) : undefined
   const locked = !state.runActive || state.phase !== 'ready' || state.status !== 'playing'
   // Floor resets/menu remounts discard presentation-only tooltips without touching game state.
-  return <TooltipProvider key={`${state.dungeon.seed}:${state.dungeon.style}:${state.runActive}`}>
+  return <>
     <section className="card-hand" aria-label="Card hand" onKeyDown={(event) => {
       event.stopPropagation()
       if (event.key === 'Escape') state.selectCard(undefined)
@@ -66,5 +66,5 @@ export function CardHand() {
         })}
       </div>
     </section>
-  </TooltipProvider>
+  </>
 }

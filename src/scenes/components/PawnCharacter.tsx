@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Group, MathUtils } from 'three'
+import { Html } from '@react-three/drei'
+import { formNames, formSymbols } from '../../data/forms'
 import { usePawnStore } from '../../game/state/pawnStore'
 import { gridToWorld } from '../../utils/grid'
 import { usePawnKeyboard } from '../../ui/usePawnKeyboard'
@@ -14,7 +16,7 @@ export function PawnCharacter() {
   const root = useRef<Group>(null)
   const body = useRef<Group>(null)
   const progress = useRef(0)
-  const { cell, from, facing, isMoving, hp, dungeon } = usePawnStore()
+  const { cell, from, facing, isMoving, hp, dungeon, transformations } = usePawnStore()
   const lastHealth = useRef({ hp, dungeon })
   const recoil = useRef(0)
   useEffect(() => {
@@ -59,6 +61,11 @@ export function PawnCharacter() {
         <meshBasicMaterial color="#284f54" transparent opacity={0.23} depthWrite={false} />
       </mesh>
       <group ref={body}><PawnModel /></group>
+      {transformations.active && <Html position={[0, 1.5, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[4, 0]}>
+        <span className={`form-world-label attunement-${transformations.active.attunement}`}>
+          {formSymbols[transformations.active.form]} {formNames[transformations.active.form]}
+        </span>
+      </Html>}
     </group>
   )
 }

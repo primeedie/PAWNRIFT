@@ -1,6 +1,6 @@
 ﻿# PAWNRIFT
 
-Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, and synchronized Pawn combat. Stage 6 adds a seeded 12-card starter deck, a four-card hand, energy, HP bars, floating combat values, and restrained hit feedback.
+Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7A adds consumable chess transformations, attunements, movement/ability rules, death retention, a compact form HUD, and fresh normal-run seeds.
 
 **Stack:** TypeScript, React/Vite, Three.js/React Three Fiber, Drei, Zustand, and Vitest. No backend or runtime services.
 
@@ -34,20 +34,30 @@ The build checks TypeScript and writes `dist/`. Preview serves production files,
 | Mouse wheel | Bounded camera zoom |
 | Click a card, then highlighted foe/tile or Play | Play a targeted/self card |
 | Escape / Cancel | Cancel card selection without advancing time |
+| Forms → Inspect → Confirm activation | Activate a carried transformation for one world turn |
+| Choose ability → highlighted foe / Use Ward | Use the current form's signature |
 
 W/Up decreases the row (−Z); D/Right increases the column (+X). The board axes appear diagonal on screen. Valid actions advance the world once; invalid input, menus, camera controls, hover, and debug tools do not. Enemies act only in response to accepted actions. Rookling marks a strike tile one turn before attacking it; evade or defend.
 
-At zero HP, one modal dims the visible board and blocks gameplay. **RESTART RUN** generates a fresh seed and resets HP, enemies, turns, fog, and temporary state. **MAIN MENU** returns to the title with playback stopped; Play after defeat starts a fresh run. A living run retains its pending phase while in the menu and completes that phase once when resumed. Refresh starts at the title and resets in-memory run data.
+Transformed movement: Knight makes L-jumps; Shift mirrors the four keyboard jumps. Bishop maps W/D/S/A to NW/NE/SE/SW diagonal steps; Queen adds those diagonals with Shift. Rook/Queen use ordinary orthogonal keys; clicks reach the full provisional 3-tile slide range. Solid teal destinations are scouted; faint outlines are unscouted attempts that reveal nothing and can be blocked. A valid move always costs one turn regardless of distance.
+
+First **Play**, **New Run**, and **Restart Run** use fresh random seeds. **Resume** preserves a living run and any pending response. Explicit public seeds/styles reproduce the same floor and deck shuffle. No unseeded randomness is added inside generation. Starting deck composition remains fixed; Stage 8 will add 8 essential cards + 4 balanced seeded selections using independent layout/selection/shuffle streams.
+
+Transformations carry five activation charges shared between Light/Dark and last the activation floor plus one more completed floor. Then complete a full Pawn recovery floor before transforming again. Ordinary actions do not spend charges. New Run/reseeding ends active duration and preserves applicable recovery/charges; it cannot refill or skip recovery. On death, choose exactly one positive-charge carried item before restarting, if any; zero-charge activity is destroyed when it ends. Exhaustion tracks two subsequent corresponding boss-identity wins separately from ownership. See the GDD for provisional combat values and edge-case interpretations.
+
+Full progression, bosses/acquisition and form-model redesign are not yet implemented. In local development, expand the public toolbox and use **Transformation testing · development** to grant/unlock a form, activate through normal turns, inspect charges, simulate completed floors/boss wins, or test death retention. These cheats are excluded from production; the existing Pawn model gets a small form label pending Stage 7B. The completed-floor hook is ready for Stage 8 without automatic progression.
+
+At zero HP, one modal dims the visible board and blocks gameplay. Choose an eligible retained transformation first, when offered. **RESTART RUN** generates a fresh seed and resets HP, enemies, turns, fog, deck and temporary combat state, preserving the chosen item's charges, applicable recovery and reconstruction progress. **MAIN MENU** suspends playback; Play after defeat returns to any pending retention choice or starts fresh. A living run retains its pending phase and completes it once on Resume. Refresh resets all in-memory run data; persistent saving is Stage 10.
 
 Cards spend energy upfront; each completed world turn restores 1, capped at 3. Basic actions remain free and also restore energy. Playing a card discards it and draws back to four; an empty draw pile reshuffles discard deterministically. Unplayed cards stay in hand. Ward/Slip block and Riposte's first-strike counter expire after the coming response. Focus boosts the next strike; Mend restores HP. Inspection and invalid plays consume nothing.
 
 Cards show category symbols/colors and a lightning Energy cost at the top right. Hover, focus, or tap an underlined keyword or Energy icon for an explanation; **? Help** opens the same glossary. Escape/outside click dismisses help without issuing a game command. Card inspection and keyword buttons are separate. On narrow screens, scroll the hand horizontally to keep text readable. Stage 6.1 changes presentation and descriptions only; gameplay balance is unchanged.
 
-Defeat all enemies and reach the exit to clear the floor. Victory's **Restart floor** replays the same seed, including its initial deck. Restart clears temporary deck/resource state. Balance is provisional in `src/data/combatBalance.ts` and `src/data/cards.ts`; automatic floor progression, persistent saves, lobby, card rewards/upgrades, dice effects, transformations, and bosses are not implemented.
+Defeat all enemies and reach the exit to clear the floor. Victory's **Restart floor** replays the same seed and deck, without refilling transformation charges or bypassing recovery. Balance is provisional in `src/data/combatBalance.ts`, `src/data/cards.ts` and `src/data/forms.ts`; automatic progression, saves, lobby, rewards/upgrades, dice, bosses and essences remain future work.
 
 ## Generation, visuals, and development tools
 
-The default seed remains `dungeon-in-a-box` for reproducibility. Four layout styles use connectivity validation/repair. Enemy, trap, treasure, and alternate-exit reservations protect future content space; only the enemy is currently spawned. Fog includes diagonals when wall sight permits, remembers terrain dimly, and never reveals hidden enemies through memory. Chess colors use global row/column parity. The supplied background and Space Mono font are bundled locally; the font license is in `src/assets/fonts/OFL.txt`.
+Normal starts use fresh seeds; enter a specific seed in Dungeon tools for reproducibility. Four layout styles use connectivity validation/repair. Enemy, trap, treasure, and alternate-exit reservations protect future content space; only the enemy is spawned. Fog includes diagonals when wall sight permits, remembers terrain dimly, and never reveals hidden enemies through memory or movement previews. Chess colors use global row/column parity. The supplied background and Space Mono font are bundled locally; the font license is in `src/assets/fonts/OFL.txt`.
 
 Desktop framing targets 28% enlargement over the previous reserved-row view, capped to fit terrain, props, and every legal character position. Wide desktops use the unused HUD corners; smaller displays retain separate HUD rows. The isometric angle and world coordinates are unchanged.
 

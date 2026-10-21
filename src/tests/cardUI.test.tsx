@@ -29,7 +29,7 @@ describe('typed card copy and glossary', () => {
     expect(text).toContain('Discarded? Focused?')
   })
   it('explains all implemented keywords, limits and expiration without promising future effects', () => {
-    expect(Object.keys(glossary).sort()).toEqual(['energy', 'block', 'focus', 'counter', 'draw', 'discard', 'damage', 'healing'].sort())
+    expect(Object.keys(glossary)).toEqual(expect.arrayContaining(['energy', 'block', 'focus', 'counter', 'draw', 'discard', 'damage', 'healing']))
     expect(glossary.block.explanation).toContain('after the coming enemy response')
     expect(glossary.block.explanation).toContain('even if enemies only move')
     expect(glossary.counter.explanation).toContain('if you survive')

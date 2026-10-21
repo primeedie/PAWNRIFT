@@ -9,6 +9,7 @@ import { canSeeContent } from '../../game/logic/visibility'
 import { usePawnStore, type TurnPhase } from '../../game/state/pawnStore'
 import { gridToWorld } from '../../utils/grid'
 import { cardOptions } from '../../game/logic/cardRules'
+import { abilityReason, formAttackTargets } from '../../game/logic/formCombat'
 import { LegalTileHighlight } from './LegalTileHighlight'
 import { visibleEnemies } from '../../game/logic/combatIndicators'
 
@@ -42,6 +43,7 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
       event.stopPropagation()
       const state = usePawnStore.getState()
       if (state.selectedCardId) state.playSelectedCard({ kind: 'enemy', enemyId: enemy.id })
+      else if (state.selectedAbility) state.tryAbility(enemy.id)
       else state.tryAttack(enemy.id)
     }}>
       <mesh position={[0, 0.08, 0]}>
@@ -77,7 +79,8 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
 
 export function DungeonEnemies() {
   const state = usePawnStore()
-  const targets = state.selectedCardId && state.phase === 'ready' ? cardOptions(state, state.selectedCardId).targets : []
+  const targets = state.phase !== 'ready' ? [] : state.selectedCardId ? cardOptions(state, state.selectedCardId).targets
+    : state.selectedAbility && !abilityReason(state) ? formAttackTargets(state, true).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id })) : []
   return <group name="dungeon-enemies">
     {visibleEnemies(state).map((enemy) => (
       <group key={enemy.id}>

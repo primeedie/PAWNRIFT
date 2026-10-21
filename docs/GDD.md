@@ -1,6 +1,6 @@
 # PAWNRIFT — Game Design
 
-This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 6.1: beginner card UI and keyword tooltips**, preserving Stage 6 rules and balance. GitHub updates and Cloudflare publication of verified changes are authorized. The latest standing instruction requires direct publication of the tested build if the current update is not live, rather than leaving it pending on Git integration. **Provisional** items require validation. **Open** items are unresolved, not permission to invent systems. Stage 5 supersedes earlier requirements for dice-based movement or separate exploration/combat turn structures.
+This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 7A: transformation rules, combat integration, readable UI and normal-run seed randomization**. Stage 7B character redesign, Stage 7C tutorial, Stage 8 progression/randomized deck composition and Stage 10 saving are future work. Publish verified updates to GitHub and Cloudflare; directly deploy the tested build if it is not live. **Provisional** balance needs playtesting. **Open** design is not permission to invent later systems. Basic movement and attacks never require dice.
 
 ## Concept and pillars
 
@@ -63,6 +63,26 @@ Stage 6.1 adds presentation only: Attack/crimson, Defense/steel blue, Mobility/d
 
 Descriptions now explicitly name damage/targets, who receives healing, and temporary protection. The glossary clarifies that a response includes all eligible enemies, unused Block and Riposte expire even without an incoming strike, Riposte requires survival and triggers despite full blocking, Focus does not increase counters, and used cards can return immediately on a reshuffle. These clarify existing behavior rather than changing it.
 
+### Stage 7A transformation gameplay
+
+- Implemented forms are Pawn, Knight, Bishop, Rook and Queen. King/Mirror stay reserved. Forms are consumables, never cards. No bosses, essences, full progression, persistent saving or model redesign are added here.
+- A confirmed activation spends one shared charge and one world turn, then surviving enemies respond. Inspection/cancel/invalid activation are free. One form at a time; two distinct carried identities maximum. Light/Dark must be unlocked before activation and cannot switch mid-duration. Unlocking another attunement never refills charges.
+- An activation lasts the activation floor plus the next floor. The completed-floor hook alone decrements duration; normal actions never do. After the second completed floor, return to Pawn for one full global recovery floor. New Run/reseeding aborts an active form, starts recovery, and never counts as a completed recovery floor or refunds a charge. Runtime floor transitions are hooks/development simulations only; full progression waits for Stage 8.
+- Zero charges still allow the final two-floor activation. When that activity ends (including death/abandonment), remove the item and track reconstruction separately. Two subsequent wins over that boss **identity**, across either variant, reconstruct on the first and reacquire on the second. Reacquisition capacity is 5; if inventory is full, retain ready-to-claim eligibility without requiring a third win. These ownership/abandonment choices are **provisional Stage 7A interpretations**, not a new boss/reward system.
+- Death requires explicitly retaining exactly one eligible carried item with positive remaining charges. Keep those charges and applicable global recovery; lose the other item. Zero-charge activity is not retainable and ends on death. With no eligible items, skip selection. Restart/Play cannot bypass a pending choice. Reconstruction progress survives in memory; refresh clears all current in-memory progression. Voluntary New Run preserves positive-charge carried items/reconstruction but ends active duration and preserves recovery; no refill/reset exploit.
+- **Movement:** Pawn one orthogonal tile; Knight an L-jump over intermediate obstacles; Bishop diagonal slides; Rook orthogonal slides; Queen both. Slide limit is provisionally 3. Occupants/obstacles stop slides and block destinations; Knight must land on a valid free tile. Every valid move costs one world turn regardless of distance. Existing one-tile fog is unchanged.
+- **Preview policy:** current-sight destinations are teal; faint unscouted outlines are geometric attempts calculated using remembered terrain and currently visible occupants only. They reveal no terrain, walls or hidden enemies, and may fail without spending a turn if an unknown collision blocks the actual move. This lets Knights move before distant tiles are explored. Click a marker or use keys. WASD/arrows retain orthogonal steps for Pawn/Rook/Queen; Bishop maps W/D/S/A to NW/NE/SE/SW diagonal steps. Knight uses (-1,-2), (2,-1), (1,2), (-2,1), with Shift selecting the mirrored four jumps. Shift selects Queen diagonals. Clicks allow full slide ranges.
+- **Provisional attacks/abilities**, centralized in src/data/forms.ts: Pawn retains its 3-damage katana, Focus and free Defend/counter. Knight basic is 3 damage up to 2 clear orthogonal tiles; Thrust costs 1 Energy for 4 damage on that lane. Bishop basic is 3 damage up to 2 clear diagonal tiles; Ward costs 1 Energy and grants Light 3 Block + 1 Focus, or Dark 5 Block. Rook basic is 4 damage to an orthogonal neighbor; Lane strike costs 1 Energy for 5 damage up to 3 clear straight tiles. Queen basic is 3 damage to any of 8 neighbors; Twin strike costs 2 Energy for two hits of 3, stopping if the target dies. All attacks require current sight and clear lanes; intervening occupants block ranged strikes.
+- **Attunements:** Light adds 1 damage to transformed basics and each damaging signature hit. Dark grants 1 Block on a basic, or 2 on a damaging signature. Bishop Ward uses the distinct values above. Focus boosts only the first strike and never counters. Card costs, targets, effects, draws and Energy recovery are unchanged by form. Basic attacks remain Energy-free and reliable. Signature costs are paid upfront; one completed world action restores 1 Energy as before. Defend/counter remains available in all forms.
+- **Presentation:** compact current form/attunement/charge/duration-or-recovery/slots HUD, with collapsed inventory and explicit activation confirmation. Shared hover/focus/tap tooltips explain advanced movement, abilities, duration and recovery; they issue no actions. A small chess label identifies the active form above the existing Pawn placeholder; full bodies/weapons are Stage 7B. Semantic CSS tokens distinguish attack, defense, mobility, utility, Energy and Light/Dark; text tokens are tested at 4.5:1 against panel/background. Use bold names/numbers, spare optional flavor italics (none needed here), and concise reasons for unavailable actions. Do not recolor the world.
+- **Development only:** grant/unlock either attunement, test normal activation, inspect charges/reconstruction, simulate a completed floor or boss win, and force death for retention testing. Production retains its public seed/layout/new-dungeon toolbox, but has no transformation cheats. Until boss/reward acquisition is implemented, transformation testing requires local development grants.
+
+### Run seeds and Stage 8 starter plan
+
+The repeated first layout came from the fixed initial seed and Play resuming that initialization board. Initial state and first Play now use fresh cryptographic run-boundary seeds. New Run and Restart always choose fresh seeds; Resume preserves an existing living run, including pending enemy playback. Play after victory starts fresh. An explicitly entered seed/style remains reproducible and is passed unchanged into the generator; generation algorithms and seeded randomness are unchanged. The title distinguishes Resume from New Run.
+
+**Planned for Stage 8, not implemented:** each starting deck totals 12 cards: 8 essential starters plus 4 chosen from a balanced starter pool. Normal runs should vary composition; a saved seed should reproduce the same selection. Use independent deterministic streams for dungeon layouts, starter selection and shuffle order, so changing one system cannot consume another system's randomness. Essential identities, pool balance and duplicate constraints remain open. Stage 7A keeps the existing fixed 12-card composition and seeded shuffle.
+
 ### Stage 5 turn and combat rules
 
 1. Accept one valid action while ready; lock overlapping input.
@@ -84,7 +104,7 @@ Rendering never advances rules. The pure resolver is deterministic; Zustand coor
 
 All Stage 5 balance is **provisional**, centralized in `src/data/combatBalance.ts`: Pawn HP 12, katana damage 3; Rookling HP 6, strike damage 2; guard reduction 2, counter damage 2; detection Manhattan radius 4; search 2 turns. Presentation delays (240 ms player / 220 ms enemy) are provisional and do not create autonomous world ticks.
 
-Future movement integrates through a rule predicate: Knight L-jump, Bishop diagonal slide, Rook orthogonal slide, Queen both slide directions, King one tile in any direction. Each completed movement action costs one world turn regardless of distance. Only Pawn orthogonal movement is implemented now; future forms must also supply matching legal-destination highlights.
+Stage 7A implements Pawn, Knight L-jump, Bishop diagonal slide, Rook orthogonal slide and Queen combined slides through shared movement predicates and fog-safe previews. Each completed movement costs one world turn regardless of distance. King one-tile movement remains future postgame work.
 
 ## Floors, alignment, and bosses
 
@@ -127,7 +147,7 @@ Since one biome visit yields only one variant encounter, collecting both variant
 | Queen | Claws | Knuckles |
 | King — late postgame | Greatsword | Dual swords |
 
-Weapons establish identity. Pawn's current basic attack is defined above; other forms' ranges, damage, skills, and exact movement integration remain open. Light favors offense and Dark favors defense; neither implies a confirmed numerical bonus.
+Weapons establish identity. Stage 7A implements the provisional combat rules above while retaining the Pawn placeholder; Stage 7B will redesign form bodies/weapons. Light favors offense and Dark favors defense. Main-content balance remains open.
 
 ## Transformation consumables
 
@@ -142,7 +162,7 @@ Confirmed lifecycle rules:
 7. After destruction, reacquisition requires **two subsequent victories over the corresponding boss**: the first reconstructs it; the second reacquires it. Do not award the consumable on the reconstruction win or count earlier victories toward this requirement.
 8. Permanent essences are independent of this lifecycle and never disappear.
 
-**Open timing:** interpret the recovery floor as following the two active floors for the first rules proposal; this ordering is **provisional**. Confirm activation timing, partial-floor counting, whether boss floors count, and behavior at biome/run boundaries. Confirm how death interrupts activity or recovery and how a zero-charge active item interacts with retention.
+**Stage 7A timing:** activation floor counts, then the next completed floor, then one full Pawn recovery floor. The hooks count completed floors without a biome/boss exception. Death/abandonment ends activity and preserves applicable recovery; zero-charge activity is destroyed, not retained. Full campaign boundaries remain Stage 8 design work.
 
 **Open ownership:** initial acquisition conditions; whether “corresponding boss” means identity or exact variant; attunement selection/switch timing; duplicate handling; full-inventory reward handling; charge count upon reacquisition; and whether reconstruction progress persists after death. Five activations is the confirmed consumable capacity; no refill mechanic is specified.
 
@@ -184,7 +204,7 @@ Use focused rules tests or developer scenarios to verify five-charge exhaustion,
 ## Milestones and decision gates
 
 1. **Planning — completed:** initial GDD and repository guidance, followed by foundation, visual board, Pawn movement/polish, procedural dungeons/fog, and Stage 5 player-driven combat/branding. Optional dice/card rules and transformation lifecycle ambiguities remain unresolved.
-2. **Core rules — through Stage 6:** deterministic generation, fog, movement, one basic enemy, attack/defend/wait, synchronized card actions, seeded starter deck, and health/combat feedback with focused Vitest coverage. Further systems require explicit authorization.
+2. **Core rules — through Stage 7A:** seeded generation/fog, fresh normal-run seeds, synchronized combat/cards, transformation lifecycle/movement/abilities/retention and readable tooltips/HUD. Model redesign (7B), tutorial (7C), full progression/random starter selection (8) and persistence (10) remain separate authorized stages.
 3. **Playable slice:** build the six-floor loop above, presentation, lobby, and local saves; playtest and revise provisional balance.
 4. **Main content:** expand to four biomes, all eight variants and essences, approved card/enemy content, and transformation forms. Confirm replay progression supports collecting every essence.
 5. **Endgame and polish:** implement the eight-variant boss rush and Mirror; tune progression and readability. King remains a separate late-postgame decision.
