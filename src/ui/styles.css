@@ -101,7 +101,7 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .keyword.card-cost { display: flex; align-items: center; gap: 3px; position: absolute; top: 9px; right: 9px; min-height: 28px; padding: 3px 7px; border: 1px solid #887582; border-radius: 5px; color: #edc5a3; background: #161d2b; text-decoration: none; font-size: 0.85rem; }
 .keyword.card-cost.unaffordable { color: #e7a5ac; border-style: dashed; }
 .energy-icon { display: inline-block; width: 15px; height: 18px; vertical-align: middle; flex-shrink: 0; }
-.card-description { font-size: 0.75rem; line-height: 1.55; margin: 0; }
+.card-description { font-size: 0.75rem; line-height: 1.55; margin: 0; text-align: justify; text-justify: inter-word; }
 .card-unavailable { font-size: 0.65rem; color: #e3a0a9; margin-top: auto; }
 .keyword { display: inline; padding: 0; border: 0; background: none; color: #c5b9dd; font: inherit; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 .keyword:hover { color: #f1dcc2; }
