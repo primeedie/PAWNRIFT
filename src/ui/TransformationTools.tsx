@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { bossForms, formNames, type Attunement, type BossForm } from '../../data/forms'
-import { usePawnStore } from '../../game/state/pawnStore'
-import { newRunSeed } from '../../utils/newRunSeed'
+import { bossForms, formNames, type Attunement, type BossForm } from '../data/forms'
+import { usePawnStore } from '../game/state/pawnStore'
+import { newRunSeed } from '../utils/newRunSeed'
 
-export default function TransformationDevTools() {
+export default function TransformationTools() {
   const state = usePawnStore()
   const [form, setForm] = useState<BossForm>('knight')
   const [attunement, setAttunement] = useState<Attunement>('light')
   const [message, setMessage] = useState('')
-  return <fieldset className="transformation-dev-tools"><legend>Transformation testing · development</legend>
+  return <fieldset className="transformation-dev-tools"><legend>Transformation testing</legend>
     <label>Form<select value={form} onChange={(event) => setForm(event.target.value as BossForm)}>
       {bossForms.map((id) => <option key={id} value={id}>{formNames[id]}</option>)}
     </select></label>

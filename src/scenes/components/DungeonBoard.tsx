@@ -14,7 +14,7 @@ import { movementPreviews } from '../../game/logic/formCombat'
 export function DungeonBoard() {
   const state = usePawnStore()
   const { tryMove, dungeon } = state
-  const debugReveal = import.meta.env.DEV && state.revealAll
+  const debugReveal = state.revealAll
   const destinations = state.phase === 'ready' && state.status === 'playing'
     ? state.selectedCardId ? cardOptions(state, state.selectedCardId).targets.flatMap((target) => target.kind === 'tile' ? [{ ...target.cell, uncertain: false }] : [])
       : state.selectedAbility ? [] : movementPreviews(state) : []

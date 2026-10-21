@@ -45,7 +45,7 @@ First **Play**, **New Run**, and **Restart Run** use fresh random seeds. **Resum
 
 Transformations carry five activation charges shared between Light/Dark and last the activation floor plus one more completed floor. Then complete a full Pawn recovery floor before transforming again. Ordinary actions do not spend charges. New Run/reseeding ends active duration and preserves applicable recovery/charges; it cannot refill or skip recovery. On death, choose exactly one positive-charge carried item before restarting, if any; zero-charge activity is destroyed when it ends. Exhaustion tracks two subsequent corresponding boss-identity wins separately from ownership. See the GDD for provisional combat values and edge-case interpretations.
 
-Full progression, bosses/acquisition and form-model redesign are not yet implemented. In local development, expand the public toolbox and use **Transformation testing · development** to grant/unlock a form, activate through normal turns, inspect charges, simulate completed floors/boss wins, or test death retention. These cheats are excluded from production; the existing Pawn model gets a small form label pending Stage 7B. The completed-floor hook is ready for Stage 8 without automatic progression.
+Full progression, bosses/acquisition and form-model redesign are not yet implemented. Locally or on the live site, open **Dungeon tools → Transformation testing** to grant/unlock a form, activate through normal turns, inspect charges, simulate completed floors/boss wins, or test death retention. All current testing tools are intentionally public at the user's request. The existing Pawn model gets a small form label pending Stage 7B. The completed-floor hook is ready for Stage 8 without automatic progression.
 
 At zero HP, one modal dims the visible board and blocks gameplay. Choose an eligible retained transformation first, when offered. **RESTART RUN** generates a fresh seed and resets HP, enemies, turns, fog, deck and temporary combat state, preserving the chosen item's charges, applicable recovery and reconstruction progress. **MAIN MENU** suspends playback; Play after defeat returns to any pending retention choice or starts fresh. A living run retains its pending phase and completes it once on Resume. Refresh resets all in-memory run data; persistent saving is Stage 10.
 
@@ -61,7 +61,7 @@ Normal starts use fresh seeds; enter a specific seed in Dungeon tools for reprod
 
 Desktop framing targets 28% enlargement over the previous reserved-row view, capped to fit terrain, props, and every legal character position. Wide desktops use the unused HUD corners; smaller displays retain separate HUD rows. The isometric angle and world coordinates are unchanged.
 
-Open **Dungeon tools** in the upper-right corner, locally or on the live site, to enter a seed, choose a layout style, or generate a new dungeon. Generation resets the complete encounter, including HP, cards, turns, and fog. The active seed is shown so it can be reused. Only `npm run dev` exposes the reveal-map debug checkbox; reveal never modifies exploration memory or exposes hidden enemies.
+Open **Dungeon tools** in the upper-right corner, locally or on the live site, to enter a seed, choose a layout style, or generate a new dungeon. Generation resets HP, cards, turns and fog while preserving transformation lifecycle rules. The active seed is shown so it can be reused. **Reveal complete map** is also available publicly for terrain inspection; it never modifies exploration memory or exposes hidden enemies.
 
 ## GitHub preparation
 

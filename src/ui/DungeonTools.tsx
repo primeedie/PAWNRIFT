@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { layoutStyles, type LayoutStyle } from '../game/logic/dungeon'
 import { usePawnStore } from '../game/state/pawnStore'
 import { newRunSeed } from '../utils/newRunSeed'
-const TransformationDevTools = import.meta.env.DEV ? lazy(() => import('./dev/TransformationDevTools')) : null
+const TransformationTools = lazy(() => import('./TransformationTools'))
 
 export default function DungeonTools() {
   const { dungeon, revealAll, loadDungeon, toggleReveal } = usePawnStore()
@@ -23,8 +23,8 @@ export default function DungeonTools() {
           const next = newRunSeed(dungeon.seed)
           setSeed(next); loadDungeon(next, style || undefined)
         }}>New dungeon</button>
-        {import.meta.env.DEV && <label className="dev-checkbox"><input type="checkbox" checked={revealAll} onChange={toggleReveal} />Reveal complete map</label>}
-        {TransformationDevTools && <Suspense fallback={null}><TransformationDevTools /></Suspense>}
+        <label className="dev-checkbox"><input type="checkbox" checked={revealAll} onChange={toggleReveal} />Reveal complete map</label>
+        <Suspense fallback={null}><TransformationTools /></Suspense>
         <p>Active: {dungeon.seed} · {dungeon.style}</p>
         <p>Generating a dungeon resets this run.</p>
       </form>

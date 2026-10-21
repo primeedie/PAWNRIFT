@@ -69,7 +69,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   transitionFloor: (seed, testing = false) => {
     const state = get()
     if (state.phase !== 'ready' || state.hp <= 0 || (!state.runActive)
-      || (state.status !== 'victory' && !(import.meta.env.DEV && testing))) return false
+      || (state.status !== 'victory' && !testing)) return false
     const dungeon = generateDungeon(seed)
     set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck,
       energy: state.energy, maxEnergy: state.maxEnergy, focus: state.focus, turn: state.turn,
@@ -80,18 +80,18 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   debugGrant: (form, attunement) => {
     const state = get()
-    if (!import.meta.env.DEV || state.phase !== 'ready' || state.status !== 'playing') return false
+    if (!state.runActive || state.phase !== 'ready' || state.status !== 'playing') return false
     const next = grantTransformation(state.transformations, form, attunement)
     if (!next) return false
     set({ transformations: next }); return true
   },
   debugBossWin: (form, attunement) => {
     const state = get()
-    if (import.meta.env.DEV && state.phase === 'ready' && state.status === 'playing')
+    if (state.runActive && state.phase === 'ready' && state.status === 'playing')
       set({ transformations: recordTransformationBossWin(state.transformations, form, attunement) })
   },
   debugDefeat: () => {
-    if (import.meta.env.DEV && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat',
+    if (get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat',
       selectedCardId: undefined, selectedAbility: false, deathRetentionDone: false, actionId: state.actionId + 1 }))
   },
   selectedCardId: undefined,
@@ -119,7 +119,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
       transformations: retained, floorNumber: 1, hasStartedRun: true, deathRetentionDone: false, selectedAbility: false,
       actionId: get().actionId + 1, revealAll: false, runActive: true, selectedCardId: undefined, lastAction: undefined })
   },
-  toggleReveal: () => { if (import.meta.env.DEV) set((state) => ({ revealAll: !state.revealAll })) },
+  toggleReveal: () => set((state) => ({ revealAll: !state.revealAll })),
   tryMove: (destination) => get().submitAction({ kind: 'move', destination }),
   tryAttack: (targetId) => {
     const target = targetId ?? attackTargets(get())[0]?.id
