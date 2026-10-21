@@ -41,6 +41,8 @@ At zero HP, one modal dims the visible board and blocks gameplay. **RESTART RUN*
 
 Cards spend energy upfront; each completed world turn restores 1, capped at 3. Basic actions remain free and also restore energy. Playing a card discards it and draws back to four; an empty draw pile reshuffles discard deterministically. Unplayed cards stay in hand. Ward/Slip block and Riposte's first-strike counter expire after the coming response. Focus boosts the next strike; Mend restores HP. Inspection and invalid plays consume nothing.
 
+Cards show category symbols/colors and a lightning Energy cost at the top right. Hover, focus, or tap an underlined keyword or Energy icon for an explanation; **? Help** opens the same glossary. Escape/outside click dismisses help without issuing a game command. Card inspection and keyword buttons are separate. On narrow screens, scroll the hand horizontally to keep text readable. Stage 6.1 changes presentation and descriptions only; gameplay balance is unchanged.
+
 Defeat all enemies and reach the exit to clear the floor. Victory's **Restart floor** replays the same seed, including its initial deck. Restart clears temporary deck/resource state. Balance is provisional in `src/data/combatBalance.ts` and `src/data/cards.ts`; automatic floor progression, persistent saves, lobby, card rewards/upgrades, dice effects, transformations, and bosses are not implemented.
 
 ## Generation, visuals, and development tools

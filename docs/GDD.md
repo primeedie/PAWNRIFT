@@ -1,6 +1,6 @@
 # PAWNRIFT — Game Design
 
-This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 6: deckbuilding foundation and combat feedback**. The initial GitHub upload and public visibility were authorized separately; the user subsequently authorized GitHub updates and Cloudflare deployment as part of completed, verified changes. **Provisional** items require validation. **Open** items are unresolved, not permission to invent systems. Stage 5 supersedes earlier requirements for dice-based movement or separate exploration/combat turn structures.
+This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 6.1: beginner card UI and keyword tooltips**, preserving Stage 6 rules and balance. GitHub updates and Cloudflare publication of verified changes are authorized; use the existing Git integration without a separate deployment when it handles the push. **Provisional** items require validation. **Open** items are unresolved, not permission to invent systems. Stage 5 supersedes earlier requirements for dice-based movement or separate exploration/combat turn structures.
 
 ## Concept and pillars
 
@@ -52,6 +52,12 @@ Stage 6 settles the starting deck, hand, and resource timing below. **Open:** de
 - The compact bottom hand sits in reserved screen space below the Canvas. Click to inspect/select; click a highlighted foe/tile to target, or use Play for self cards. Cancel/Escape is free. Names, costs, effects, playability, energy, Focus, and pile counts remain readable. Normal controls can still submit basic actions.
 - Player HP has a muted crimson bar plus current/max numbers. Living enemies expose compact bars only in current sight, including under debug reveal. Stable event IDs drive damage/healing/BLOCKED values that rise/fade, stagger per recipient, expire after 850 ms, and are capped at 12 concurrent indicators. Labels follow recipients and obey current sight. Pawn recoil and the existing enemy hit flash provide restrained feedback; no attack animation is implemented.
 - Defeat and fresh-run/same-seed floor reset preserve their existing semantics and reset deck, resources, targeting, and event IDs atomically. There are no card rewards, upgrades, removals, saving, transformations, Light/Dark modifiers, dice effects, or synergies yet. Definition/instance separation and the discriminated effect/action types provide extension points without implementing those systems.
+
+### Stage 6.1 card presentation and help
+
+Stage 6.1 adds presentation only: Attack/crimson, Defense/steel blue, Mobility/desaturated teal, and Utility/violet category symbols and labels; a shared lightning-shaped Energy icon on cards and HUD; explicit typed keyword tokens; and one central glossary for Energy, Block, Focus, Counter/Riposte, Draw, Discard, Damage, and Healing. Hover, keyboard focus, or tap explains a term; Help lists the same entries. Tooltips sit above the HUD, clamp to the viewport, scroll for long content, remain readable while hovered/focused or pinned by tap, and dismiss with Escape/outside click. Dismissal does not click through or consume an action. Card selection and keyword controls are separate semantic buttons. Smaller hands scroll horizontally instead of shrinking type. No effect, deck, energy, movement, damage formula, AI, fog, generation, or Game Over rule changes.
+
+Descriptions now explicitly name damage/targets, who receives healing, and temporary protection. The glossary clarifies that a response includes all eligible enemies, unused Block and Riposte expire even without an incoming strike, Riposte requires survival and triggers despite full blocking, Focus does not increase counters, and used cards can return immediately on a reshuffle. These clarify existing behavior rather than changing it.
 
 ### Stage 5 turn and combat rules
 

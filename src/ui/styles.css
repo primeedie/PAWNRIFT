@@ -79,19 +79,47 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .combat-number.heal { color: #a5c6a3; }
 .combat-number.blocked { color: #d2d7ca; font-size: 0.65rem; }
 @keyframes combat-rise { 0% { opacity: 0; transform: translateY(5px); } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
-.scene-screen { --hand-height: 144px; grid-template-rows: auto minmax(0, 1fr) auto var(--hand-height); }
+.scene-screen { --hand-height: 232px; grid-template-rows: auto minmax(0, 1fr) auto var(--hand-height); }
 .card-hand { grid-row: 4; z-index: 4; padding: 6px clamp(14px, 4vw, 56px) 12px; background: linear-gradient(#151d2af2, #121923); border-top: 1px solid #58626b66; min-width: 0; }
-.hand-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; max-width: 850px; margin: 0 auto 6px; min-height: 26px; font-size: 0.6rem; color: #b7c3c7; }
+.hand-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; max-width: 1040px; margin: 0 auto 8px; min-height: 38px; font-size: 0.7rem; color: #c1cbd0; }
 .hand-meta strong { color: #e3bf98; }
-.hand-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 850px; margin: auto; }
-.hand-card { min-width: 0; height: 90px; display: flex; flex-direction: column; gap: 6px; text-align: left; color: #c5c9c9; background: #222a35; border: 1px solid #4a535f; border-radius: 5px; padding: 8px 10px; }
-.hand-card[data-playable="true"] { border-color: #93767c; color: #ede3d9; background: linear-gradient(135deg, #332b36, #222c38); }
-.hand-card[aria-pressed="true"] { border-color: #e1bb89; box-shadow: inset 0 0 0 1px #e1bb8966; }
-.hand-card:hover:not(:disabled) { background: #3c3541; }
-.hand-card:disabled { opacity: 0.55; cursor: default; }
-.card-heading { display: flex; align-items: center; justify-content: space-between; gap: 3px; width: 100%; font-size: 0.75rem; }
-.card-cost { display: grid; place-items: center; flex-shrink: 0; width: 20px; height: 20px; border: 1px solid #7f6d78; border-radius: 50%; color: #edc5a3; background: #161d2b; font-size: 0.65rem; }
-.card-description { font-size: 0.6rem; line-height: 1.5; }
+.hand-resources { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 16px; }
+.hand-resources > span { white-space: nowrap; }
+.hand-cards { display: grid; grid-template-columns: repeat(4, minmax(185px, 1fr)); gap: 10px; max-width: 1040px; margin: auto; overflow-x: auto; padding: 3px 3px 8px; scrollbar-width: thin; }
+.hand-card { --card-accent: #b17b83; position: relative; min-width: 0; height: 156px; display: flex; flex-direction: column; gap: 8px; text-align: left; color: #deded7; background: #222a35; border: 1px solid #535d6b; border-top: 3px solid var(--card-accent); border-radius: 6px; padding: 10px 12px; transition: transform 130ms ease, background 130ms ease, border-color 130ms ease; }
+.hand-card[data-category="defense"] { --card-accent: #8baabd; }
+.hand-card[data-category="mobility"] { --card-accent: #7daea7; }
+.hand-card[data-category="utility"] { --card-accent: #b09bc7; }
+.hand-card[data-playable="true"] { border-color: var(--card-accent); background: linear-gradient(135deg, #30303c, #222c38); }
+.hand-card[data-selected="true"] { border-color: #e1bb89; box-shadow: inset 0 0 0 1px #e1bb8966; transform: translateY(-2px); }
+.hand-card:hover { background: #333440; }
+.hand-card[data-locked="true"] .card-select { opacity: 0.65; cursor: default; }
+.card-select { display: grid; gap: 3px; min-height: 38px; padding: 0 48px 0 0; text-align: left; color: inherit; border: none; background: none; }
+.card-name { font-size: 0.86rem; }
+.card-category { color: var(--card-accent); font-size: 0.66rem; }
+.card-category > span { display: inline-block; width: 14px; text-align: center; }
+.keyword.card-cost { display: flex; align-items: center; gap: 3px; position: absolute; top: 9px; right: 9px; min-height: 28px; padding: 3px 7px; border: 1px solid #887582; border-radius: 5px; color: #edc5a3; background: #161d2b; text-decoration: none; font-size: 0.85rem; }
+.keyword.card-cost.unaffordable { color: #e7a5ac; border-style: dashed; }
+.energy-icon { display: inline-block; width: 15px; height: 18px; vertical-align: middle; flex-shrink: 0; }
+.card-description { font-size: 0.75rem; line-height: 1.55; margin: 0; }
+.card-unavailable { font-size: 0.65rem; color: #e3a0a9; margin-top: auto; }
+.keyword { display: inline; padding: 0; border: 0; background: none; color: #c5b9dd; font: inherit; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.keyword:hover { color: #f1dcc2; }
+.keyword[data-keyword="block"], .keyword[data-keyword="counter"] { color: #b6cddd; }
+.keyword[data-keyword="damage"] { color: #e2a5ab; }
+.keyword[data-keyword="healing"] { color: #b2d1b5; }
+.keyword[data-keyword="energy"] { color: #edc5a3; }
+.keyword:focus-visible { outline: 2px solid #e1bb89; outline-offset: 3px; border-radius: 2px; }
+.keyword.energy-total { display: inline-flex; align-items: center; gap: 5px; }
+.help-trigger { white-space: nowrap; }
+.keyword-tooltip { position: fixed; z-index: 10000; width: min(350px, calc(100vw - 24px)); max-height: min(65svh, calc(100svh - 24px)); overflow: auto; padding: 15px 17px; color: #e3e4db; background: #1c2534; border: 1px solid #8d859b; border-radius: 6px; box-shadow: 0 8px 30px #050a16aa; font-size: 0.82rem; line-height: 1.65; overflow-wrap: anywhere; }
+.keyword-tooltip strong, .keyword-tooltip dt { color: #ead4b8; font-weight: 700; }
+.keyword-tooltip p { margin: 7px 0 10px; }
+.keyword-tooltip small { color: #b1bfc7; font-size: 0.66rem; }
+.keyword-tooltip dl { margin: 8px 0 12px; }
+.keyword-tooltip dl > div + div { margin-top: 14px; }
+.keyword-tooltip dd { margin: 3px 0 0; }
+.keyword-tooltip .tooltip-note { border-top: 1px solid #687181; padding-top: 9px; color: #edc5a3; }
 .card-targeting { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .card-targeting button { background: #343340; border: 1px solid #9c7c82; border-radius: 3px; padding: 3px 7px; color: #e6dccc; font-size: inherit; }
 .enemy-label small { color: #bac9c6; font-size: 0.52rem; }
@@ -123,14 +151,12 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
   .dungeon-dev-tools { top: 112px; }
 }
 @media (max-width: 650px) {
-  .scene-screen { --hand-height: 164px; }
+  .scene-screen { --hand-height: 264px; }
   .card-hand { padding-inline: 10px; }
-  .hand-meta { flex-wrap: wrap; gap: 3px; font-size: 0.52rem; min-height: 42px; }
-  .hand-cards { gap: 5px; }
-  .hand-card { height: 97px; padding: 5px; gap: 4px; }
-  .card-heading { font-size: 0.56rem; flex-wrap: wrap; }
-  .card-description { font-size: 0.5rem; }
-  .card-cost { width: 16px; height: 16px; font-size: 0.55rem; }
+  .hand-meta { flex-wrap: wrap; gap: 6px; font-size: 0.68rem; min-height: 66px; }
+  .hand-resources { gap: 5px 12px; }
+  .hand-cards { gap: 8px; }
+  .hand-card { height: 156px; }
   .scene-footer { padding: 10px 14px 14px; }
   .scene-controls { gap: 7px; }
   .key-cluster { grid-template-columns: repeat(3, 23px); grid-template-rows: repeat(2, 23px); gap: 2px; }
@@ -146,6 +172,7 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
   .combat-actions button { padding: 7px 8px; font-size: 0.62rem; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .hand-card { transition: none; transform: none !important; }
   .health-track > span { transition: none; }
   .combat-number { animation-name: combat-fade; }
 }

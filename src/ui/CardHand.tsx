@@ -1,35 +1,70 @@
 import { cards } from '../data/cards'
+import { cardCategories, cardPresentation } from '../data/cardPresentation'
+import { type CardTextToken } from '../data/glossary'
 import { cardOptions } from '../game/logic/cardRules'
 import { usePawnStore } from '../game/state/pawnStore'
+import { EnergyIcon } from './EnergyIcon'
+import { KeywordTooltip, TooltipProvider } from './KeywordTooltip'
+
+export function CardDescription({ tokens }: { tokens: readonly CardTextToken[] }) {
+  return <p className="card-description">{tokens.map((token, index) => typeof token === 'string' ? token
+    : <KeywordTooltip key={index} topic={token.keyword}>{token.text}</KeywordTooltip>)}</p>
+}
 
 export function CardHand() {
   const state = usePawnStore()
   const selected = state.deck.hand.find((card) => card.instanceId === state.selectedCardId)
   const options = selected ? cardOptions(state, selected.instanceId) : undefined
   const locked = !state.runActive || state.phase !== 'ready' || state.status !== 'playing'
-  return <section className="card-hand" aria-label="Card hand">
-    <div className="hand-meta">
-      <span>ENERGY <strong>{state.energy}/{state.maxEnergy}</strong> · Draw {state.deck.draw.length} · Discard {state.deck.discard.length} · Focus {state.focus}</span>
-      <div className="card-targeting" role="status">
-        {selected && <>
-          <span>{options?.reason ?? (options?.targets[0]?.kind === 'self' ? cards[selected.definitionId].name : 'Choose a highlighted target')}</span>
-          {options?.targets[0]?.kind === 'self' && <button disabled={locked} onClick={() => state.playSelectedCard({ kind: 'self' })}>Play</button>}
-          <button onClick={() => state.selectCard(undefined)} title="Cancel targeting (Escape)">Cancel</button>
-        </>}
+  // Floor resets/menu remounts discard presentation-only tooltips without touching game state.
+  return <TooltipProvider key={`${state.dungeon.seed}:${state.dungeon.style}:${state.runActive}`}>
+    <section className="card-hand" aria-label="Card hand" onKeyDown={(event) => {
+      event.stopPropagation()
+      if (event.key === 'Escape') state.selectCard(undefined)
+    }}>
+      <div className="hand-meta">
+        <div className="hand-resources">
+          <KeywordTooltip topic="energy" className="energy-total"><EnergyIcon /><span>ENERGY <strong>{state.energy}/{state.maxEnergy}</strong></span></KeywordTooltip>
+          <span><KeywordTooltip topic="draw" /> {state.deck.draw.length}</span>
+          <span><KeywordTooltip topic="discard" /> {state.deck.discard.length}</span>
+          <span><KeywordTooltip topic="focus" /> {state.focus}</span>
+          <KeywordTooltip topic="guide" className="help-trigger" />
+        </div>
+        <div className="card-targeting" role="status">
+          {selected && <>
+            <span>{options?.reason ?? (options?.targets[0]?.kind === 'self' ? cards[selected.definitionId].name : 'Choose a highlighted target')}</span>
+            {options?.targets[0]?.kind === 'self' && <button disabled={locked} onClick={() => state.playSelectedCard({ kind: 'self' })}>Play</button>}
+            <button onClick={() => state.selectCard(undefined)} title="Cancel targeting (Escape)">Cancel</button>
+          </>}
+        </div>
       </div>
-    </div>
-    <div className="hand-cards">
-      {state.deck.hand.map((instance) => {
-        const card = cards[instance.definitionId]
-        const reason = cardOptions(state, instance.instanceId).reason
-        return <button key={instance.instanceId} className="hand-card" disabled={locked}
-          data-playable={!locked && !reason} aria-pressed={state.selectedCardId === instance.instanceId}
-          title={`${card.name}: ${card.description}${reason ? ` (${reason})` : ''}`}
-          onClick={() => state.selectCard(instance.instanceId)}>
-          <span className="card-heading"><strong>{card.name}</strong><span className="card-cost" aria-label={`${card.cost} energy`}>{card.cost}</span></span>
-          <span className="card-description">{card.description}</span>
-        </button>
-      })}
-    </div>
-  </section>
+      <div className="hand-cards">
+        {state.deck.hand.map((instance) => {
+          const card = cards[instance.definitionId]
+          const presentation = cardPresentation[instance.definitionId]
+          const category = cardCategories[presentation.category]
+          const reason = cardOptions(state, instance.instanceId).reason
+          const shortfall = card.cost - state.energy
+          const energyHelp = shortfall > 0
+            ? `Costs ${card.cost} Energy; you have ${state.energy}. You need ${shortfall} more. A basic move, attack, defend, or wait restores 1 after enemies respond.`
+            : `Costs ${card.cost} Energy, paid before the effect. Playing a valid card advances the world once.`
+          return <article key={instance.instanceId} className="hand-card" data-category={presentation.category}
+            data-playable={!locked && !reason} data-selected={state.selectedCardId === instance.instanceId}
+            data-locked={locked} onClick={() => { if (!locked) state.selectCard(instance.instanceId) }}>
+            <button type="button" className="card-select" disabled={locked} aria-pressed={state.selectedCardId === instance.instanceId}
+              aria-label={`Inspect ${card.name}. ${category.label}. ${card.cost} Energy. ${card.description}${reason ? ` ${reason}.` : ''}`}
+              onClick={(event) => { event.stopPropagation(); state.selectCard(instance.instanceId) }}>
+              <strong className="card-name">{card.name}</strong>
+              <span className="card-category"><span aria-hidden="true">{category.symbol}</span> {category.label}</span>
+            </button>
+            <KeywordTooltip topic="energy" className={`card-cost ${shortfall > 0 ? 'unaffordable' : ''}`} extra={energyHelp}>
+              <EnergyIcon /><strong>{card.cost}</strong>
+            </KeywordTooltip>
+            <CardDescription tokens={presentation.tokens} />
+            {shortfall > 0 && <span className="card-unavailable">Need {shortfall} more Energy</span>}
+          </article>
+        })}
+      </div>
+    </section>
+  </TooltipProvider>
 }
