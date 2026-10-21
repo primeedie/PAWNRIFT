@@ -55,6 +55,8 @@ Stage 6 settles the starting deck, hand, and resource timing below. **Open:** de
 
 ### Stage 6.1 card presentation and help
 
+The upper-right Dungeon tools are available in production as requested: seed input, layout selection, generation from that seed, and a fresh-dungeon button. Regeneration resets the complete temporary encounter through the existing atomic reset. Map-reveal debugging stays development-only; the public toolbox does not alter fog rules or expose hidden enemies.
+
 Card body text uses full justification by default; text that requires centered presentation retains it. Short headings, category labels, and Energy indicators retain their deliberate alignment.
 
 Stage 6.1 adds presentation only: Attack/crimson, Defense/steel blue, Mobility/desaturated teal, and Utility/violet category symbols and labels; a shared lightning-shaped Energy icon on cards and HUD; explicit typed keyword tokens; and one central glossary for Energy, Block, Focus, Counter/Riposte, Draw, Discard, Damage, and Healing. Hover, keyboard focus, or tap explains a term; Help lists the same entries. Tooltips sit above the HUD, clamp to the viewport, scroll for long content, remain readable while hovered/focused or pinned by tap, and dismiss with Escape/outside click. Dismissal does not click through or consume an action. Card selection and keyword controls are separate semantic buttons. Smaller hands scroll horizontally instead of shrinking type. No effect, deck, energy, movement, damage formula, AI, fog, generation, or Game Over rule changes.

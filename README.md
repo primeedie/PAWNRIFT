@@ -51,7 +51,7 @@ The default seed remains `dungeon-in-a-box` for reproducibility. Four layout sty
 
 Desktop framing targets 28% enlargement over the previous reserved-row view, capped to fit terrain, props, and every legal character position. Wide desktops use the unused HUD corners; smaller displays retain separate HUD rows. The isometric angle and world coordinates are unchanged.
 
-With `npm run dev`, open **Dungeon tools · development** to enter a seed/style, generate a floor, or reveal terrain temporarily. Regeneration resets the complete encounter; revealing terrain does not modify exploration memory or expose hidden enemies. Debug controls are removed from production.
+Open **Dungeon tools** in the upper-right corner, locally or on the live site, to enter a seed, choose a layout style, or generate a new dungeon. Generation resets the complete encounter, including HP, cards, turns, and fog. The active seed is shown so it can be reused. Only `npm run dev` exposes the reveal-map debug checkbox; reveal never modifies exploration memory or exposes hidden enemies.
 
 ## GitHub preparation
 

@@ -8,7 +8,7 @@ import { GameOver } from './ui/GameOver'
 import { CardHand } from './ui/CardHand'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
-const DungeonDevTools = import.meta.env.DEV ? lazy(() => import('./ui/dev/DungeonDevTools')) : null
+const DungeonTools = lazy(() => import('./ui/DungeonTools'))
 
 export function App() {
   useTurnPlayback()
@@ -28,7 +28,7 @@ export function App() {
         <Suspense fallback={<p className="scene-loading" role="status">Opening the box…</p>}>
           <FoundationScene />
         </Suspense>
-        {DungeonDevTools && <Suspense fallback={null}><DungeonDevTools /></Suspense>}
+        <Suspense fallback={null}><DungeonTools /></Suspense>
       </div>
       <footer className="scene-footer">
         <div className="game-actions">

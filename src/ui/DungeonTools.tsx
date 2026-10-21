@@ -1,14 +1,16 @@
-import { useState } from 'react'
-import { layoutStyles, type LayoutStyle } from '../../game/logic/dungeon'
-import { usePawnStore } from '../../game/state/pawnStore'
+import { useEffect, useState } from 'react'
+import { layoutStyles, type LayoutStyle } from '../game/logic/dungeon'
+import { usePawnStore } from '../game/state/pawnStore'
+import { newRunSeed } from '../utils/newRunSeed'
 
-export default function DungeonDevTools() {
+export default function DungeonTools() {
   const { dungeon, revealAll, loadDungeon, toggleReveal } = usePawnStore()
   const [seed, setSeed] = useState(dungeon.seed)
   const [style, setStyle] = useState<LayoutStyle | ''>('')
+  useEffect(() => setSeed(dungeon.seed), [dungeon.seed])
   return (
-    <details className="dungeon-dev-tools">
-      <summary>Dungeon tools · development</summary>
+    <details className="dungeon-dev-tools" onKeyDown={(event) => event.stopPropagation()}>
+      <summary>Dungeon tools</summary>
       <form onSubmit={(event) => { event.preventDefault(); loadDungeon(seed, style || undefined) }}>
         <label>Seed<input value={seed} maxLength={200} onChange={(event) => setSeed(event.target.value)} /></label>
         <label>Layout<select value={style} onChange={(event) => setStyle(event.target.value as LayoutStyle | '')}>
@@ -17,11 +19,12 @@ export default function DungeonDevTools() {
         </select></label>
         <button type="submit">Generate seed</button>
         <button type="button" onClick={() => {
-          const next = crypto.getRandomValues(new Uint32Array(1))[0].toString(16)
+          const next = newRunSeed(dungeon.seed)
           setSeed(next); loadDungeon(next, style || undefined)
         }}>New dungeon</button>
-        <label className="dev-checkbox"><input type="checkbox" checked={revealAll} onChange={toggleReveal} />Reveal complete map</label>
+        {import.meta.env.DEV && <label className="dev-checkbox"><input type="checkbox" checked={revealAll} onChange={toggleReveal} />Reveal complete map</label>}
         <p>Active: {dungeon.seed} · {dungeon.style}</p>
+        <p>Generating a dungeon resets this run.</p>
       </form>
     </details>
   )
