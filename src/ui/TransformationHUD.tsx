@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { formBalance, formNames, formSymbols, type Attunement, type BossForm } from '../data/forms'
-import { combatPassives, passiveBalance } from '../data/passives'
+import { combatPassives } from '../data/passives'
 import { AttackGuide } from './AttackGuide'
 import { signatureAbilities } from '../data/abilities'
 import { activationReason, currentForm } from '../game/logic/transformations'
@@ -9,24 +9,22 @@ import { reversionReason } from '../game/logic/perching'
 import { usePawnStore } from '../game/state/pawnStore'
 import { KeywordTooltip } from './KeywordTooltip'
 import { MovementGuide } from './MovementGuide'
-import { combatBalance } from '../data/combatBalance'
+import { characterStats, signatureInfo } from './inspectionPresentation'
+import { useInspectionStore } from './inspectionStore'
 import { closeHudPanels } from './hudInteraction'
 import { PLAYTEST_TOOLS_ENABLED } from '../game/logic/playtesting'
 
 export function TransformationHUD() {
   const state = usePawnStore(), forms = state.transformations, form = currentForm(forms)
+  const inspection=useInspectionStore(),stats=characterStats(state),info=signatureInfo(state)
   const [candidate, setCandidate] = useState<{ form: BossForm; attunement: Attunement }>()
   const locked = !state.runActive || state.phase !== 'ready' || state.status !== 'playing'
   const item = forms.inventory.find((entry) => entry.form === forms.active?.form)
   const reason = candidate ? activationReason(forms, candidate.form, candidate.attunement) : undefined
   const unavailable = abilityReason(state), revertUnavailable = reversionReason(state)
   const active = forms.active, ability = signatureAbilities[form]
-  const basicDamage = (form === 'pawn' ? combatBalance.playerDamage : formBalance[form].damage
-    + (active?.attunement === 'light' ? formBalance.lightDamage : 0)) + state.focus
-  const basicBonus = form === 'pawn' ? state.passives.sharpener : form === 'king' ? Math.min(passiveBalance.smiteCap, state.passives.smite + passiveBalance.smiteGain) : 0
-  const basicBlock = (form === 'rook' ? formBalance.rook.basicBlock : 0) + (active?.attunement === 'dark' ? formBalance.darkBlock : 0)
-  const signatureHelp = state.focus && (form === 'knight' || form === 'queen')
-    ? ability.summary.replace(/\.$/, ` (first hit also gains ${state.focus} Focus damage).`) : ability.summary
+  const basicDamage=stats.damage,basicBonus=stats.bonus,basicBlock=stats.basicBlock
+  const signatureHelp=info.tooltip
   const status = form === 'bishop' ? state.signatures.eyeUsed ? 'Used this floor' : 'Available'
     : state.signatures.cooldowns[form] ? `${state.signatures.cooldowns[form]} turns` : 'Ready'
   const closePanel = (button: HTMLButtonElement) => { const details = button.closest('details'); if (details) details.open = false }
@@ -52,7 +50,10 @@ export function TransformationHUD() {
     }
   }}>
     <div className="form-summary">
-      <strong className="current-form">{formSymbols[form]} {formNames[form]}</strong>
+      <KeywordTooltip topic="ability" title={ability.name} extra={info.tooltip} className={`form-identity-icon attunement-${active?.attunement ?? 'light'}`}
+        label={`Inspect ${formNames[form]} statistics. Ability: ${ability.name}. ${info.tooltip}`} expanded={inspection.characterOpen} controls="character-information"
+        onActivate={()=>{closeHudPanels(false);inspection.toggleCharacter()}}><span aria-hidden="true">{formSymbols[form]}</span></KeywordTooltip>
+      <strong className="current-form">{formNames[form]}</strong>
       {active && <>
         <KeywordTooltip topic="attunement" className={`attunement-${active.attunement}`}>{active.attunement === 'light' ? 'Light' : 'Dark'}</KeywordTooltip>
         <KeywordTooltip topic="charges">Charges <strong>{item?.charges ?? 0}/5</strong></KeywordTooltip>
@@ -101,7 +102,7 @@ export function TransformationHUD() {
       {PLAYTEST_TOOLS_ENABLED && <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button>}
     </div>
     <div className="passive-summary">
-      <KeywordTooltip topic="passive" extra={combatPassives[form].summary}>
+      <KeywordTooltip topic="passive" title={combatPassives[form].name} extra={combatPassives[form].summary}>
         <span aria-hidden="true">{combatPassives[form].icon}</span> {combatPassives[form].name}
         {form === 'pawn' ? <strong> {state.passives.sharpener}/5</strong>
           : form === 'knight' ? <strong> Reach 2 | 10%</strong> : form === 'bishop' ? <strong> Splash 1 | Burn 1x2</strong>

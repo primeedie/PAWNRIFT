@@ -1,6 +1,6 @@
 ﻿# PAWNRIFT
 
-Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7B.1 refines six humanoid models, board framing, compact expanding cards and small enemy HP indicators. Public Training Grounds provide configurable dummies and real damage analysis; King is playable exclusively there. Ordinary combat, transformation lifecycle, cards and fresh normal-run seeds remain intact.
+Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7B.2 adds deliberate character/enemy inspection and text-free enemy health bars, preserving the six humanoid models, board-first framing and compact expanding cards. Public Training Grounds provide configurable dummies and real damage analysis; King is playable exclusively there. Combat rules, transformation lifecycle and fresh normal-run seeds remain intact.
 
 **Stack:** TypeScript, React/Vite, Three.js/React Three Fiber, Drei, Zustand, and Vitest. No backend or runtime services.
 
@@ -28,12 +28,15 @@ The build checks TypeScript and writes `dist/`. Preview serves production files,
 | Control | Action |
 | --- | --- |
 | WASD / arrows / glowing neighbor | One orthogonal move |
-| E / Attack / click an eligible visible enemy | One primary target; legal directions depend on form |
+| E / Attack | Attack one eligible primary target; legal directions depend on form |
+| Choose target → click a highlighted foe | Aim one basic attack; arming/canceling are free |
+| Click a visible enemy without targeting | Toggle its right-side information; no attack or turn |
+| Hover/focus form icon / click form icon | Small ability tooltip / toggle left character statistics |
 | Q / Defend | Guard and counter the next enemy response |
 | Space / period / Wait | Wait one turn |
 | Mouse wheel | Bounded camera zoom |
 | Click a card, then highlighted foe/tile or Play | Play a targeted/self card |
-| Escape / Cancel | Cancel card selection without advancing time |
+| Escape / Cancel | Close inspection or cancel targeting without advancing time |
 | Forms → Inspect → Confirm activation | Activate a carried transformation for one world turn |
 | Signature Use > Confirm use | One-turn signature; no Energy cost |
 | Knight signature Use > L-landing > highlighted foe | Leap and thrust as one turn |
@@ -55,7 +58,7 @@ At zero HP, one modal dims the visible board and blocks gameplay. Choose an elig
 
 Cards spend energy upfront; each completed world turn restores 1, capped at 3. Basic actions remain free and also restore energy. Playing a card discards it and draws back to four; an empty draw pile reshuffles discard deterministically. Unplayed cards stay in hand. Ward/Slip block and Riposte's first-strike counter expire after the coming response. Focus boosts the next strike; Mend restores HP. Inspection and invalid plays consume nothing.
 
-Compact cards show names, Energy, category icons and effect summaries. Hover, keyboard focus or touch expands a card upward about 1.6x for the full description and keyword buttons without resizing the hand or camera. Scroll larger hands horizontally. **Inspect foes** opens current-sight-only status/intent details; world labels remain short name/HP/bar/icons and never intercept clicks. **? Help** retains the shared glossary. Inspection/cancellation are free; gameplay balance is unchanged.
+Compact cards show names, Energy, category icons and effect summaries. Hover, keyboard focus or touch expands a card upward about 1.6x without resizing the hand or camera; scroll larger hands horizontally. The permanent form icon shows brief ability help on hover/focus and toggles live left-side statistics on click; **Use** remains separate. Enemy overhead UI is only a 40×4px HP bar. Click a visible foe, or use the keyboard-accessible **Inspect foe…** selector, for one live right-side panel. Same-foe click, Escape or outside click closes it; the first ordinary board dismissal cannot also move. Hidden/dead enemies lose inspection immediately. Explicit combat targeting wins over inspection. **? Help** retains the shared glossary; all inspection is free.
 
 Defeat all enemies and reach the exit to clear the floor. Victory's **Restart floor** replays the same seed and deck, without refilling transformation charges or bypassing recovery. Balance is provisional in `src/data/combatBalance.ts`, `src/data/cards.ts` and `src/data/forms.ts`; automatic progression, saves, lobby, rewards/upgrades, dice, bosses and essences remain future work.
 
@@ -109,7 +112,7 @@ Use public Playtest Tools to grant/unlock up to two forms, then Forms > Inspect 
 
 Signatures: Pawn parries one marked strike (5-turn cooldown); Knight needs both leap landing and visible lance target (7); Bishop reveals a seeded 4x4 once per floor; Rook grants temporary Block/one retaliation (9); Queen hits visible nearby groups and causes one-response retreat/hesitation (10). Light/Dark effects are explained on the info icon. Cooldowns start at the full value after casting and tick on later valid turns only. Q/Defend and basic attacks remain available. Eye sight ends after casting response + next response; remembered terrain must not retain remote foes or HP. Dark foresight shows one next action, with no fabricated hazards.
 
-Check exclusive panels, hand/footer access, hover/focus/touch expansion, tooltip dismissal, camera fit and small enemy labels at 1366x768, 1440x900, 1920x1080 and 2560x1440. Test training King Light/Dark basics, Decree, Smite, sparring Poise and exact run restoration. Automated projection checks cannot establish visual quality; a connected browser is required. King campaign acquisition, progression, bosses and saves remain future work.
+Check form-icon hover/click, live left/right panels, same/different foe selection, Escape/outside dismissal, explicit target priority and tiny HP bars at 1366x768, 1440x900, 1920x1080 and 2560x1440. Both inspection panels may coexist on desktops; narrower windows show the most recent one. Preserve hand/footer access and camera scale. Test training King inspection, dummy configuration and exact run restoration. Automated state/projection checks cannot establish pixel quality; a connected browser is required. King campaign acquisition, progression, bosses and saves remain future work.
 
 Public testing: open Playtest Tools, then Transformation testing. Grant a form/attunement, activate normally, and use explicitly labeled test overrides for replacement, charge/duration/recovery or cooldown/Eye resets. Combat testing restores player resources or places a visible, valid test Rookling. Dungeon controls copy/replay/regenerate seeds and simulate an actual completed floor. Map Diagnostics validates Pawn connectivity, shows known legal destinations and optional logical overlays without revealing hidden enemies. Close panels or press Escape to restore gameplay focus.
 

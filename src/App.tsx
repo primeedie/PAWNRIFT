@@ -10,6 +10,8 @@ import { TransformationHUD } from './ui/TransformationHUD'
 import { TooltipProvider } from './ui/KeywordTooltip'
 import { useHudLayout } from './ui/useHudLayout'
 import { PLAYTEST_TOOLS_ENABLED } from './game/logic/playtesting'
+import { InspectionPanels } from './ui/InspectionPanels'
+import { useInspection } from './ui/useInspection'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
 const TrainingTools = lazy(() => import('./ui/TrainingTools'))
@@ -18,6 +20,7 @@ const DungeonTools = lazy(() => import('./ui/DungeonTools'))
 export function App() {
   useTurnPlayback()
   const screen = useAppStore((state) => state.screen)
+  useInspection(screen === 'scene')
   const showTitle = useAppStore((state) => state.showTitle)
   const defeated = usePawnStore((state) => state.status === 'defeat' || state.hp <= 0)
   const training = usePawnStore((state) => state.training)
@@ -73,6 +76,7 @@ export function App() {
         </div>
       </footer>
       <CardHand />
+      <InspectionPanels />
       {defeated && <GameOver />}
     </main></TooltipProvider>
   )

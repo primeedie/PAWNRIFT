@@ -96,7 +96,7 @@ describe('beginner card presentation', () => {
     usePawnStore.setState({...arena.game,training:arena.session,enemies:[{...arena.game.enemies[0],hp:777}],visible:new Set()})
     expect(renderToStaticMarkup(<TrainingTools />)).toContain('value="king"')
     const hud=renderToStaticMarkup(<CombatHUD />)
-    expect(hud).toContain('No foes currently in sight.');expect(hud).not.toContain('777')
+    expect(hud).toContain('aria-label="Inspect visible enemy"');expect(hud).not.toContain('777')
     usePawnStore.setState(original,true)
   })
 })

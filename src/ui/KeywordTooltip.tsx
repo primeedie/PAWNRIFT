@@ -7,12 +7,13 @@ import { HelpDialog } from './HelpDialog'
 import { closeHudPanels } from './hudInteraction'
 
 type Topic = Keyword | 'guide'
-type ActiveTooltip = { topic: Topic; trigger: HTMLButtonElement; id: string; extra?: string; pinned: boolean }
+type ActiveTooltip = { topic: Topic; trigger: HTMLButtonElement; id: string; extra?: string; title?: string; pinned: boolean }
 type TooltipAPI = {
   active?: ActiveTooltip
   open: (entry: Omit<ActiveTooltip, 'pinned'>, pinned?: boolean) => void
   leave: () => void
   keep: () => void
+  dismiss: () => void
   hover: (entry: Omit<ActiveTooltip, 'pinned'>) => void
 }
 const TooltipContext = createContext<TooltipAPI | null>(null)
@@ -94,28 +95,36 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('keydown', keyboard, true)
     }
   }, [active])
-  return <TooltipContext.Provider value={{ active, open, leave, keep, hover: (entry) => { clearTimeout(timer.current); scheduler.current?.queue(entry) } }}>
+  return <TooltipContext.Provider value={{ active, open, leave, keep, dismiss: close, hover: (entry) => { clearTimeout(timer.current); scheduler.current?.queue(entry) } }}>
     {children}
     {active && (active.topic === 'guide' ? createPortal(<HelpDialog close={close} />, document.body) : createPortal(<div ref={panel} id={active.id} role="tooltip" tabIndex={0}
       className="keyword-tooltip" style={position} onPointerEnter={keep} onPointerLeave={leave}
       onFocus={keep} onBlur={leave} onClick={(event) => event.stopPropagation()}>
-      <strong>{glossary[active.topic].label}</strong><p>{active.extra ?? glossary[active.topic].summary}</p>
+      <strong>{active.title ?? glossary[active.topic].label}</strong><p>{active.extra ?? glossary[active.topic].summary}</p>
       <small>Escape or click outside to close</small>
     </div>, document.body))}
   </TooltipContext.Provider>
 }
 
-export function KeywordTooltip({ topic, children, extra, className = '' }: {
-  topic: Topic; children?: ReactNode; extra?: string; className?: string
+export function KeywordTooltip({ topic, children, extra, className = '', title, label, expanded, controls, onActivate }: {
+  topic: Topic; children?: ReactNode; extra?: string; className?: string; title?: string; label?: string
+  expanded?: boolean; controls?: string; onActivate?: () => void
 }) {
   const api = useContext(TooltipContext)
   const id = useId()
-  const show = (trigger: HTMLButtonElement, pinned = false) => api?.open({ topic, trigger, id, extra }, pinned)
-  return <button type="button" className={`keyword ${className}`} data-keyword={topic}
-    aria-label={topic === 'guide' ? 'Open card guide' : `Explain ${glossary[topic].label}${extra ? `. ${extra}` : ''}`}
+  const trigger=useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (api?.active?.id === id) api.open({ topic, trigger: api.active.trigger, id, extra, title }, api.active.pinned)
+    else if(topic!=='guide' && trigger.current?.matches(':hover')) api?.hover({topic,trigger:trigger.current,id,extra,title})
+  }, [topic, extra, title])
+  const show = (trigger: HTMLButtonElement, pinned = false) => api?.open({ topic, trigger, id, extra, title }, pinned)
+  return <button ref={trigger} type="button" className={`keyword ${className}`} data-keyword={topic}
+    aria-label={label ?? (topic === 'guide' ? 'Open card guide' : `Explain ${title ?? glossary[topic].label}${extra ? `. ${extra}` : ''}`)}
+    aria-expanded={expanded} aria-controls={controls}
     aria-describedby={api?.active?.id === id ? id : undefined}
     {...(topic === 'guide' ? { onClick: (event: React.MouseEvent<HTMLButtonElement>) => { event.stopPropagation(); closeHudPanels(); show(event.currentTarget, true) } }
-      : keywordEvents(show, () => api?.leave(), (trigger) => api?.hover({ topic, trigger, id, extra })))}>
+      : keywordEvents(show, () => onActivate ? api?.dismiss() : api?.leave(), (trigger) => api?.hover({ topic, trigger, id, extra, title }),
+        onActivate ? () => { api?.dismiss(); onActivate() } : undefined))}>
     {children ?? (topic === 'guide' ? '? Help' : glossary[topic].label)}
   </button>
 }

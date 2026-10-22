@@ -4,6 +4,7 @@ import { formKeyDestination } from '../game/logic/chessMovement'
 import { currentForm } from '../game/logic/transformations'
 import { usePawnStore } from '../game/state/pawnStore'
 import { closeHudPanels, gameplayBlocked } from './hudInteraction'
+import { useInspectionStore } from './inspectionStore'
 
 const directions: Record<string, Direction | undefined> = {
   w: 'north', arrowup: 'north', d: 'east', arrowright: 'east',
@@ -23,7 +24,7 @@ export function usePawnKeyboard() {
       event.preventDefault()
       if (event.repeat) return // One keypress = one tile; no queued moves.
       const state = usePawnStore.getState()
-      if (key === 'escape') { state.selectCard(undefined); closeHudPanels() }
+      if (key === 'escape') { useInspectionStore.getState().dismiss(); state.selectCard(undefined); closeHudPanels() }
       else if (gameplayBlocked()) state.recordInputBlocked()
       else if (direction) state.tryMove(formKeyDestination(currentForm(state.transformations), state.cell, direction, event.shiftKey))
       else if (key === 'e') state.tryAttack()

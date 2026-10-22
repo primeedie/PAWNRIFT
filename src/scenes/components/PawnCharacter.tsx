@@ -9,6 +9,7 @@ import { usePawnKeyboard } from '../../ui/usePawnKeyboard'
 import { CharacterModel } from './CharacterModel'
 import type { CharacterForm } from '../../data/characterDesigns'
 import { presentationDuration } from '../../utils/characterAnimation'
+import { useInspectionStore } from '../../ui/inspectionStore'
 
 const facingAngles = { north: Math.PI, east: Math.PI / 2, south: 0, west: -Math.PI / 2 }
 
@@ -63,7 +64,7 @@ export function PawnCharacter() {
   })
 
   return (
-    <group ref={root} name="pawn-protagonist" onClick={(event) => event.stopPropagation()}>
+    <group ref={root} name="pawn-protagonist" onClick={(event) => {event.stopPropagation();useInspectionStore.getState().dismiss()}}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]}>
         <circleGeometry args={[0.31, 16]} />
         <meshBasicMaterial color="#284f54" transparent opacity={0.23} depthWrite={false} />

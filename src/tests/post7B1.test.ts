@@ -6,7 +6,6 @@ import { abilityReason, resolveSignature } from '../game/logic/signatures'
 import { recordAnalysis, emptyAnalysis } from '../game/logic/combatAnalysis'
 import { visibleEnemies } from '../game/logic/combatIndicators'
 import { cardInspection } from '../ui/cardInspection'
-import { enemyLabelOffsets } from '../utils/enemyLabels'
 import { enemyStatuses } from '../ui/enemyPresentation'
 
 const c = (column:number,row:number) => ({column,row})
@@ -91,11 +90,7 @@ describe('bounded card inspection and non-intercepting compact HUD data',()=>{
       expect(rect).toEqual(before)
     }
   })
-  it('stacks nearby labels upward, leaving heads unobscured and keeping fog filtering upstream',()=>{
-    const points=[{id:'a',x:150,y:150},{id:'b',x:180,y:152},{id:'c',x:190,y:155}]
-    const offsets=enemyLabelOffsets(points,500),ys=points.map(p=>p.y+offsets.get(p.id)!)
-    for(let i=0;i<ys.length;i++)for(let j=i+1;j<ys.length;j++)expect(Math.abs(ys[i]-ys[j])).toBeGreaterThanOrEqual(29)
-    expect([...offsets.values()].every(value=>value<=0)).toBe(true)
+  it('keeps fog filtering upstream of status inspection',()=>{
     const game=king().game,target={...game.enemies[0],bleed:[{turnsLeft:1,appliedTurn:0},{turnsLeft:3,appliedTurn:2}]}
     expect(enemyStatuses(target).find(s=>s.tone==='bleed')).toMatchObject({count:2,label:'Bleed: remaining ticks 1, 3'})
     expect(visibleEnemies({...game,visible:new Set(),enemies:[target]})).toEqual([])
