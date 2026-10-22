@@ -181,6 +181,8 @@ Automated coverage verifies free inspection/toggle/switch, visibility/death clea
 
 ### Stage 7B.3 - articulated models and weapon presentation
 
+Player form/name boxes above the model are removed for every form and attunement, including Training Grounds. Identity remains in the compact HUD and deliberate inspection.
+
 Existing silhouettes gain layered armor/cloth, cuffs, articulated shoulders/elbows/wrists and hips/knees, distinct bent-arm stances and supporting grips derived from weapon space. Named sockets and shared module-level geometry/materials remain presentation-only; no animation library/assets/dependencies. Overall form scale, board, camera, lighting, HUD/cards, training isolation and King restrictions are preserved.
 
 - **Pawn:** compact faceted helm, asymmetric mantle and crimson katana. The right hand withdraws along the left-hip scabbard while the left hand pulls the sheath back, clears the real curved blade, cuts, follows through and seats it before the existing 430ms Sharpener impact. Wrapped grip, guard, spine/edge and dark sheath remain separate. Primary and follow-up numbers/effects still use the same resolved action.
