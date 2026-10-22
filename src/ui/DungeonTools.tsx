@@ -10,7 +10,7 @@ export default function DungeonTools() {
   const [style, setStyle] = useState<LayoutStyle | ''>('')
   useEffect(() => setSeed(dungeon.seed), [dungeon.seed])
   return (
-    <details className="dungeon-dev-tools" onKeyDown={(event) => event.stopPropagation()}>
+    <details className="dungeon-dev-tools" name="hud-panels" data-tooltip-avoid onKeyDown={(event) => event.stopPropagation()}>
       <summary>Dungeon tools</summary>
       <form onSubmit={(event) => { event.preventDefault(); loadDungeon(seed, style || undefined) }}>
         <label>Seed<input value={seed} maxLength={200} onChange={(event) => setSeed(event.target.value)} /></label>

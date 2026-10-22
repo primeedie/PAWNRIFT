@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useRef } from 'react'
 import { useAppStore } from './game/state/appStore'
 import { TitleScreen } from './ui/TitleScreen'
 import { CombatHUD, CombatStatus } from './ui/CombatHUD'
@@ -8,6 +8,7 @@ import { GameOver } from './ui/GameOver'
 import { CardHand } from './ui/CardHand'
 import { TransformationHUD } from './ui/TransformationHUD'
 import { TooltipProvider } from './ui/KeywordTooltip'
+import { useHudLayout } from './ui/useHudLayout'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
 const DungeonTools = lazy(() => import('./ui/DungeonTools'))
@@ -18,11 +19,13 @@ export function App() {
   const showTitle = useAppStore((state) => state.showTitle)
   const defeated = usePawnStore((state) => state.status === 'defeat' || state.hp <= 0)
   const floor = usePawnStore((state) => state.floorNumber)
+  const root = useRef<HTMLElement>(null)
+  useHudLayout(root, screen === 'scene')
 
   if (screen === 'title') return <TitleScreen />
 
   return (
-    <TooltipProvider><main className="scene-screen">
+    <TooltipProvider><main ref={root} className="scene-screen">
       <header className="scene-header">
         <div><h1>PAWNRIFT</h1><p className="level-label">LEVEL {floor}</p><TransformationHUD /></div>
         <CombatStatus />
@@ -33,12 +36,12 @@ export function App() {
         </Suspense>
         <Suspense fallback={null}><DungeonTools /></Suspense>
       </div>
-      <footer className="scene-footer">
+      <footer className="scene-footer" data-tooltip-avoid>
         <div className="game-actions">
           <CombatHUD />
           <button className="secondary-button" onClick={showTitle}>Return to menu</button>
         </div>
-        <div className="scene-controls" role="img" aria-label="Move with W A S D or arrow keys using the current chess form. Shift mirrors Knight jumps or chooses Queen diagonals. Click a highlighted destination; faint outlines are unscouted attempts. Scroll the mouse wheel to zoom.">
+        <div className="scene-controls" role="img" aria-label="Move with WASD or arrows. Knight walks normally; Shift selects four L-jumps. Click highlighted destinations for all jumps/slides. Faint outlines are unscouted attempts. Scroll to zoom.">
           <div className="key-cluster" aria-hidden="true">
             <kbd className="key-up">W</kbd><kbd className="key-left">A</kbd><kbd className="key-down">S</kbd><kbd className="key-right">D</kbd>
           </div>

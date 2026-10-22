@@ -9,6 +9,8 @@ export type DungeonTile = Cell & {
   blocksMovement: boolean
   blocksSight: boolean
   prop?: PropKind
+  // Explicitly designated flat low block top; rounded rocks/trees/walls are not perches.
+  perchHeight?: number
   rotation: number
 }
 export type Reservation = Cell & { kind: 'enemy' | 'trap' | 'treasure' | 'alternate-exit' }
@@ -175,7 +177,8 @@ export function generateDungeon(seed: string, requestedStyle?: LayoutStyle): Dun
   const tiles: DungeonTile[] = Array.from({ length: 64 }, (_, id) => {
     const blocked = !open.has(id)
     const prop = blocked ? choose(obstacles) : !protectedCells.has(id) && random() < 0.07 ? 'crystal' : undefined
-    return { ...cellFromId(id), blocksMovement: blocked, blocksSight: prop === 'wall', prop, rotation: integer(4) * Math.PI / 2 }
+    return { ...cellFromId(id), blocksMovement: blocked, blocksSight: prop === 'wall', prop,
+      ...(prop === 'block' ? { perchHeight: 0.475 } : {}), rotation: integer(4) * Math.PI / 2 }
   })
   const dungeon: Dungeon = {
     seed, style, tiles, spawn: cellFromId(spawnId), exit: cellFromId(exitId),

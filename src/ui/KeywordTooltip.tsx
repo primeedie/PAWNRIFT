@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, u
 import { createPortal } from 'react-dom'
 import { glossary, type Keyword } from '../data/glossary'
 import { tooltipPosition } from './tooltipLayout'
-import { keywordEvents, outsideTooltip, tooltipKeyboard } from './tooltipEvents'
+import { createHoverScheduler, keywordEvents, outsideTooltip, tooltipKeyboard } from './tooltipEvents'
 
 type Topic = Keyword | 'guide'
 type ActiveTooltip = { topic: Topic; trigger: HTMLButtonElement; id: string; extra?: string; pinned: boolean }
@@ -11,6 +11,7 @@ type TooltipAPI = {
   open: (entry: Omit<ActiveTooltip, 'pinned'>, pinned?: boolean) => void
   leave: () => void
   keep: () => void
+  hover: (entry: Omit<ActiveTooltip, 'pinned'>) => void
 }
 const TooltipContext = createContext<TooltipAPI | null>(null)
 
@@ -21,7 +22,10 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const suppressFocus = useRef<HTMLButtonElement | undefined>(undefined)
   const [position, setPosition] = useState({ left: 12, top: 12 })
-  const keep = () => clearTimeout(timer.current)
+  const openRef = useRef<(entry: Omit<ActiveTooltip, 'pinned'>) => void>(() => {})
+  const scheduler = useRef<ReturnType<typeof createHoverScheduler<Omit<ActiveTooltip, 'pinned'>>> | null>(null)
+  if (!scheduler.current) scheduler.current = createHoverScheduler((entry) => openRef.current(entry))
+  const keep = () => { clearTimeout(timer.current); scheduler.current?.cancel() }
   const close = () => { keep(); current.current = undefined; setActive(undefined) }
   const open: TooltipAPI['open'] = (entry, pinned = false) => {
     keep()
@@ -30,6 +34,7 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
     current.current = next
     setActive(next)
   }
+  openRef.current = (entry) => open(entry)
   const leave = () => {
     keep()
     timer.current = setTimeout(() => {
@@ -38,15 +43,17 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
       close()
     }, 220)
   }
-  useEffect(() => () => clearTimeout(timer.current), [])
+  useEffect(() => () => { clearTimeout(timer.current); scheduler.current?.cancel() }, [])
   useLayoutEffect(() => {
     if (!active || !panel.current) return
     const place = () => {
       if (!active.trigger.isConnected) { close(); return }
       const viewport = window.visualViewport
+      const avoid = [...document.querySelectorAll<HTMLElement>('[data-tooltip-avoid]')].map((element) => element.getBoundingClientRect())
+        .filter((rect) => rect.width > 0 && rect.height > 0)
       setPosition(tooltipPosition(active.trigger.getBoundingClientRect(), panel.current!.getBoundingClientRect(), {
         width: viewport?.width ?? window.innerWidth, height: viewport?.height ?? window.innerHeight,
-      }))
+      }, avoid))
     }
     place()
     const observer = new ResizeObserver(place)
@@ -85,15 +92,14 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('keydown', keyboard, true)
     }
   }, [active])
-  return <TooltipContext.Provider value={{ active, open, leave, keep }}>
+  return <TooltipContext.Provider value={{ active, open, leave, keep, hover: (entry) => { clearTimeout(timer.current); scheduler.current?.queue(entry) } }}>
     {children}
     {active && createPortal(<div ref={panel} id={active.id} role="tooltip" tabIndex={0}
-      className="keyword-tooltip" style={position} onPointerEnter={keep} onPointerLeave={leave}
+      className={`keyword-tooltip ${active.topic === 'guide' ? 'tooltip-guide' : ''}`} style={position} onPointerEnter={keep} onPointerLeave={leave}
       onFocus={keep} onBlur={leave} onClick={(event) => event.stopPropagation()}>
-      {active.topic === 'guide' ? <><strong>Card guide</strong><dl>{Object.entries(glossary).map(([key, entry]) =>
+      {active.topic === 'guide' ? <><strong>Mechanics guide</strong><dl>{Object.entries(glossary).map(([key, entry]) =>
         <div key={key}><dt>{entry.label}</dt><dd>{entry.explanation}</dd></div>)}</dl></>
-        : <><strong>{glossary[active.topic].label}</strong><p>{glossary[active.topic].explanation}</p></>}
-      {active.extra && <p className="tooltip-note">{active.extra}</p>}
+        : <><strong>{glossary[active.topic].label}</strong><p>{active.extra ?? glossary[active.topic].summary}</p></>}
       <small>Escape or click outside to close</small>
     </div>, document.body)}
   </TooltipContext.Provider>
@@ -108,7 +114,7 @@ export function KeywordTooltip({ topic, children, extra, className = '' }: {
   return <button type="button" className={`keyword ${className}`} data-keyword={topic}
     aria-label={topic === 'guide' ? 'Open card guide' : `Explain ${glossary[topic].label}${extra ? `. ${extra}` : ''}`}
     aria-describedby={api?.active?.id === id ? id : undefined}
-    {...keywordEvents(show, () => api?.leave())}>
+    {...keywordEvents(show, () => api?.leave(), (trigger) => api?.hover({ topic, trigger, id, extra }))}>
     {children ?? (topic === 'guide' ? '? Help' : glossary[topic].label)}
   </button>
 }

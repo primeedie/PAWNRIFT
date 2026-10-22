@@ -1,15 +1,22 @@
 import type { FocusEvent, MouseEvent, PointerEvent } from 'react'
 
 // Presentation-only event handlers; no game state or commands are available here.
-export function keywordEvents(show: (trigger: HTMLButtonElement, pinned?: boolean) => void, leave: () => void) {
+export function keywordEvents(show: (trigger: HTMLButtonElement, pinned?: boolean) => void, leave: () => void,
+  hover: (trigger: HTMLButtonElement) => void = show) {
   return {
-    onPointerEnter: (event: Pick<PointerEvent<HTMLButtonElement>, 'pointerType' | 'currentTarget'>) => { if (event.pointerType !== 'touch') show(event.currentTarget) },
+    onPointerEnter: (event: Pick<PointerEvent<HTMLButtonElement>, 'pointerType' | 'currentTarget'>) => { if (event.pointerType !== 'touch') hover(event.currentTarget) },
     onPointerLeave: leave,
     onFocus: (event: Pick<FocusEvent<HTMLButtonElement>, 'currentTarget'>) => show(event.currentTarget),
     onBlur: leave,
     onPointerDown: (event: Pick<PointerEvent<HTMLButtonElement>, 'stopPropagation'>) => event.stopPropagation(),
     onClick: (event: Pick<MouseEvent<HTMLButtonElement>, 'currentTarget' | 'stopPropagation'>) => { event.stopPropagation(); show(event.currentTarget, true) },
   }
+}
+
+export function createHoverScheduler<T>(show: (entry: T) => void) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const cancel = () => clearTimeout(timer)
+  return { cancel, queue: (entry: T) => { cancel(); timer = setTimeout(() => show(entry), 300) } }
 }
 
 type Contains = { contains: (target: Node | null) => boolean }

@@ -224,3 +224,31 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
   .scene-footer .secondary-button { align-self: flex-start; }
   .scene-controls { align-self: flex-end; }
 }
+/* Exclusive side panels reserve their own space above the hand and footer. */
+.hud-panel { position: fixed; left: auto; right: 20px; top: calc(var(--hud-header-height, 160px) + 8px); bottom: calc(var(--hand-height) + var(--hud-footer-height, 110px) + 8px); width: min(300px, calc(100vw - 40px)); max-height: none; overflow: auto; z-index: 21; }
+.dungeon-dev-tools { position: fixed; top: calc(var(--hud-header-height, 160px) + 8px); right: 20px; width: min(300px, calc(100vw - 40px)); max-height: calc(100svh - var(--hud-header-height, 160px) - var(--hand-height) - var(--hud-footer-height, 110px) - 16px); z-index: 21; }
+.dungeon-dev-tools[open] { bottom: calc(var(--hand-height) + var(--hud-footer-height, 110px) + 8px); display: flex; flex-direction: column; overflow: hidden; }
+.dungeon-dev-tools summary { flex-shrink: 0; }
+.dungeon-dev-tools form { overflow: auto; min-height: 0; padding: 2px 3px 8px 0; overscroll-behavior: contain; }
+.movement-guide { margin: 14px 0; }
+.movement-mini-board { display: grid; grid-template-columns: repeat(5, 1fr); width: 175px; border: 1px solid var(--ui-secondary); gap: 1px; background: #19232e; }
+.mini-cell { display: grid; place-items: center; height: 34px; font-size: 1rem; }
+.mini-cell.parity-0 { background: #344452; }
+.mini-cell.parity-1 { background: #25333e; }
+.mini-cell[data-kind="center"] { color: var(--ui-text); font-size: 1.6rem; }
+.mini-cell[data-kind="walk"], .mini-cell[data-kind="slide"] { color: var(--ui-mobility); }
+.mini-cell[data-kind="leap"] { color: var(--ui-energy); font-weight: bold; }
+.movement-guide figcaption { margin-top: 7px; line-height: 1.5; color: var(--ui-secondary); }
+.transformation-hud .info-trigger { padding: 3px; min-width: 24px; min-height: 24px; }
+.ability-icon { color: var(--ui-utility); font-size: 1.25rem; }
+.ability-status { color: var(--ui-energy); }
+.form-ability > strong:first-of-type { color: var(--ui-utility); }
+.hud-panel p { line-height: 1.6; }
+.keyword-tooltip { width: min(280px, calc(100vw - 24px)); max-height: min(55svh, 430px); }
+.keyword-tooltip.tooltip-guide { width: min(350px, calc(100vw - 24px)); max-height: 65svh; }
+@media (min-width: 900px) {
+  .scene-screen:has(details[name="hud-panels"][open]) .scene-canvas { right: 340px; }
+}
+.scene-screen:has(.form-picker[open]) .dungeon-dev-tools { visibility: hidden; }
+.scene-header, .scene-footer { z-index: 30; }
+.dungeon-dev-tools { z-index: 40; }

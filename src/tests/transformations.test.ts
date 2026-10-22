@@ -4,7 +4,7 @@ import { activateTransformation, activationReason, completeTransformationFloor, 
 import { chessDestinations, formMovement } from '../game/logic/chessMovement'
 import { createGame, resolvePlayerAction, resolveTurn, type GameState } from '../game/logic/combat'
 import { cellFromId, cellId, type Dungeon } from '../game/logic/dungeon'
-import { abilityReason, formAttackTargets, movementPreviews } from '../game/logic/formCombat'
+import { formAttackTargets, movementPreviews } from '../game/logic/formCombat'
 import { canSeeContent } from '../game/logic/visibility'
 
 const cell = (column: number, row: number) => ({ column, row })
@@ -106,7 +106,7 @@ describe('chess movement and fog-safe previews', () => {
   it('implements all five forms and configurable slide limits', () => {
     const from = cell(3, 3)
     expect(chessDestinations('pawn', from, board)).toHaveLength(4)
-    expect(chessDestinations('knight', from, board)).toHaveLength(8)
+    expect(chessDestinations('knight', from, board)).toHaveLength(12)
     for (const form of ['bishop', 'rook', 'queen'] as const) {
       expect(formMovement(form)(from, cell(form === 'bishop' ? 6 : 3, 6), board)).toBe(true)
       expect(formMovement(form)(from, cell(form === 'bishop' ? 7 : 3, 7), board)).toBe(false)
@@ -186,48 +186,18 @@ describe('form combat, attunements and synchronized turns', () => {
           enemies: [{ ...base.enemies[0], cell: targetCell }] }
         const player = resolvePlayerAction(state, { kind: 'attack', targetId: 'target' })!
         expect(player.enemies[0].hp).toBe(30 - formBalance[form].damage - (attunement === 'light' ? 1 : 0))
-        expect(player.block).toBe(attunement === 'dark' ? 1 : 0)
+        expect(player.block).toBe((form === 'rook' ? 2 : 0) + (attunement === 'dark' ? 1 : 0))
         expect(player.energy).toBe(0)
         expect(resolveTurn(state, { kind: 'attack', targetId: 'target' })!.turn).toBe(1)
       }
     }
   })
-  it('Knight thrust and Rook lane attacks respect range, walls, visible occupants and clear lanes', () => {
-    for (const form of ['knight', 'rook'] as const) {
-      const base = game(form)
-      const target = cell(3, form === 'knight' ? 5 : 6)
-      const state = { ...base, visible: new Set(Array.from({ length: 64 }, (_, id) => id)), enemies: [{ ...base.enemies[0], cell: target }] }
-      expect(formAttackTargets(state, true)).toHaveLength(1)
-      const next = resolvePlayerAction(state, { kind: 'ability', targetId: 'target' })!
-      expect(next.enemies[0].hp).toBe(30 - formBalance[form].abilityDamage - 1)
-      expect(next.energy).toBe(2)
-      const blocked = { ...state, occupied: [cell(3, 4)] }
-      expect(formAttackTargets(blocked, true)).toEqual([])
-      expect(resolveTurn(blocked, { kind: 'ability', targetId: 'target' })).toBeNull()
-      expect(resolveTurn({ ...state, visible: new Set([cellId(state.cell)]) }, { kind: 'ability', targetId: 'target' })).toBeNull()
-    }
-  })
-  it('Bishop wards differ meaningfully and Queen double strikes consume Focus only once', () => {
-    const light = resolvePlayerAction(game('bishop', 'light'), { kind: 'ability' })!
-    const dark = resolvePlayerAction(game('bishop', 'dark'), { kind: 'ability' })!
-    expect(light).toMatchObject({ block: 3, focus: 1, energy: 2 })
-    expect(dark).toMatchObject({ block: 5, focus: 0, energy: 2 })
-    const queen = resolvePlayerAction({ ...game('queen'), focus: 2 }, { kind: 'ability', targetId: 'target' })!
-    expect(queen.events.filter((event) => event.kind === 'hit').map((event) => event.amount)).toEqual([6, 4])
-    expect(queen.focus).toBe(0)
-    expect(queen.energy).toBe(1)
-    const prevented = { ...game('queen'), energy: 1 }
-    expect(abilityReason(prevented)).toBe('Not enough Energy.')
-    expect(resolveTurn(prevented, { kind: 'ability', targetId: 'target' })).toBeNull()
-  })
-  it('Dark damaging signatures grant defensive block without changing their charge pools', () => {
-    for (const form of ['knight', 'rook', 'queen'] as const) {
-      const state = game(form, 'dark')
-      const player = resolvePlayerAction(state, { kind: 'ability', targetId: 'target' })!
-      expect(player.block).toBe(2)
-      expect(player.enemies[0].hp).toBe(30 - formBalance[form].abilityDamage * (form === 'queen' ? 2 : 1))
-      expect(player.transformations.inventory[0].charges).toBe(4)
-    }
+  it('Knight basics respect clear straight lanes and two-tile range', () => {
+    const base = game('knight')
+    const state = { ...base, visible: new Set(Array.from({ length: 64 }, (_, id) => id)), enemies: [{ ...base.enemies[0], cell: cell(3, 5) }] }
+    expect(formAttackTargets(state)).toHaveLength(1)
+    expect(formAttackTargets({ ...state, occupied: [cell(3, 4)] })).toEqual([])
+    expect(resolveTurn({ ...state, visible: new Set([cellId(state.cell)]) }, { kind: 'attack', targetId: 'target' })).toBeNull()
   })
   it('cards keep Pawn targeting and formulas in every form, with no form damage/block modifier', () => {
     for (const form of bossForms) {

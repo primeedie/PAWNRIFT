@@ -1,6 +1,6 @@
 ﻿# PAWNRIFT
 
-Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7A adds consumable chess transformations, attunements, movement/ability rules, death retention, a compact form HUD, and fresh normal-run seeds.
+Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7A.1 adds safe Knight walking/perching, confirmed reversion, five turn-based signatures, and a compact HUD with movement mini-boards. Transformation lifecycle, cards and fresh normal-run seeds remain intact.
 
 **Stack:** TypeScript, React/Vite, Three.js/React Three Fiber, Drei, Zustand, and Vitest. No backend or runtime services.
 
@@ -35,11 +35,15 @@ The build checks TypeScript and writes `dist/`. Preview serves production files,
 | Click a card, then highlighted foe/tile or Play | Play a targeted/self card |
 | Escape / Cancel | Cancel card selection without advancing time |
 | Forms → Inspect → Confirm activation | Activate a carried transformation for one world turn |
-| Choose ability → highlighted foe / Use Ward | Use the current form's signature |
+| Signature Use > Confirm use | One-turn signature; no Energy cost |
+| Knight signature Use > L-landing > highlighted foe | Leap and thrust as one turn |
+| Knight Shift + WASD/arrows | Four L-jumps; click for all eight |
+| Moves | Instructional 5x5 movement guide |
+| Return to Pawn > Confirm return | Forfeit duration; one turn; full subsequent recovery floor |
 
 W/Up decreases the row (−Z); D/Right increases the column (+X). The board axes appear diagonal on screen. Valid actions advance the world once; invalid input, menus, camera controls, hover, and debug tools do not. Enemies act only in response to accepted actions. Rookling marks a strike tile one turn before attacking it; evade or defend.
 
-Transformed movement: Knight makes L-jumps; Shift mirrors the four keyboard jumps. Bishop maps W/D/S/A to NW/NE/SE/SW diagonal steps; Queen adds those diagonals with Shift. Rook/Queen use ordinary orthogonal keys; clicks reach the full provisional 3-tile slide range. Solid teal destinations are scouted; faint outlines are unscouted attempts that reveal nothing and can be blocked. A valid move always costs one turn regardless of distance.
+Transformed movement: Knight walks orthogonally; Shift selects four L-jumps and clicks allow all eight. Designated low flat blocks permit safe perching and dismounts. Bishop maps W/D/S/A to NW/NE/SE/SW diagonal steps; Queen adds those diagonals with Shift. Rook/Queen use ordinary orthogonal keys; clicks reach the full provisional 3-tile slide range. Solid teal destinations are scouted; faint outlines are unscouted attempts that reveal nothing and can be blocked. A valid move always costs one turn regardless of distance.
 
 First **Play**, **New Run**, and **Restart Run** use fresh random seeds. **Resume** preserves a living run and any pending response. Explicit public seeds/styles reproduce the same floor and deck shuffle. No unseeded randomness is added inside generation. Starting deck composition remains fixed; Stage 8 will add 8 essential cards + 4 balanced seeded selections using independent layout/selection/shuffle streams.
 
@@ -96,3 +100,11 @@ Vite's base is explicitly `/`. This app uses state-based navigation at the domai
 `src/game/logic` contains pure generation, movement, fog, AI, cards/deck, and turn rules. `src/game/state` coordinates atomic run state and navigation. `src/scenes` presents those rules; `src/ui` holds controls/hand and playback coordination; `src/data` holds typed cards, balance, and palettes; `src/utils` holds seeded randomness and framing math.
 
 Tests include 1,000 seeds per layout style, 1,000 automatic-style seeds, enemy spawning/combat, fog, rapid-input guards, defeat/restart/menu cancellation, camera projection/desktop HUD separation, seeded deck conservation/reshuffles, card effects/targets/costs, energy timing, HP/indicator formatting, and inspection without world actions. Numerical projection and static UI checks do not replace browser visual verification. See [docs/GDD.md](docs/GDD.md) and [AGENTS.md](AGENTS.md) for design and task boundaries.
+
+## Stage 7A.1 checks
+
+Use public Dungeon tools to grant/unlock up to two forms, then Forms > Inspect > Confirm activation. Test Knight walking in corridors, L-jumps onto flat low blocks, safe dismount/reversion, and enemy strikes while perched. Charges must not refill. Simulated floor completion counts the partial reversion floor first, then a full Pawn recovery floor.
+
+Signatures: Pawn parries one marked strike (5-turn cooldown); Knight needs both leap landing and visible lance target (7); Bishop reveals a seeded 4x4 once per floor; Rook grants temporary Block/one retaliation (9); Queen hits visible nearby groups and causes one-response retreat/hesitation (10). Light/Dark effects are explained on the info icon. Cooldowns start at the full value after casting and tick on later valid turns only. Q/Defend and basic attacks remain available. Eye sight ends after casting response + next response; remembered terrain must not retain remote foes or HP. Dark foresight shows one next action, with no fabricated hazards.
+
+Check exclusive Forms/Moves/Dungeon panels at 1024x768, 1280x720 and larger desktops, hand/footer access, tooltip delay/focus/tap/Escape, default camera and perch label placement. Automated layout/contrast checks cannot establish visual quality; a connected browser is required for visual verification. King is planned for Stage 16 only; no new models, progression, bosses or saves are included.

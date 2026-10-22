@@ -2,19 +2,22 @@ import { combatBalance as balance } from '../../data/combatBalance'
 import { cardBalance, cards } from '../../data/cards'
 import { createStarterDeck, discardAndRefill, type DeckState } from './deck'
 import { validCardTarget, type CardTarget } from './cardRules'
-import { BOARD_SIZE } from '../../utils/grid'
-import { cellId, distancesFrom, type Dungeon } from './dungeon'
+import { cellId, cellFromId, distancesFrom, neighborIds, type Dungeon } from './dungeon'
 import { gridDistance, hasLineOfSight, nextPathStep } from './enemyAI'
 import { canOccupy, directionTo, sameCell, type Cell, type Direction, type MovementRule } from './movement'
 import { canSeeContent, updateFog, type FogState } from './visibility'
 import { formBalance, type BossForm, type Attunement } from '../../data/forms'
-import { activateTransformation, currentForm, emptyTransformations, type TransformationState } from './transformations'
+import { activateTransformation, currentForm, emptyTransformations, endActivation, type TransformationState } from './transformations'
 import { formMovement } from './chessMovement'
-import { abilityReason, formAttackTargets } from './formCombat'
+import { formAttackTargets } from './formCombat'
+import { damageEnemy, emptySignatures, finishSignatureTurn, resolveSignature, signatureFog, type SignatureState } from './signatures'
+import { canKnightLand, elevationAt, pawnLanding, playerBoard, reversionReason } from './perching'
+import { abilityBalance } from '../../data/abilities'
 
 export type PlayerAction =
   | { kind: 'transform'; form: BossForm; attunement: Attunement }
-  | { kind: 'ability'; targetId?: string }
+  | { kind: 'ability'; targetId?: string; destination?: Cell }
+  | { kind: 'revert' }
   | { kind: 'card'; cardInstanceId: string; target: CardTarget }
   | { kind: 'move'; destination: Cell }
   | { kind: 'attack'; targetId: string }
@@ -31,10 +34,14 @@ export type Enemy = {
   lastSeen?: Cell
   attackTarget?: Cell
   searchLeft: number
+  exposedTurns?: number
+  fearTurns?: number
+  weakenedDamage?: number
+  boss?: boolean
 }
 export type CombatEvent = {
   id: number
-  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory' | 'heal' | 'focus' | 'transform'
+  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory' | 'heal' | 'focus' | 'transform' | 'revert' | 'reveal' | 'fear' | 'parry'
   targetId?: string
   actor: 'pawn' | string
   cell: Cell
@@ -61,6 +68,8 @@ export type GameState = FogState & {
   preparedCounter: number
   eventSerial: number
   transformations: TransformationState
+  signatures: SignatureState
+  elevation: number
   lastAction?: PlayerAction['kind']
   events: CombatEvent[]
 }
@@ -80,15 +89,13 @@ export function createGame(dungeon: Dungeon): GameState {
       maxHp: balance.enemyMaxHp, intent: 'idle', searchLeft: 0 }] : [],
     occupied: [], turn: 0, status: 'playing', guarding: false, events: [], eventSerial: 0,
     deck: createStarterDeck(dungeon.seed), energy: cardBalance.maxEnergy, maxEnergy: cardBalance.maxEnergy,
-    focus: 0, block: 0, preparedCounter: 0, transformations: emptyTransformations(),
+    focus: 0, block: 0, preparedCounter: 0, transformations: emptyTransformations(), signatures: emptySignatures(), elevation: 0,
     ...updateFog(dungeon.tiles, dungeon.spawn),
   }
 }
 
 export function movementBoard(state: GameState) {
-  return { size: BOARD_SIZE, available: state.dungeon.tiles,
-    blocked: state.dungeon.tiles.filter((tile) => tile.blocksMovement),
-    occupied: [...state.occupied, ...state.enemies.filter((enemy) => enemy.hp > 0).map((enemy) => enemy.cell)] }
+  return playerBoard(state)
 }
 
 export function attackTargets(state: GameState) {
@@ -100,6 +107,7 @@ export function attackTargets(state: GameState) {
 // Future forms can supply a different movement predicate; any accepted destination still costs one turn.
 export function resolvePlayerAction(state: GameState, action: PlayerAction, movement?: MovementRule): GameState | null {
   if (state.status !== 'playing' || state.hp <= 0) return null
+  if (action.kind === 'ability') return resolveSignature(state, action)
   let cell = state.cell, facing = state.facing
   const enemies = state.enemies.map((enemy) => ({ ...enemy }))
   const events: CombatEvent[] = []
@@ -113,16 +121,16 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
   let block = 0, preparedCounter = 0
   const strike = (enemy: Enemy, damage: number) => {
     facing = directionTo(cell, enemy.cell)
-    const amount = Math.min(enemy.hp, damage + focus)
+    const amount = damageEnemy(enemy, damage + focus)
     focus = 0
-    enemy.hp -= amount
     emit({ kind: 'hit', actor: 'pawn', targetId: enemy.id, cell: enemy.cell, amount, seen: true })
     if (enemy.hp === 0) emit({ kind: 'defeat', actor: enemy.id, cell: enemy.cell, seen: true })
   }
   if (action.kind === 'move') {
     const board = movementBoard(state)
     const rule = movement ?? formMovement(form)
-    if (!canOccupy(action.destination, board) || !rule(state.cell, action.destination, board)) return null
+    if (!(canOccupy(action.destination, board) || (form === 'knight' && canKnightLand(action.destination, board)))
+      || !rule(state.cell, action.destination, board)) return null
     cell = { ...action.destination }
     facing = directionTo(state.cell, cell)
     emit({ kind: 'move', actor: 'pawn', cell, seen: true })
@@ -131,29 +139,18 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
     if (!target) return null
     const enemy = enemies.find((candidate) => candidate.id === target.id)!
     strike(enemy, form === 'pawn' ? balance.playerDamage : formBalance[form].damage + (light ? formBalance.lightDamage : 0))
-    if (dark) block = formBalance.darkBlock
+    block = (form === 'rook' ? formBalance.rook.basicBlock : 0) + (dark ? formBalance.darkBlock : 0)
   } else if (action.kind === 'transform') {
     const next = activateTransformation(transformations, action.form, action.attunement)
     if (!next) return null
     transformations = next
     emit({ kind: 'transform', actor: 'pawn', cell, seen: true })
-  } else if (action.kind === 'ability') {
-    if (abilityReason(state) || form === 'pawn') return null
-    if (form === 'bishop') {
-      if (action.targetId !== undefined) return null
-      block = light ? formBalance.bishop.ward : formBalance.bishop.darkWard
-      if (light) focus = Math.min(cardBalance.maxFocus, focus + 1)
-      emit({ kind: 'guard', actor: 'pawn', cell, seen: true })
-    } else {
-      const target = formAttackTargets(state, true).find((enemy) => enemy.id === action.targetId)
-      if (!target) return null
-      const enemy = enemies.find((entry) => entry.id === target.id)!
-      const damage = formBalance[form].abilityDamage + (light ? formBalance.lightDamage : 0)
-      strike(enemy, damage)
-      if (form === 'queen' && enemy.hp > 0) strike(enemy, damage)
-      if (dark) block = formBalance.darkAbilityBlock
-    }
-    energy -= formBalance[form].abilityCost
+  } else if (action.kind === 'revert') {
+    if (reversionReason(state)) return null
+    cell = { ...pawnLanding(state)! }
+    facing = directionTo(state.cell, cell)
+    transformations = endActivation(transformations, true)
+    emit({ kind: 'revert', actor: 'pawn', cell, seen: true })
   } else if (action.kind === 'card') {
     if (!validCardTarget(state, action.cardInstanceId, action.target)) return null
     const instance = state.deck.hand.find((entry) => entry.instanceId === action.cardInstanceId)!
@@ -184,9 +181,11 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
   } else if (action.kind === 'defend' || action.kind === 'wait') {
     emit({ kind: action.kind === 'defend' ? 'guard' : 'wait', actor: 'pawn', cell, seen: true })
   } else return null
-  return { ...state, cell, facing, enemies, events, eventSerial, hp, energy, focus, deck, block, preparedCounter, transformations,
-    guarding: action.kind === 'defend', lastAction: action.kind,
-    ...updateFog(state.dungeon.tiles, cell, state.explored) }
+  const next = { ...state, cell, facing, enemies, events, eventSerial, hp, energy, focus, deck, block, preparedCounter, transformations,
+    elevation: currentForm(transformations) === 'knight' ? elevationAt(state.dungeon, cell) : 0,
+    signatures: { ...state.signatures, usedThisTurn: undefined, parryReady: false },
+    guarding: action.kind === 'defend', lastAction: action.kind }
+  return { ...next, ...signatureFog(next) }
 }
 
 // Exactly one ordered action per eligible living enemy. No clocks, effects, React, or global randomness.
@@ -198,24 +197,40 @@ export function resolveEnemyPhase(state: GameState): GameState {
   const events = [...state.events]
   let hp = state.hp
   let block = state.block, preparedCounter = state.preparedCounter, eventSerial = state.eventSerial
+  let parryReady = state.signatures.parryReady
   const emit = (event: Omit<CombatEvent, 'seen' | 'id'>) => events.push({ ...event, id: ++eventSerial,
     seen: event.actor === 'pawn' || canSeeContent(cellId(event.cell), state) })
   for (const enemy of [...enemies].sort((a, b) => a.id.localeCompare(b.id))) {
     if (enemy.hp <= 0 || hp <= 0) continue
+    if ((enemy.fearTurns ?? 0) > 0 && !enemy.boss) {
+      const board = movementBoard({ ...state, enemies })
+      const distance = gridDistance(enemy.cell, state.cell)
+      const retreat = neighborIds(cellId(enemy.cell)).map(cellFromId).filter((cell) => !sameCell(cell, state.cell)
+        && canOccupy(cell, board) && gridDistance(cell, state.cell) > distance)
+        .sort((a, b) => gridDistance(b, state.cell) - gridDistance(a, state.cell) || cellId(a) - cellId(b))[0]
+      enemy.fearTurns = 0; enemy.attackTarget = undefined; enemy.intent = 'idle'
+      if (retreat) { enemy.cell = retreat; emit({ kind: 'move', actor: enemy.id, cell: retreat }) }
+      else emit({ kind: 'fear', actor: enemy.id, cell: enemy.cell })
+      continue
+    }
     if (enemy.intent === 'attack' && enemy.attackTarget) {
       const hits = sameCell(enemy.attackTarget, state.cell) && gridDistance(enemy.cell, state.cell) === 1
         && hasLineOfSight(state.dungeon, enemy.cell, state.cell)
       if (hits) {
-        const incoming = Math.max(0, balance.enemyDamage - (state.guarding ? balance.guardReduction : 0))
+        const parried = parryReady
+        parryReady = false
+        const incoming = parried ? 0 : Math.max(0, balance.enemyDamage - (enemy.weakenedDamage ?? 0) - (state.guarding ? balance.guardReduction : 0))
+        enemy.weakenedDamage = 0
         const absorbed = Math.min(block, incoming)
         block -= absorbed
         const damage = Math.min(hp, incoming - absorbed)
         hp -= damage
-        emit({ kind: 'hit', actor: enemy.id, targetId: 'pawn', cell: state.cell, amount: damage })
-        if (hp > 0 && (state.guarding || preparedCounter > 0)) {
-          const counter = Math.min(enemy.hp, state.guarding ? balance.counterDamage : preparedCounter)
+        if (parried) emit({ kind: 'parry', actor: 'pawn', targetId: 'pawn', cell: state.cell })
+        else emit({ kind: 'hit', actor: enemy.id, targetId: 'pawn', cell: state.cell, amount: damage })
+        if (hp > 0 && (parried || state.guarding || preparedCounter > 0)
+          && gridDistance(enemy.cell, state.cell) <= abilityBalance.retaliationRange && hasLineOfSight(state.dungeon, state.cell, enemy.cell)) {
+          const counter = damageEnemy(enemy, parried ? abilityBalance.pawnCounter : state.guarding ? balance.counterDamage : preparedCounter)
           preparedCounter = 0
-          enemy.hp -= counter
           emit({ kind: 'counter', actor: 'pawn', targetId: enemy.id, cell: enemy.cell, amount: counter })
           if (enemy.hp === 0) emit({ kind: 'defeat', actor: enemy.id, cell: enemy.cell })
         }
@@ -253,8 +268,8 @@ export function resolveEnemyPhase(state: GameState): GameState {
   const status = hp <= 0 ? 'defeat' : sameCell(state.cell, state.dungeon.exit)
     && enemies.every((enemy) => enemy.hp <= 0) ? 'victory' : 'playing'
   if (status !== 'playing') emit({ kind: status, actor: 'pawn', cell: state.cell })
-  return { ...state, enemies, hp, status, events, eventSerial, guarding: false, block: 0, preparedCounter: 0,
-    energy: Math.min(state.maxEnergy, state.energy + cardBalance.energyPerTurn), turn: state.turn + 1 }
+  return finishSignatureTurn({ ...state, enemies, hp, status, events, eventSerial, guarding: false, block: 0, preparedCounter: 0,
+    energy: Math.min(state.maxEnergy, state.energy + cardBalance.energyPerTurn), turn: state.turn + 1 })
 }
 
 export function resolveTurn(state: GameState, action: PlayerAction, movement?: MovementRule): GameState | null {
@@ -264,4 +279,14 @@ export function resolveTurn(state: GameState, action: PlayerAction, movement?: M
 
 export function enemyIntentLabel(enemy: Enemy) {
   return { idle: 'Idle', pursue: 'Approaching', search: 'Searching', attack: 'Strike next turn' }[enemy.intent]
+}
+
+// Reuse the deterministic resolver for one response only, without mutating or exposing future state.
+export function foresightIntent(state: GameState, id: string): string | undefined {
+  const enemy = state.enemies.find((entry) => entry.id === id)
+  if (!enemy || enemy.hp <= 0 || !state.signatures.reveal?.foresight
+    || !state.signatures.reveal.cells.includes(cellId(enemy.cell)) || !canSeeContent(cellId(enemy.cell), state)) return
+  const projected = resolveEnemyPhase({ ...state, events: [] })
+  const action = projected.events.find((event) => event.actor === id)
+  return action ? ({ hit: 'Strike marked tile', miss: 'Strike marked tile', windup: 'Prepare a strike', move: 'Move one tile', fear: 'Hesitate' } as Record<string, string>)[action.kind] ?? 'Wait' : 'Wait'
 }

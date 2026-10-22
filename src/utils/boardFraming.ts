@@ -44,11 +44,12 @@ export function boardVisualPoints(tiles?: readonly DungeonTile[]): Point[] {
       const rotated = Math.abs(Math.sin(tile.rotation)) > 0.5
       box(x, z, bounds[rotated ? 1 : 0], bounds[rotated ? 0 : 1], 0, bounds[2])
     }
-    if (!tile.blocksMovement) {
+    if (!tile.blocksMovement || tile.perchHeight) {
+      const height = tile.perchHeight ?? 0
       // Allow Pawn/enemy movement anywhere traversable without changing the framing.
       // Lower envelope includes the sheathed katana at every facing and idle/step sway.
-      box(x, z, 0.75, 0.75, 0.12, 0.6)
-      box(x, z, 0.34, 0.34, -0.02, 1.4)
+      box(x, z, 0.75, 0.75, 0.12 + height, 0.6 + height)
+      box(x, z, 0.34, 0.34, -0.02 + height, 1.4 + height)
     }
   }
   return points

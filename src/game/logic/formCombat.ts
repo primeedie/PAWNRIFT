@@ -7,11 +7,12 @@ import { sameCell } from './movement'
 import { canSeeContent } from './visibility'
 import { chessDestinations } from './chessMovement'
 import { BOARD_SIZE } from '../../utils/grid'
+import { perchTiles } from './perching'
 
-export function formAttackTargets(state: GameState, signature = false) {
+export function formAttackTargets(state: GameState) {
   const form = currentForm(state.transformations)
-  if (form === 'pawn' || (signature && form === 'bishop')) return []
-  const range = signature && form === 'rook' ? formBalance.rook.abilityRange : formBalance[form].attackRange
+  if (form === 'pawn') return []
+  const range = formBalance[form].attackRange
   return state.enemies.filter((enemy) => {
     if (enemy.hp <= 0 || !canSeeContent(cellId(enemy.cell), state)) return false
     const dx = enemy.cell.column - state.cell.column, dy = enemy.cell.row - state.cell.row
@@ -27,12 +28,11 @@ export function formAttackTargets(state: GameState, signature = false) {
     return true
   })
 }
-export function abilityReason(state: GameState) {
-  const active = state.transformations.active
-  if (state.status !== 'playing' || state.hp <= 0) return 'Run ended.'
-  if (!active) return 'Transform first; Pawn uses Defend to parry.'
-  if (state.energy < formBalance[active.form].abilityCost) return 'Not enough Energy.'
-  if (active.form !== 'bishop' && !formAttackTargets(state, true).length) return 'No visible target in range.'
+export function knownPreviewState(state: GameState): GameState {
+  return { ...state, dungeon: { ...state.dungeon, tiles: state.dungeon.tiles.map((tile) => state.explored.has(cellId(tile)) ? tile
+    : { ...tile, blocksMovement: false, blocksSight: false, prop: undefined, perchHeight: undefined }) },
+    occupied: state.occupied.filter((cell) => canSeeContent(cellId(cell), state)),
+    enemies: state.enemies.filter((enemy) => canSeeContent(cellId(enemy.cell), state)) }
 }
 
 // Preview uses only known terrain and currently visible occupants. Unscouted outlines are attempts,
@@ -42,7 +42,8 @@ export function movementPreviews(state: GameState) {
   const knownBoard = { size: BOARD_SIZE, available: cells,
     blocked: state.dungeon.tiles.filter((tile) => state.explored.has(cellId(tile)) && tile.blocksMovement),
     occupied: [...state.occupied.filter((cell) => canSeeContent(cellId(cell), state)),
-      ...state.enemies.filter((enemy) => enemy.hp > 0 && canSeeContent(cellId(enemy.cell), state)).map((enemy) => enemy.cell)] }
+      ...state.enemies.filter((enemy) => enemy.hp > 0 && canSeeContent(cellId(enemy.cell), state)).map((enemy) => enemy.cell)],
+    perches: perchTiles(state.dungeon).filter((cell) => state.explored.has(cellId(cell))) }
   return chessDestinations(currentForm(state.transformations), state.cell, knownBoard)
     .map((cell) => ({ ...cell, uncertain: !canSeeContent(cellId(cell), state) }))
 }

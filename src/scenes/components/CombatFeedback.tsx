@@ -43,7 +43,7 @@ export function CombatFeedback() {
       const cell = event.targetId === 'pawn' ? state.cell : state.enemies.find((enemy) => enemy.id === event.targetId)?.cell ?? event.cell
       if (!indicator || !canSeeContent(cellId(cell), state)) return null
       const [x, , z] = gridToWorld(cell.column, cell.row)
-      return <Html key={event.id} position={[x, 1.35 + lane * 0.22, z]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
+      return <Html key={event.id} position={[x, 1.35 + lane * 0.22 + (event.targetId === 'pawn' ? state.elevation : 0), z]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
         <span className={`combat-number ${indicator.tone}`} style={{ marginLeft: (lane % 3) * 12 }}>{indicator.text}</span>
       </Html>
     })}

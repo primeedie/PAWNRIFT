@@ -5,6 +5,7 @@ export type TransformationState = {
   inventory: TransformationItem[]
   active: { form: BossForm; attunement: Attunement; floorsLeft: number } | null
   recovery: number
+  recoveryStartsNextFloor?: boolean
   reconstruction: Partial<Record<BossForm, 0 | 1 | 2>>
 }
 export const emptyTransformations = (): TransformationState => ({ inventory: [], active: null, recovery: 0, reconstruction: {} })
@@ -35,17 +36,18 @@ export function grantTransformation(state: TransformationState, form: BossForm, 
   return { ...state, inventory: [...state.inventory, { form, charges: rules.charges, attunements: [attunement] }], reconstruction }
 }
 
-function endActivation(state: TransformationState): TransformationState {
+export function endActivation(state: TransformationState, deferRecovery = false): TransformationState {
   if (!state.active) return state
   const exhausted = state.inventory.filter((item) => item.charges === 0)
   const reconstruction = { ...state.reconstruction }
   for (const item of exhausted) reconstruction[item.form] = 0
-  return { ...state, active: null, recovery: rules.recoveryFloors,
+  return { ...state, active: null, recovery: rules.recoveryFloors, ...(deferRecovery ? { recoveryStartsNextFloor: true } : {}),
     inventory: state.inventory.filter((item) => item.charges > 0), reconstruction }
 }
 export function completeTransformationFloor(state: TransformationState): TransformationState {
   if (state.active) return state.active.floorsLeft > 1
     ? { ...state, active: { ...state.active, floorsLeft: state.active.floorsLeft - 1 } } : endActivation(state)
+  if (state.recoveryStartsNextFloor) return { ...state, recoveryStartsNextFloor: false }
   return { ...state, recovery: Math.max(0, state.recovery - 1) }
 }
 
@@ -69,4 +71,7 @@ export function retainAfterDeath(state: TransformationState, chosen?: BossForm):
 }
 
 // Starting/reseeding is not a completed floor and cannot skip global recovery or refill charges.
-export function transformationsForNewRun(state: TransformationState) { return endActivation(state) }
+export function transformationsForNewRun(state: TransformationState) {
+  const next = endActivation(state)
+  return next.recoveryStartsNextFloor ? { ...next, recoveryStartsNextFloor: false } : next
+}

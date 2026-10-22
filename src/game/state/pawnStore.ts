@@ -7,12 +7,14 @@ import type { CardTarget } from '../logic/cardRules'
 import { sameCell } from '../logic/movement'
 import { completeTransformationFloor, grantTransformation, recordTransformationBossWin, retainAfterDeath, retentionChoices, transformationsForNewRun } from '../logic/transformations'
 import type { Attunement, BossForm } from '../../data/forms'
+import { emptySignatures, vaultDestinations } from '../logic/signatures'
 
 const initialDungeon = generateDungeon(newRunSeed(''))
 
 export type TurnPhase = 'ready' | 'player' | 'enemies'
 type PawnState = GameState & {
   from: Cell
+  fromElevation: number
   isMoving: boolean
   phase: TurnPhase
   actionId: number
@@ -22,6 +24,8 @@ type PawnState = GameState & {
   floorNumber: number
   deathRetentionDone: boolean
   selectedAbility: boolean
+  abilityDestination?: Cell
+  selectAbilityDestination: (cell: Cell) => boolean
   selectAbility: () => void
   tryAbility: (targetId?: string) => boolean
   chooseRetention: (form: BossForm) => boolean
@@ -46,6 +50,7 @@ type PawnState = GameState & {
 export const usePawnStore = create<PawnState>((set, get) => ({
   ...createGame(initialDungeon),
   from: initialDungeon.spawn,
+  fromElevation: 0,
   isMoving: false,
   phase: 'ready',
   actionId: 0,
@@ -55,9 +60,15 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   selectAbility: () => {
     const state = get()
     if (state.runActive && state.phase === 'ready' && state.status === 'playing')
-      set({ selectedAbility: !state.selectedAbility, selectedCardId: undefined })
+      set({ selectedAbility: !state.selectedAbility, selectedCardId: undefined, abilityDestination: undefined })
   },
-  tryAbility: (targetId) => get().submitAction({ kind: 'ability', targetId }),
+  selectAbilityDestination: (cell) => {
+    const state = get()
+    if (!state.runActive || state.phase !== 'ready' || !state.selectedAbility
+      || state.transformations.active?.form !== 'knight' || !vaultDestinations(state).some((candidate) => sameCell(candidate, cell))) return false
+    set({ abilityDestination: cell }); return true
+  },
+  tryAbility: (targetId) => get().submitAction({ kind: 'ability', targetId, destination: get().abilityDestination }),
   chooseRetention: (form) => {
     const state = get()
     if (state.status !== 'defeat' || state.deathRetentionDone) return false
@@ -74,8 +85,9 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck,
       energy: state.energy, maxEnergy: state.maxEnergy, focus: state.focus, turn: state.turn,
       transformations: completeTransformationFloor(state.transformations), floorNumber: state.floorNumber + 1,
-      from: dungeon.spawn, isMoving: false, phase: 'ready', actionId: state.actionId + 1,
-      selectedCardId: undefined, selectedAbility: false, revealAll: false, lastAction: undefined })
+      signatures: { ...emptySignatures(), cooldowns: { ...state.signatures.cooldowns } },
+      from: dungeon.spawn, fromElevation: 0, isMoving: false, phase: 'ready', actionId: state.actionId + 1,
+      selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, revealAll: false, lastAction: undefined })
     return true
   },
   debugGrant: (form, attunement) => {
@@ -92,22 +104,22 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   debugDefeat: () => {
     if (get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat',
-      selectedCardId: undefined, selectedAbility: false, deathRetentionDone: false, actionId: state.actionId + 1 }))
+      selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, deathRetentionDone: false, actionId: state.actionId + 1 }))
   },
   selectedCardId: undefined,
   selectCard: (instanceId) => {
     const state = get()
-    if (instanceId === undefined) { set({ selectedCardId: undefined, selectedAbility: false }); return }
+    if (instanceId === undefined) { set({ selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined }); return }
     if (state.runActive && state.phase === 'ready' && state.status === 'playing'
       && state.deck.hand.some((card) => card.instanceId === instanceId))
-      set({ selectedCardId: state.selectedCardId === instanceId ? undefined : instanceId, selectedAbility: false })
+      set({ selectedCardId: state.selectedCardId === instanceId ? undefined : instanceId, selectedAbility: false, abilityDestination: undefined })
   },
   playSelectedCard: (target) => {
     const cardInstanceId = get().selectedCardId
     return cardInstanceId ? get().submitAction({ kind: 'card', cardInstanceId, target }) : false
   },
   restartRun: () => get().loadDungeon(newRunSeed(get().dungeon.seed)),
-  suspendRun: () => set((state) => ({ runActive: false, selectedCardId: undefined, selectedAbility: false, actionId: state.actionId + 1 })),
+  suspendRun: () => set((state) => ({ runActive: false, selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, actionId: state.actionId + 1 })),
   resumeRun: () => set((state) => ({ runActive: true, actionId: state.actionId + 1 })),
   loadDungeon: (seed, style) => {
     const state = get()
@@ -115,8 +127,8 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     const retained = state.status === 'defeat' && !state.deathRetentionDone
       ? retainAfterDeath(state.transformations)! : transformationsForNewRun(state.transformations)
     const dungeon = generateDungeon(seed, style)
-    set({ ...createGame(dungeon), from: dungeon.spawn, isMoving: false, phase: 'ready',
-      transformations: retained, floorNumber: 1, hasStartedRun: true, deathRetentionDone: false, selectedAbility: false,
+    set({ ...createGame(dungeon), from: dungeon.spawn, fromElevation: 0, isMoving: false, phase: 'ready',
+      transformations: transformationsForNewRun(retained), floorNumber: 1, hasStartedRun: true, deathRetentionDone: false, selectedAbility: false, abilityDestination: undefined,
       actionId: get().actionId + 1, revealAll: false, runActive: true, selectedCardId: undefined, lastAction: undefined })
   },
   toggleReveal: () => set((state) => ({ revealAll: !state.revealAll })),
@@ -130,7 +142,8 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     if (!state.runActive || state.phase !== 'ready') return false
     const player = resolvePlayerAction(state, action)
     if (!player) return false
-    set({ ...player, selectedCardId: undefined, selectedAbility: false, from: state.cell, isMoving: !sameCell(player.cell, state.cell), phase: 'player', actionId: state.actionId + 1 })
+    set({ ...player, selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined,
+      from: state.cell, fromElevation: state.elevation, isMoving: !sameCell(player.cell, state.cell), phase: 'player', actionId: state.actionId + 1 })
     return true
   },
   advancePlayback: (id, phase) => {

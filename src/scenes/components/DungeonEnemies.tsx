@@ -3,17 +3,21 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { Group, MathUtils, MeshLambertMaterial } from 'three'
 import { turnTiming } from '../../data/combatBalance'
-import { enemyIntentLabel, type Enemy } from '../../game/logic/combat'
+import { enemyIntentLabel, foresightIntent, type Enemy } from '../../game/logic/combat'
 import { cellId } from '../../game/logic/dungeon'
 import { canSeeContent } from '../../game/logic/visibility'
 import { usePawnStore, type TurnPhase } from '../../game/state/pawnStore'
 import { gridToWorld } from '../../utils/grid'
 import { cardOptions } from '../../game/logic/cardRules'
-import { abilityReason, formAttackTargets } from '../../game/logic/formCombat'
+import { abilityReason, vaultTargets } from '../../game/logic/signatures'
 import { LegalTileHighlight } from './LegalTileHighlight'
 import { visibleEnemies } from '../../game/logic/combatIndicators'
+import { currentForm } from '../../game/logic/transformations'
+import { gridDistance } from '../../game/logic/enemyAI'
 
 function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhase; interpolate: boolean }) {
+  const state = usePawnStore()
+  const foresight = foresightIntent(state, enemy.id)
   const root = useRef<Group>(null)
   const material = useRef<MeshLambertMaterial>(null)
   const progress = useRef(0)
@@ -43,7 +47,7 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
       event.stopPropagation()
       const state = usePawnStore.getState()
       if (state.selectedCardId) state.playSelectedCard({ kind: 'enemy', enemyId: enemy.id })
-      else if (state.selectedAbility) state.tryAbility(enemy.id)
+      else if (state.selectedAbility) state.tryAbility(currentForm(state.transformations) === 'knight' ? enemy.id : undefined)
       else state.tryAttack(enemy.id)
     }}>
       <mesh position={[0, 0.08, 0]}>
@@ -66,12 +70,16 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
         <boxGeometry args={[0.16, 0.045, 0.035]} />
         <meshBasicMaterial color={enemy.intent === 'attack' ? '#f2ba76' : '#c9786f'} />
       </mesh>
-      <Html position={[0, 1.05, 0]} center className="enemy-label" style={{ pointerEvents: 'none' }}>
+      <Html position={[0, 1.05, 0]} center zIndexRange={[4, 0]} className="enemy-label" style={{ pointerEvents: 'none' }}>
         <span>Rookling · {enemy.hp}/{enemy.maxHp}</span>
         <span className="health-track" role="progressbar" aria-label="Rookling health" aria-valuemin={0} aria-valuemax={enemy.maxHp} aria-valuenow={enemy.hp}>
           <span style={{ width: `${100 * enemy.hp / enemy.maxHp}%` }} />
         </span>
         <small data-threat={enemy.intent === 'attack'}>{enemyIntentLabel(enemy)}</small>
+        {foresight && <small>Next: {foresight}</small>}
+        {!!enemy.exposedTurns && <small>Exposed +2</small>}
+        {!!enemy.fearTurns && <small>Fear · 1 response</small>}
+        {!!enemy.weakenedDamage && <small>Next strike −{enemy.weakenedDamage}</small>}
       </Html>
     </group>
   )
@@ -80,7 +88,10 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
 export function DungeonEnemies() {
   const state = usePawnStore()
   const targets = state.phase !== 'ready' ? [] : state.selectedCardId ? cardOptions(state, state.selectedCardId).targets
-    : state.selectedAbility && !abilityReason(state) ? formAttackTargets(state, true).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id })) : []
+    : state.selectedAbility && state.abilityDestination && !abilityReason(state)
+      ? vaultTargets(state, state.abilityDestination, true).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id }))
+      : state.selectedAbility && currentForm(state.transformations) === 'queen'
+        ? visibleEnemies(state).filter((enemy) => gridDistance(enemy.cell, state.cell) <= 3).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id })) : []
   return <group name="dungeon-enemies">
     {visibleEnemies(state).map((enemy) => (
       <group key={enemy.id}>

@@ -5,6 +5,7 @@ export type MovementBoard = {
   blocked: readonly Cell[]
   occupied: readonly Cell[]
   available?: readonly Cell[]
+  perches?: readonly (Cell & { height: number })[]
 }
 
 const steps: Record<Direction, Cell> = {

@@ -34,6 +34,11 @@ export function nextPathStep(dungeon: Dungeon, from: Cell, target: Cell, occupie
   const board = { size: BOARD_SIZE, available: dungeon.tiles,
     blocked: dungeon.tiles.filter((tile) => tile.blocksMovement), occupied }
   const cells = new Map(dungeon.tiles.map((tile) => [cellId(tile), tile]))
+  const targetTile = cells.get(cellId(target))
+  const goals = targetTile?.perchHeight && targetTile.prop === 'block'
+    ? new Set(neighborIds(cellId(target)).filter((id) => cells.has(id) && canOccupy(cells.get(id)!, board)))
+    : new Set([cellId(target)])
+  if (goals.has(cellId(from))) return undefined
   const parents = new Map<number, number>([[cellId(from), -1]])
   const queue = [from]
   for (let i = 0; i < queue.length; i++) {
@@ -41,7 +46,7 @@ export function nextPathStep(dungeon: Dungeon, from: Cell, target: Cell, occupie
       const next = cells.get(id)
       if (!next || parents.has(id) || !canOccupy(next, board)) continue
       parents.set(id, cellId(queue[i]))
-      if (sameCell(next, target)) {
+      if (goals.has(id)) {
         let step = id
         while (parents.get(step) !== cellId(from)) step = parents.get(step)!
         const cell = cells.get(step)!

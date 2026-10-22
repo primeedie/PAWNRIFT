@@ -48,7 +48,7 @@ describe('transformation interaction and lifecycle integration', () => {
     expect(html).toContain('Knight')
     expect(html).toContain('Floors Left')
     expect(html).toContain('Light')
-    expect(html).toContain('Thrust')
+    expect(html).toContain('Vaulting Charge')
     ready.selectAbility()
     expect(usePawnStore.getState().turn).toBe(1)
     expect(usePawnStore.getState().energy).toBe(3)

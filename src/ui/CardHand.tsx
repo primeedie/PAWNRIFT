@@ -18,7 +18,7 @@ export function CardHand() {
   const locked = !state.runActive || state.phase !== 'ready' || state.status !== 'playing'
   // Floor resets/menu remounts discard presentation-only tooltips without touching game state.
   return <>
-    <section className="card-hand" aria-label="Card hand" onKeyDown={(event) => {
+    <section className="card-hand" aria-label="Card hand" data-tooltip-avoid onKeyDown={(event) => {
       event.stopPropagation()
       if (event.key === 'Escape') state.selectCard(undefined)
     }}>

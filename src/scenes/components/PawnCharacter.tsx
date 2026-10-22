@@ -16,7 +16,7 @@ export function PawnCharacter() {
   const root = useRef<Group>(null)
   const body = useRef<Group>(null)
   const progress = useRef(0)
-  const { cell, from, facing, isMoving, hp, dungeon, transformations } = usePawnStore()
+  const { cell, from, fromElevation, elevation, facing, isMoving, hp, dungeon, transformations } = usePawnStore()
   const lastHealth = useRef({ hp, dungeon })
   const recoil = useRef(0)
   useEffect(() => {
@@ -29,8 +29,9 @@ export function PawnCharacter() {
   useLayoutEffect(() => {
     progress.current = 0
     const origin = isMoving ? from : cell
-    root.current?.position.set(...gridToWorld(origin.column, origin.row))
-  }, [cell, from, isMoving])
+    const [x, , z] = gridToWorld(origin.column, origin.row)
+    root.current?.position.set(x, isMoving ? fromElevation : elevation, z)
+  }, [cell, from, isMoving, elevation, fromElevation])
 
   useFrame(({ clock, invalidate }, delta) => {
     if (!root.current || !body.current) return
@@ -41,7 +42,7 @@ export function PawnCharacter() {
     const end = gridToWorld(cell.column, cell.row)
     root.current.position.set(
       MathUtils.lerp(start[0], end[0], isMoving ? eased : 1),
-      isMoving ? Math.sin(t * Math.PI) * 0.055 : 0,
+      MathUtils.lerp(fromElevation, elevation, isMoving ? eased : 1) + (isMoving ? Math.sin(t * Math.PI) * (transformations.active?.form === 'knight' ? 0.12 : 0.055) : 0),
       MathUtils.lerp(start[2], end[2], isMoving ? eased : 1),
     )
     const angle = facingAngles[facing]

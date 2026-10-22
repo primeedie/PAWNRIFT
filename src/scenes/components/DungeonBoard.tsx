@@ -10,6 +10,8 @@ import { FoggedTerrain } from './FoggedTerrain'
 import { ExitMarker } from './ExitMarker'
 import { cardOptions } from '../../game/logic/cardRules'
 import { movementPreviews } from '../../game/logic/formCombat'
+import { vaultDestinations } from '../../game/logic/signatures'
+import { elevationAt } from '../../game/logic/perching'
 
 export function DungeonBoard() {
   const state = usePawnStore()
@@ -17,7 +19,8 @@ export function DungeonBoard() {
   const debugReveal = state.revealAll
   const destinations = state.phase === 'ready' && state.status === 'playing'
     ? state.selectedCardId ? cardOptions(state, state.selectedCardId).targets.flatMap((target) => target.kind === 'tile' ? [{ ...target.cell, uncertain: false }] : [])
-      : state.selectedAbility ? [] : movementPreviews(state) : []
+      : state.selectedAbility ? state.transformations.active?.form === 'knight'
+        ? vaultDestinations(state).map((cell) => ({ ...cell, uncertain: !state.visible.has(cellId(cell)) })) : [] : movementPreviews(state) : []
   return (
     <group name="dungeon-board" key={`${dungeon.seed}:${dungeon.style}`}>
       {dungeon.tiles.map((tile) => {
@@ -30,14 +33,16 @@ export function DungeonBoard() {
             if (!canInteract) return
             event.stopPropagation()
             if (state.selectedCardId) state.playSelectedCard({ kind: 'tile', cell: tile })
-            else if (!state.selectedAbility) tryMove(tile)
+            else if (state.selectedAbility) state.selectAbilityDestination(tile)
+            else tryMove(tile)
           }}>
             <FoggedTerrain visibility={visibility}>
               <TerrainTile column={tile.column} row={tile.row} />
               {tile.prop && <group rotation={[0, tile.rotation, 0]}><GeometricProp kind={tile.prop} /></group>}
               {sameCell(tile, dungeon.exit) && <ExitMarker />}
             </FoggedTerrain>
-            {preview && <LegalTileHighlight uncertain={preview.uncertain} />}
+            {preview && <group position={[0, state.explored.has(id) ? elevationAt(dungeon, tile) : 0, 0]}><LegalTileHighlight uncertain={preview.uncertain}
+              selected={!!state.abilityDestination && sameCell(state.abilityDestination, tile)} /></group>}
           </group>
         )
       })}

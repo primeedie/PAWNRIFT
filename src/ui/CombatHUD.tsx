@@ -5,6 +5,10 @@ function describeEvent(event: CombatEvent) {
   switch (event.kind) {
     case 'hit': return event.actor === 'pawn' ? `Strike · ${event.amount} damage` : event.amount ? `−${event.amount} HP` : 'Guarded'
     case 'transform': return 'Transformation activated'
+    case 'revert': return 'Returned to Pawn · recovery begins'
+    case 'reveal': return 'Astral Eye reveals terrain and occupants'
+    case 'parry': return 'Crimson Reversal · strike negated'
+    case 'fear': return 'Frightened foe hesitates'
     case 'counter': return `Counter · ${event.amount} damage`
     case 'guard': return 'Guard ready'
     case 'heal': return `Restored ${event.amount} HP`
