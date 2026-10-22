@@ -6,6 +6,7 @@ import { cellId } from '../../game/logic/dungeon'
 import { canSeeContent } from '../../game/logic/visibility'
 import { gridToWorld } from '../../utils/grid'
 import type { CombatEvent } from '../../game/logic/combat'
+import { impactPresentationDelay } from '../../utils/combatPresentation'
 
 const LIFETIME_MS = 850
 type Indicator = { event: CombatEvent; born: number; lane: number }
@@ -26,7 +27,7 @@ export function CombatFeedback() {
         const used = new Set(active.filter((entry) => entry.event.targetId === event.targetId).map((entry) => entry.lane))
         let lane = 0
         while (used.has(lane)) lane++
-        active.push({ event, born: now + (event.delayMs ?? 0), lane })
+        active.push({ event, born: now + impactPresentationDelay(event,state.events,state.transformations.active?.form??'pawn'), lane })
       }
       return active.slice(-12)
     })
@@ -49,7 +50,7 @@ export function CombatFeedback() {
       const color = event.effect === 'splash' || event.effect === 'burn' ? '#b5a0d3'
         : event.effect === 'concussion' || event.effect === 'smite' ? '#e1c477' : event.effect === 'pierce' ? '#94b7d6' : '#e29a9a'
       return <group key={event.id}>
-        {event.effect && performance.now() - born < 140 && <mesh position={[x, 0.04, z]} rotation={[-Math.PI / 2, 0, 0]}>
+        {(event.effect||event.kind==='stun') && performance.now() - born < 140 && <mesh position={[x, event.effect==='sharpener'?0.65:0.04, z]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.34, 0.43, 12]} /><meshBasicMaterial color={color} transparent opacity={0.55} depthWrite={false} />
         </mesh>}
         <Html position={[x, 1.35 + lane * 0.22 + (event.targetId === 'pawn' ? state.elevation : 0), z]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>

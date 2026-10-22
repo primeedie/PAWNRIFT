@@ -1,9 +1,8 @@
 import { useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { usePawnStore } from '../../game/state/pawnStore'
 import type { CharacterPose } from '../../utils/characterAnimation'
-import { passiveBalance } from '../../data/passives'
-import { BoxGeometry, DoubleSide, Euler, ExtrudeGeometry, Group, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Quaternion, RingGeometry, Shape, Vector3 } from 'three'
+import { katanaMount, katanaRest, katanaScale, sheathPosition } from '../../utils/characterRig'
+import { BoxGeometry, DoubleSide, ExtrudeGeometry, Group, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Quaternion, RingGeometry, Shape, Vector3 } from 'three'
 
 const katanaBox = new BoxGeometry(1, 1, 1)
 const katanaMaterials = {
@@ -108,58 +107,33 @@ export function KatanaSheath() {
   )
 }
 
-export function SheathedKatana({ motion: externalMotion, hand }: { motion?: RefObject<CharacterPose>; hand?: RefObject<Group | null> } = {}) {
-  const drawn = useRef<Group>(null), stored = useRef<Group>(null), trail = useRef<Group>(null)
-  const socket = useRef({ point:new Vector3(),rotation:new Euler(),hand:new Quaternion(),parent:new Quaternion(),rest:new Quaternion() })
-  const motion = useRef({ id: -1, elapsed: 0 })
-  useFrame((_, delta) => {
-    if (externalMotion && drawn.current && stored.current && trail.current) {
-      const p = externalMotion.current, unsheathed = p.draw > 0.04
-      stored.current.visible = !unsheathed; drawn.current.visible = unsheathed
-      drawn.current.position.set(0.35 * p.draw, -0.86 * p.draw, 0.08 * p.draw)
-      drawn.current.rotation.z = -1.1 * p.slash + p.guard * 0.25
-      if (hand?.current && drawn.current.parent) {
-        const parent=drawn.current.parent, target=socket.current, blend=Math.min(1,p.draw*3)
-        hand.current.updateWorldMatrix(true,false); parent.updateWorldMatrix(true,false)
-        target.point.set(0,-0.35,0.055); hand.current.localToWorld(target.point); parent.worldToLocal(target.point)
-        drawn.current.position.copy(target.point).multiplyScalar(blend)
-        hand.current.getWorldQuaternion(target.hand); parent.getWorldQuaternion(target.parent).invert()
-        target.rotation.set(Math.PI/2,0,-p.slash*1.1+p.guard*0.25)
-        target.hand.multiply(target.rest.setFromEuler(target.rotation)); target.parent.multiply(target.hand)
-        drawn.current.quaternion.slerpQuaternions(target.rest.identity(),target.parent,blend)
-        trail.current.position.copy(drawn.current.position); trail.current.quaternion.copy(drawn.current.quaternion)
-      }
-      trail.current.visible = p.slash > 0.2 && !p.guard
-      return
+export function SheathedKatana({ motion, hand }: { motion: RefObject<CharacterPose>; hand: RefObject<Group | null> }) {
+  const drawn=useRef<Group>(null),stored=useRef<Group>(null),trail=useRef<Group>(null),scabbard=useRef<Group>(null)
+  const socket=useRef({point:new Vector3(),hand:new Quaternion(),parent:new Quaternion()})
+  useFrame(()=>{
+    if(!drawn.current||!stored.current||!trail.current||!hand.current) return
+    const p=motion.current,unsheathed=p.draw>0.002
+    scabbard.current?.position.set(...sheathPosition(p.draw))
+    stored.current.visible=!unsheathed;drawn.current.visible=unsheathed
+    const parent=drawn.current.parent,target=socket.current
+    if(parent){
+      // Grip follows the wrist exactly. Only presentation; no action callbacks.
+      hand.current.updateWorldMatrix(true,false);parent.updateWorldMatrix(true,false)
+      target.point.set(0,0,0);hand.current.localToWorld(target.point);parent.worldToLocal(target.point)
+      drawn.current.position.copy(target.point)
+      hand.current.getWorldQuaternion(target.hand);parent.getWorldQuaternion(target.parent).invert()
+      drawn.current.quaternion.copy(target.parent.multiply(target.hand))
     }
-    const state = usePawnStore.getState()
-    if (motion.current.id !== state.actionId) motion.current = { id: state.actionId, elapsed: 0 }
-    const playing = state.runActive && state.phase === 'player' && state.lastAction === 'attack' && !state.transformations.active
-    if (playing) motion.current.elapsed += delta * 1000
-    const t = playing ? Math.min(1, motion.current.elapsed / passiveBalance.iaiMs) : 0
-    const unsheathed = playing && t > 0.18 && t < 0.82
-    if (drawn.current && stored.current && trail.current) {
-      stored.current.visible = !unsheathed
-      drawn.current.visible = unsheathed
-      const draw = t < 0.34 ? Math.max(0, (t - 0.18) / 0.16) : t < 0.57 ? 1 : Math.max(0, (0.82 - t) / 0.25)
-      drawn.current.position.set(0.35 * draw, -0.86 * draw, 0.08 * draw)
-      drawn.current.rotation.z = t < 0.34 ? 0 : Math.sin(Math.min(1, (t - 0.34) / 0.25) * Math.PI) * -1.1
-      trail.current.visible = unsheathed && t > 0.3 && t < 0.52
-    }
-  })
-  return (
-    // Pawn faces +Z: left is -X, scabbard extends backward along -Z.
-    // Separate attachment / sheath / sword pivots prepare future draw motions only.
-    <group name="left-hip-weapon-rig">
-      <mesh name="hip-mount" position={[-0.18, 0.43, 0.11]} geometry={katanaBox} scale={[0.23, 0.04, 0.05]} material={katanaMaterials.mount} />
-      <group name="left-hip-weapon-attachment" position={[-0.28, 0.47, 0.1]} rotation={[-1.82, 0, 0]} scale={0.70}>
-        <KatanaSheath />
-        <group ref={stored} name="sheathed-sword"><CrimsonKatana bladeVisible={false} /></group>
-        <group ref={drawn} name="sword-draw-pivot" visible={false}><CrimsonKatana /></group>
-        <group ref={trail} position={[0.25, -0.25, 0]} visible={false} rotation={[0, 0, -0.5]}>
-          <mesh position={[0,0.40,0]} geometry={trailGeometry} material={katanaMaterials.trail} />
-        </group>
-      </group>
+    trail.current.visible=unsheathed&&p.bladeTurn>0.1&&p.slash>0.3&&!p.guard
+    trail.current.position.copy(drawn.current.position);trail.current.quaternion.copy(drawn.current.quaternion)
+  },-0.6)
+  return <group name="left-hip-weapon-rig" dispose={null}>
+    <mesh name="hip-mount" position={[-0.18,0.55,0.11]} geometry={katanaBox} scale={[0.19,0.04,0.05]} material={katanaMaterials.mount}/>
+    <group ref={scabbard} name="left-hip-weapon-attachment" position={katanaMount} rotation={katanaRest} scale={katanaScale}>
+      <KatanaSheath/>
+      <group ref={stored} name="sheathed-sword"><CrimsonKatana bladeVisible={false}/></group>
     </group>
-  )
+    <group ref={drawn} name="sword-draw-pivot" visible={false} scale={katanaScale}><CrimsonKatana/></group>
+    <group ref={trail} visible={false} scale={katanaScale}><mesh position={[0,0.40,0]} geometry={trailGeometry} material={katanaMaterials.trail}/></group>
+  </group>
 }

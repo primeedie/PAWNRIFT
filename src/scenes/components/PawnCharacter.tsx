@@ -52,7 +52,7 @@ export function PawnCharacter() {
       MathUtils.lerp(fromElevation, elevation, isMoving ? eased : 1) + (isMoving ? (reducedMotion ? 0 : Math.sin(t * Math.PI) * (transformations.active?.form === 'knight' && Math.abs(cell.column - from.column) + Math.abs(cell.row - from.row) === 3 ? 0.22 : 0.025)) : 0),
       MathUtils.lerp(start[2], end[2], isMoving ? eased : 1),
     )
-    const target = state.phase === 'player' ? state.events.find((event) => event.actor === 'pawn' && event.kind === 'hit')?.cell : undefined
+    const target = state.phase !== 'ready' ? state.events.find((event) => event.actor === 'pawn' && (event.kind === 'hit'||event.kind==='counter') && event.breakdown?.category !== 'dot' && event.breakdown?.source !== 'Swish splash' && event.effect !== 'sharpener')?.cell : undefined
     const angle = target ? Math.atan2(target.column - cell.column, target.row - cell.row) : facingAngles[facing]
     const difference = Math.atan2(Math.sin(angle - root.current.rotation.y), Math.cos(angle - root.current.rotation.y))
     root.current.rotation.y += difference * (1 - Math.exp(-18 * delta))

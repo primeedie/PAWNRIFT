@@ -1,0 +1,77 @@
+import { Euler, Quaternion, Vector3 } from 'three'
+import type { CharacterForm } from '../data/characterDesigns'
+import type { CharacterPose } from './characterAnimation'
+
+export type Triple = [number,number,number]
+export const armLengths = { upper: 0.25, forearm: 0.24 } as const
+export const katanaMount: Triple = [-0.22,0.60,0.12]
+export const katanaRest: Triple = [-1.72,0,0.58]
+export const katanaScale = 0.70
+const sheathAxis=new Vector3(0,1,0).applyEuler(new Euler(...katanaRest))
+export function sheathPosition(draw:number):Triple {
+  return [katanaMount[0]+sheathAxis.x*0.30*draw,katanaMount[1]+sheathAxis.y*0.30*draw,katanaMount[2]+sheathAxis.z*0.30*draw]
+}
+const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
+const aimPoint=new Vector3(),aimOrientation=new Quaternion(),aimEuler=new Euler()
+function aimGrip(position:Triple,rotation:Triple,p:CharacterPose,weight:number):Triple {
+  // Counter torso wind-up so the weapon, not just the character root, meets the
+  // selected tile's direction at contact. No target/occupancy queries in the rig.
+  aimOrientation.setFromEuler(aimEuler.set(p.lean,p.twist,0)).invert()
+  aimPoint.set(0,0.65,1).applyQuaternion(aimOrientation)
+  aimPoint.x-=position[0];aimPoint.y-=position[1];aimPoint.z-=position[2];aimPoint.normalize()
+  return [lerp(rotation[0],Math.atan2(aimPoint.z,aimPoint.y),weight),lerp(rotation[1],0,weight),lerp(rotation[2],-Math.asin(aimPoint.x),weight)]
+}
+// Desired hand sockets in torso coordinates. A shared two-hand grip is transformed
+// from weapon space, rather than independently animating the supporting hand.
+export function handPose(form:CharacterForm,p:CharacterPose,side:-1|1) : { position:Triple; rotation:Triple } {
+  let position:Triple=[0.20,0.55,0.17], rotation:Triple=[0.18,0,0]
+  if(form==='pawn') {
+    const d=p.draw, cut=p.bladeTurn
+    position=[lerp(katanaMount[0]-sheathAxis.x*0.35*d,0.22,cut),lerp(katanaMount[1]-sheathAxis.y*0.35*d,0.66,cut),lerp(katanaMount[2]-sheathAxis.z*0.35*d,0.34,cut)]
+    rotation=[lerp(katanaRest[0],1.40,cut),lerp(0,0.9-Math.max(0,p.swing)*1.8,cut),lerp(katanaRest[2],-0.24,cut)]
+    rotation=aimGrip(position,rotation,p,cut)
+    if(side===-1) return {position:sheathPosition(d),rotation:[-0.15,0,-0.15]}
+  } else if(form==='knight') {
+    position=[0.12,0.65,0.18+p.thrust*0.20];rotation=aimGrip(position,[1.15+p.thrust*0.38,0,0.08],p,p.thrust)
+  } else if(form==='bishop') {
+    position=[0.23,0.64+p.cast*0.08,0.18];rotation=[0.10+p.cast*0.42,0.10,0.10]
+    if(side===-1) return {position:[-0.17,0.63+p.cast*0.10,0.25],rotation:[0.3-p.cast*0.2,0.12,0.08]}
+  } else if(form==='rook'||form==='king') {
+    position=[0.07,0.65+Math.max(0,-p.swing)*0.30,0.20+Math.max(0,p.swing)*0.12]
+    rotation=[0.30+p.swing*1.18,0.16-p.swing*0.38,-0.18+p.swing*0.20]
+    if(form==='king') {position=[0.08,0.68+Math.max(0,-p.swing)*0.32,0.24+Math.max(0,p.swing)*0.10];rotation=[0.18+p.swing*1.40,0.25-p.swing*0.55,-0.35+p.swing*0.42]}
+    rotation=aimGrip(position,rotation,p,Math.max(0,p.swing))
+    if(p.guard) {position=[0.06,0.68,0.25];rotation=[0.18,0,-0.18]}
+  } else {
+    position=[side*0.24-side*p.swing*0.20,0.67+p.swing*0.04,0.18+Math.max(0,p.swing)*0.22]
+    rotation=aimGrip(position,[1.25,side*(0.3-p.swing*0.8),side*-0.22],p,Math.max(0,p.swing))
+    return {position,rotation}
+  }
+  if(side===-1) {
+    // Left hand on the same shaft, below the right hand. Keep both sockets rigid.
+    const [rx,ry,rz]=rotation,grip=-0.115
+    // XYZ Euler's Y column, without allocating vectors/quaternions per frame.
+    const x=-Math.cos(ry)*Math.sin(rz),y=Math.cos(rx)*Math.cos(rz)-Math.sin(rx)*Math.sin(ry)*Math.sin(rz),z=Math.sin(rx)*Math.cos(rz)+Math.cos(rx)*Math.sin(ry)*Math.sin(rz)
+    position=[position[0]+grip*x,position[1]+grip*y,position[2]+grip*z]
+  }
+  return {position,rotation}
+}
+
+// Reusable scratch storage; no geometry or Three objects allocated by the frame solver.
+export function createArmSolver() {
+  const axis=new Vector3(),bend=new Vector3(),elbow=new Vector3(),wrist=new Vector3(),lower=new Vector3(),down=new Vector3(0,-1,0)
+  const upperRotation=new Quaternion(),lowerRotation=new Quaternion(),handRotation=new Quaternion(),desired=new Quaternion(),euler=new Euler()
+  return (shoulder:Vector3,target:Triple,rotation:Triple,side:number)=>{
+    axis.set(...target).sub(shoulder)
+    const distance=Math.max(0.015,Math.min(armLengths.upper+armLengths.forearm-0.001,axis.length()))
+    axis.normalize();wrist.copy(shoulder).addScaledVector(axis,distance)
+    bend.set(side,0.05,-0.65).addScaledVector(axis,-bend.dot(axis)).normalize()
+    const along=(armLengths.upper**2-armLengths.forearm**2+distance**2)/(2*distance)
+    elbow.copy(shoulder).addScaledVector(axis,along).addScaledVector(bend,Math.sqrt(Math.max(0,armLengths.upper**2-along**2)))
+    axis.copy(elbow).sub(shoulder).normalize();upperRotation.setFromUnitVectors(down,axis)
+    lower.copy(wrist).sub(elbow).normalize();desired.setFromUnitVectors(down,lower)
+    lowerRotation.copy(upperRotation).invert().multiply(desired)
+    handRotation.copy(desired).invert().multiply(desired.setFromEuler(euler.set(...rotation)))
+    return {elbow,wrist,upperRotation,lowerRotation,handRotation}
+  }
+}

@@ -14,7 +14,7 @@ export function characterStats(state: GameState) {
   return { form, damage: base + attunement + state.focus, focus: state.focus,
     bonus: form === 'pawn' ? state.passives.sharpener : form === 'king' ? Math.min(passiveBalance.smiteCap,state.passives.smite+passiveBalance.smiteGain) : 0,
     range: form === 'pawn' ? 1 : formBalance[form].attackRange,
-    directions: form === 'pawn' || form === 'rook' || form === 'knight' ? 'Orthogonal' : 'Eight directions',
+    directions: form === 'bishop' ? 'Orthogonal 2 / diagonal 1' : form === 'pawn' || form === 'rook' || form === 'knight' ? 'Orthogonal' : 'Eight directions',
     basicBlock: (form === 'rook' ? formBalance.rook.basicBlock : 0) + (active?.attunement === 'dark' ? formBalance.darkBlock : 0),
     block: state.block, guarding: state.guarding ? combatBalance.guardReduction : 0,
   }

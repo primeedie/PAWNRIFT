@@ -12,6 +12,7 @@ import { perchTiles } from './perching'
 export function basicAttackPattern(form: ChessForm, from: Cell, to: Cell) {
   const x = Math.abs(to.column - from.column), y = Math.abs(to.row - from.row)
   const range = form === 'pawn' ? 1 : formBalance[form].attackRange
+  if (form === 'bishop') return (((x === 0) !== (y === 0)) && Math.max(x, y) <= range) || isAdjacent(from, to)
   return Math.max(x, y) <= range && (form === 'pawn' || form === 'rook' || form === 'knight'
     ? (x === 0) !== (y === 0) : isAdjacent(from, to))
 }

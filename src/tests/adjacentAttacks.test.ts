@@ -68,7 +68,7 @@ describe('ordinary eight-neighbor melee is single-target', () => {
       expect(resolveTurn({ ...state, visible: base.visible }, { kind: 'attack', targetId: target.id })).toBeNull()
     }
   })
-  it('preserves Knight straight range 2 while Bishop attacks all neighbors at range 1', () => {
+  it('preserves Knight straight range 2 and Bishop diagonal reach 1', () => {
     for (const form of ['knight', 'bishop'] as const) {
       const base = game(form), target = enemy(form === 'bishop' ? c(4, 4) : c(5, 3))
       const state = { ...base, enemies: [target], visible: new Set(Array.from({ length: 64 }, (_, id) => id)) }

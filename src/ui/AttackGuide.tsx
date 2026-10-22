@@ -2,7 +2,7 @@ import { formNames, formSymbols, type ChessForm } from '../data/forms'
 import { basicAttackPattern } from '../game/logic/formCombat'
 
 export function AttackGuide({ form }: { form: ChessForm }) {
-  const label = form === 'knight' ? 'Orthogonal reach 2.' : form === 'pawn' || form === 'rook' ? 'Orthogonal reach 1.' : 'Eight directions, reach 1.'
+  const label = form === 'bishop' ? 'Magic: straight 2, diagonal 1.' : form === 'knight' ? 'Orthogonal reach 2.' : form === 'pawn' || form === 'rook' ? 'Orthogonal reach 1.' : 'Eight directions, reach 1.'
   return <figure className="movement-guide">
     <div className="movement-mini-board" role="img" aria-label={`${formNames[form]} basic attack: ${label} Choose one eligible foe; sight and terrain apply.`}>
       {Array.from({ length: 25 }, (_, id) => {

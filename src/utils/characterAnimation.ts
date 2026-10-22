@@ -29,42 +29,52 @@ export function presentationDuration(state: GameState) {
   if (state.lastAction === 'move') return timing.move
   if (state.lastAction === 'attack') return timing.basic
   if (state.lastAction === 'ability') return timing.signature
+  if (state.events.some(event=>event.actor==='pawn'&&event.kind==='hit'&&event.breakdown?.category==='card')) return timing.basic
   return 300
 }
 export type CharacterPose = { lean: number; twist: number; leftArm: number; rightArm: number; leftLeg: number; rightLeg: number;
-  draw: number; slash: number; guard: number; pulse: number; scale: number; cape: number }
+  draw: number; slash: number; guard: number; pulse: number; scale: number; cape: number;
+  swing: number; thrust: number; cast: number; crouch: number; head: number; hip: number; bladeTurn: number }
+const ramp = (t: number, a: number, b: number) => Math.max(0, Math.min(1, (t-a)/(b-a)))
+const envelope = (t: number, a: number, b: number, c: number) => ramp(t,a,b)*(1-ramp(t,b,c))
 export function characterPose(form: CharacterForm, cue: AnimationCue, progress: number, reduced = false): CharacterPose {
   const t = Math.max(0, Math.min(1, progress)), wave = Math.sin(Math.PI * t)
-  const pose: CharacterPose = { lean: 0, twist: 0, leftArm: 0, rightArm: 0, leftLeg: 0, rightLeg: 0, draw: 0, slash: 0, guard: 0, pulse: 0, scale: 1, cape: 0 }
+  const pose: CharacterPose = { lean: form==='knight'?-0.055:form==='rook'?0.035:0, twist: form==='queen'?-0.10:form==='bishop'?0.06:form==='pawn'?-0.055:0,
+    leftArm: 0, rightArm: 0, leftLeg: 0, rightLeg: 0, draw: 0, slash: 0, guard: 0, pulse: 0, scale: 1, cape: 0,
+    swing: 0, thrust: 0, cast: 0, crouch: form==='rook'?0.022:form==='knight'?0.012:0, head: 0, hip: form==='queen'?0.014:form==='pawn'?-0.006:0, bladeTurn: 0 }
   if (cue === 'death') { pose.lean = 0.7 * Math.min(1, t * 2); pose.scale = 1 - 0.05 * Math.min(1, t * 2) }
   if (cue === 'transform' || cue === 'revert') { pose.scale = 1 - wave * 0.07; pose.pulse = wave }
   if (cue === 'move') {
-    const stride = Math.sin(t * Math.PI * 4) * (form === 'bishop' ? 0.08 : form === 'rook' ? 0.18 : 0.3)
+    const stride = Math.sin(t * Math.PI * 4) * (form === 'bishop' ? 0.12 : form === 'rook' ? 0.23 : 0.34)
     pose.leftLeg = stride; pose.rightLeg = -stride; pose.leftArm = -stride * 0.5; pose.rightArm = stride * 0.4
     pose.lean = form === 'knight' ? -0.12 : form === 'rook' ? 0.025 : -0.04; pose.cape = Math.sin(t * Math.PI * 3) * 0.08
   }
   if (cue === 'attack' || cue === 'counter') {
-    pose.slash = wave * (cue === 'counter' ? 1.1 : 1)
+    const impact = cue==='counter' ? 0.34 : characterTiming[form].impact / characterTiming[form].basic
+    pose.swing = envelope(t,0,impact*0.65,impact) * -0.5 + envelope(t,impact*0.65,impact,0.88)
+    pose.slash = envelope(t,impact-0.07,impact,impact+0.18)
     if (form === 'pawn') {
-      pose.draw = t < 0.12 ? 0 : t < 0.22 ? (t - 0.12) / 0.10 : t < 0.36 ? 1 : Math.max(0, (0.60 - t) / 0.24)
-      pose.rightArm = -0.45 * pose.draw; pose.twist = Math.sin(t * Math.PI * 2) * 0.15
-      pose.slash = t > 0.22 && t < 0.4 ? Math.sin((t - 0.22) / 0.18 * Math.PI) : 0
-    } else if (form === 'knight') { pose.rightArm = -0.55 * wave; pose.lean = -0.08 * wave }
-    else if (form === 'bishop') { pose.leftArm = -0.8 * wave; pose.pulse = wave }
-    else if (form === 'rook') { pose.rightArm = -(t < 0.40 ? t / 0.40 : Math.max(0, (0.85 - t) / 0.45)) * 1.25; pose.lean = wave * 0.08 }
-    else if (form === 'king') { pose.rightArm = -0.95 * wave; pose.leftArm = -0.25 * wave; pose.twist = Math.sin(t * Math.PI * 2) * 0.22; pose.lean = wave * 0.05 }
-    else { pose.leftArm = -0.65 * wave; pose.rightArm = -0.8 * Math.sin(Math.PI * Math.min(1, t * 1.3)); pose.twist = wave * 0.18 }
+      // Reach, withdraw along the scabbard, cut rapidly, return, seat the blade.
+      // Fully seated at 397ms, before the authoritative 430ms Sharpener feedback.
+      pose.draw = ramp(t,0.12,0.255)*(1-ramp(t,0.43,0.64))
+      pose.bladeTurn=ramp(t,0.255,0.274)*(1-ramp(t,0.37,0.43))
+      pose.rightArm = -0.45 * pose.draw; pose.twist = -0.18*envelope(t,0,0.16,0.26)+0.24*envelope(t,0.24,0.32,0.64)
+      pose.crouch = 0.025 * envelope(t,0,0.15,0.6)
+    } else if (form === 'knight') { pose.thrust=envelope(t,0.22,impact,0.76); pose.lean=-0.10*pose.thrust }
+    else if (form === 'bishop') { pose.cast=envelope(t,0.04,impact,0.84); pose.pulse=pose.cast; pose.head=-0.06*pose.cast }
+    else if (form === 'rook' || form==='king') { pose.twist=pose.swing*(form==='king'?0.32:0.23); pose.crouch=0.035*wave; pose.lean=-0.055*pose.swing }
+    else { pose.leftArm=-0.32*wave; pose.twist=pose.swing*0.32; pose.hip=-0.02*pose.swing }
   }
   if (cue === 'signature') {
     pose.pulse = wave
-    if (form === 'pawn') { pose.guard = 1; pose.draw = 0.35; pose.rightArm = -0.7 }
-    if (form === 'knight') { pose.rightArm = -0.6 * Math.sin(Math.PI * Math.max(0, Math.min(1, (t - 0.55) / 0.45))); pose.lean = -0.14 * wave }
-    if (form === 'bishop') { pose.leftArm = -1.1 * wave; pose.rightArm = -0.2 * wave }
+    if (form === 'pawn') { pose.guard = 1; pose.draw = wave; pose.bladeTurn=wave; pose.rightArm = -0.7 }
+    if (form === 'knight') { pose.thrust=envelope(t,0.54,440/characterTiming.knight.signature,0.96); pose.lean=-0.14*wave }
+    if (form === 'bishop') { pose.cast=wave; pose.head=-0.08*wave }
     if (form === 'rook') { pose.guard = 1; pose.leftArm = -0.55; pose.rightArm = -0.6 }
-    if (form === 'queen') { pose.leftArm = -0.5 * wave; pose.rightArm = -0.5 * wave; pose.twist = wave * 0.18 }
-    if (form === 'king') { pose.rightArm = -0.65 * wave; pose.leftArm = -0.85 * wave; pose.guard = 1 }
+    if (form === 'queen') { pose.swing=envelope(t,0.1,0.375,0.85); pose.slash=pose.swing; pose.leftArm=-0.5*wave; pose.twist=wave*0.28 }
+    if (form === 'king') { pose.guard=1; pose.crouch=0.045*wave; pose.swing=-0.25*wave }
   }
-  if (cue === 'defend' || cue === 'parry') { pose.guard = 1; pose.draw = form === 'pawn' ? 0.45 : 0; pose.rightArm = -0.65; pose.leftArm = -0.4; pose.lean = wave * 0.04 }
+  if (cue === 'defend' || cue === 'parry') { pose.guard = 1; pose.draw = form === 'pawn' ? wave : 0; pose.bladeTurn=form==='pawn'?wave:0; pose.rightArm = -0.65; pose.leftArm = -0.4; pose.lean = wave * 0.04 }
   if (cue === 'hit') { pose.lean = wave * 0.15; pose.twist = -wave * 0.06 }
   if (reduced) { pose.lean = 0; pose.twist = 0; pose.leftLeg = pose.rightLeg = 0; pose.cape = 0; pose.scale = 1; pose.pulse = 0; pose.slash *= 0.2 }
   return pose

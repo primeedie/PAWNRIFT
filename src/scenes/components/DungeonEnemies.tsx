@@ -1,5 +1,5 @@
 import { TrainingDummy } from './TrainingDummy'
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { Group, MathUtils, MeshLambertMaterial } from 'three'
@@ -18,6 +18,7 @@ import { visibleEnemies } from '../../game/logic/combatIndicators'
 import { currentForm } from '../../game/logic/transformations'
 import { gridDistance } from '../../game/logic/enemyAI'
 import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
+import { impactPresentationDelay } from '../../utils/combatPresentation'
 
 function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhase; interpolate: boolean }) {
   const state = usePawnStore()
@@ -27,17 +28,12 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
   const root = useRef<Group>(null)
   const material = useRef<MeshLambertMaterial>(null)
   const progress = useRef(0)
-  const flash = useRef(0)
-  const lastHp = useRef(enemy.hp)
+  const flash = useRef({key:'',elapsed:0})
   useLayoutEffect(() => {
     progress.current = 0
     const origin = phase === 'enemies' && interpolate ? enemy.from : enemy.cell
     root.current?.position.set(...gridToWorld(origin.column, origin.row))
   }, [enemy.from, enemy.cell, phase, interpolate])
-  useEffect(() => {
-    if (enemy.hp < lastHp.current) flash.current = 0.22
-    lastHp.current = enemy.hp
-  }, [enemy.hp])
   useFrame((_, delta) => {
     if (!root.current) return
     progress.current = Math.min(1, progress.current + delta / (turnTiming.enemyMs / 1000))
@@ -45,8 +41,15 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
     const eased = t * t * (3 - 2 * t)
     const a = gridToWorld(enemy.from.column, enemy.from.row), b = gridToWorld(enemy.cell.column, enemy.cell.row)
     root.current.position.set(MathUtils.lerp(a[0], b[0], eased), Math.sin(t * Math.PI) * 0.035, MathUtils.lerp(a[2], b[2], eased))
-    flash.current = Math.max(0, flash.current - delta)
-    material.current?.color.set(flash.current ? impactColor : enemy.kind === 'dummy' ? '#97745d' : '#626d78')
+    const key=`${state.actionId}:${phase}`
+    if(flash.current.key!==key)flash.current={key,elapsed:0}
+    if(state.runActive)flash.current.elapsed+=delta*1000
+    const flashing=phase!=='ready'&&state.events.some(event=>{
+      const delay=impactPresentationDelay(event,state.events,currentForm(state.transformations))
+      return event.targetId===enemy.id&&(event.kind==='hit'||event.kind==='counter')&&event.seen
+        &&flash.current.elapsed>=delay&&flash.current.elapsed<delay+100
+    })
+    material.current?.color.set(flashing ? impactColor : enemy.kind === 'dummy' ? '#97745d' : '#626d78')
   })
   return (
     <group ref={root} name={enemy.id} onClick={(event) => {

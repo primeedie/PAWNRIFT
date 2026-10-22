@@ -9,7 +9,7 @@ export const transformationRules = { charges: 5, activeFloors: 2, recoveryFloors
 export const formBalance = {
   lightDamage: 1, darkBlock: 1,
   knight: { slideRange: 0, attackRange: 2, damage: 3 },
-  bishop: { slideRange: 7, attackRange: 1, damage: 2 },
+  bishop: { slideRange: 7, attackRange: 2, damage: 2 },
   rook: { slideRange: 7, attackRange: 1, damage: 4, basicBlock: 2 },
   queen: { slideRange: 7, attackRange: 1, damage: 3 },
   king: { slideRange: 0, attackRange: 1, damage: 4 },
