@@ -25,7 +25,10 @@ export type SignatureState = {
 export function emptySignatures(): SignatureState {
   return { cooldowns: { pawn: 0, knight: 0, bishop: 0, rook: 0, queen: 0, king: 0 }, eyeUsed: false, reveal: null, parryReady: false }
 }
-export function signatureFog(state: Pick<GameState, 'dungeon' | 'cell' | 'explored' | 'signatures'>) {
+export function signatureFog(state: Pick<GameState, 'dungeon' | 'cell' | 'explored' | 'signatures' | 'mode' | 'trainingVision'>) {
+  if (state.mode === 'training' && state.trainingVision === 'full') {
+    const visible = new Set(state.dungeon.tiles.map(cellId)); return { visible, explored: new Set(visible) }
+  }
   const fog = updateFog(state.dungeon.tiles, state.cell, state.explored)
   if (!state.signatures.reveal || state.signatures.reveal.turnsLeft <= 0) return fog
   const visible = new Set([...fog.visible, ...state.signatures.reveal.cells])
@@ -80,8 +83,8 @@ export function resolveSignature(state: GameState, options: { destination?: Cell
     signatures: { ...state.signatures, cooldowns: { ...state.signatures.cooldowns, [form]: signatureAbilities[form].cooldown },
       usedThisTurn: form, parryReady: false } }
   const emit = (event: Omit<CombatEvent, 'id' | 'seen'>) => next.events.push({ ...event, id: ++next.eventSerial, seen: true })
-  const strike = (enemy: Enemy, amount: number) => {
-    emitDamage(enemy, [amount + next.focus], emit)
+  const strike = (enemy: Enemy, amount: number, attunement = 0) => {
+    emitDamage(enemy, [amount + attunement + next.focus], emit, { impactDelayMs: form === 'knight' ? 440 : form === 'queen' ? 180 : 0, inputs: [{ source: signatureAbilities[form].name, category: 'signature', attunementName: state.transformations.active?.attunement, base: amount, attunement, focus: next.focus }] })
     next.focus = 0
   }
   if (form === 'pawn') {
@@ -94,7 +97,7 @@ export function resolveSignature(state: GameState, options: { destination?: Cell
     const target = next.enemies.find((enemy) => enemy.id === options.targetId)!
     next.facing = directionTo(next.cell, target.cell)
     emit({ kind: 'move', actor: 'pawn', cell: next.cell })
-    strike(target, balance.lanceDamage + (light ? balance.chargeLightBonus : 0))
+    strike(target, balance.lanceDamage, light ? balance.chargeLightBonus : 0)
     next.block = light ? 0 : balance.chargeDarkBlock
   } else if (form === 'bishop') {
     const cells = chooseAstralRegion(state.dungeon, state.explored, state.turn)!
@@ -135,7 +138,7 @@ export function resolveRoyalDecree(state: GameState) {
     const inner = Math.max(Math.abs(enemy.cell.column - decree.origin.column), Math.abs(enemy.cell.row - decree.origin.row)) <= 1
     const amount = decree.light ? inner ? passiveBalance.decreeLightInner : passiveBalance.decreeLightOuter
       : inner ? passiveBalance.decreeDarkInner : passiveBalance.decreeDarkOuter
-    emitDamage(enemy, [amount + splitBonus(budget, targets.length, index) + state.focus], emit, { effect: 'smite' })
+    emitDamage(enemy, [amount + splitBonus(budget, targets.length, index) + state.focus], emit, { effect: 'smite', inputs: [{ source: 'Royal Decree', category: 'signature', base: amount, passive: splitBonus(budget, targets.length, index), focus: state.focus }] })
     state.focus = 0
     if (!decree.light) pushEnemy(state, enemy, decree.origin)
   })

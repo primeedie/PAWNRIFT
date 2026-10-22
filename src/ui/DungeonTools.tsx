@@ -23,6 +23,7 @@ export default function DungeonTools() {
     <summary>Playtest Tools</summary>
     <div className="playtest-contents">
       <button type="button" onClick={closeHudPanels}>Close tools</button>
+      <button type="button" disabled={state.phase !== 'ready'} onClick={() => { closeHudPanels(); state.enterTraining() }}>Enter Training Grounds</button>
       <p>Public prototype tools. Explicit overrides affect only this test session.</p>
       <details id="transformation-testing"><summary>Transformation testing</summary><TransformationTools /></details>
       <details><summary>Combat testing</summary><CombatTools /></details>

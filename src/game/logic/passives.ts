@@ -5,6 +5,7 @@ import { canOccupy, isAdjacent, type Cell } from './movement'
 import { hasLineOfSight } from './enemyAI'
 import { checkerIndex } from '../../data/terrainPalette'
 import { clearDeadStatuses, damageAttack } from './damage'
+import type { DamageInput } from './combatAnalysis'
 
 export type PassiveState = { sharpener: number; smite: number; kingBasics: number; smiteTurn?: number; smiteSpent?: number }
 export const emptyPassives = (): PassiveState => ({ sharpener: 0, smite: 0, kingBasics: 0 })
@@ -26,13 +27,18 @@ export function splitBonus(bonus: number, count: number, index: number) {
   return count ? Math.floor(bonus / count) + (index < bonus % count ? 1 : 0) : 0
 }
 export function emitDamage(enemy: Enemy, components: number[], emit: EmitImpact, options: {
-  effect?: DamageEffect; followup?: boolean; penetration?: number; direct?: boolean
+  effect?: DamageEffect; followup?: boolean; penetration?: number; direct?: boolean; impactDelayMs?: number; inputs?: DamageInput[]
 } = {}) {
-  const impacts = damageAttack(enemy, components, options)
+  const inputs = components.map((raw, index): DamageInput => options.inputs?.[index] ?? (index > 0
+    ? { source: 'Sharpener', category: options.inputs?.[0]?.category ?? 'basic', base: 0, passive: raw }
+    : options.effect === 'burn' || options.effect === 'bleed' ? { source: options.effect, category: 'dot', base: raw }
+      : options.effect === 'splash' ? { source: 'Swish splash', category: 'basic', base: 0, passive: raw }
+        : { source: 'Direct impact', category: 'basic', base: raw }))
+  const impacts = damageAttack(enemy, components, { ...options, inputs })
   impacts.forEach((impact, index) => emit({ kind: 'hit', actor: 'pawn', targetId: enemy.id, cell: enemy.cell,
-    amount: impact.damage, blocked: impact.blocked, penetrated: impact.penetrated,
+    amount: impact.damage, blocked: impact.blocked, penetrated: impact.penetrated, breakdown: impact.breakdown,
     effect: index > 0 ? 'sharpener' : options.effect,
-    delayMs: options.followup ? index > 0 ? balance.followupMs : balance.mainHitMs : 0 }))
+    delayMs: options.followup ? index > 0 ? balance.followupMs : balance.mainHitMs : options.impactDelayMs ?? 0 }))
   if (enemy.hp === 0 && impacts.length) emit({ kind: 'defeat', actor: enemy.id, cell: enemy.cell })
 }
 export function applyConcussion(enemy: Enemy) {
@@ -68,7 +74,7 @@ export function afterBasic(state: GameState, enemy: Enemy, emit: EmitImpact) {
   }
 }
 export function pushEnemy(state: GameState, enemy: Enemy, origin: Cell) {
-  if (enemy.hp <= 0 || enemy.boss || enemy.uninterruptible) return
+  if (enemy.hp <= 0 || enemy.uninterruptible || (enemy.trainingDummy ? !enemy.trainingDummy.knockback : enemy.boss)) return
   const destination = { column: enemy.cell.column + Math.sign(enemy.cell.column - origin.column),
     row: enemy.cell.row + Math.sign(enemy.cell.row - origin.row) }
   const board = { size: 8, available: state.dungeon.tiles, blocked: state.dungeon.tiles.filter((tile) => tile.blocksMovement),
@@ -86,7 +92,7 @@ export function tickEnemyStatuses(enemy: Enemy, turn: number, emit: EmitImpact) 
   }
   if (enemy.hp > 0 && enemy.bleed) {
     const due = enemy.bleed.filter((stack) => turn > stack.appliedTurn)
-    if (due.length) emitDamage(enemy, [due.length * balance.bleedDamage], emit, { effect: 'bleed', direct: false })
+    if (due.length) emitDamage(enemy, [due.length * balance.bleedDamage], emit, { effect: 'bleed', direct: false, inputs: [{ source: 'Bleed', category: 'dot', base: due.length * balance.bleedDamage, dotStacks: due.map((stack) => ({ remaining: stack.turnsLeft, raw: balance.bleedDamage })) }] })
     if (enemy.bleed) enemy.bleed = enemy.bleed.map((stack) => ({ ...stack,
       turnsLeft: stack.turnsLeft - (turn > stack.appliedTurn ? 1 : 0) })).filter((stack) => stack.turnsLeft > 0)
   }

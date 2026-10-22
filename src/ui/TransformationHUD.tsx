@@ -32,7 +32,7 @@ export function TransformationHUD() {
   const closePanel = (button: HTMLButtonElement) => { const details = button.closest('details'); if (details) details.open = false }
   const openTesting = () => {
     document.querySelectorAll<HTMLDetailsElement>('details[name="hud-panels"]').forEach((panel) => { panel.open = false })
-    const tools = document.querySelector<HTMLDetailsElement>('#dungeon-tools')
+    const tools = document.querySelector<HTMLDetailsElement>(state.training ? '#training-tools' : '#dungeon-tools')
     if (tools) {
       tools.open = true
       const section = tools.querySelector<HTMLDetailsElement>('#transformation-testing')

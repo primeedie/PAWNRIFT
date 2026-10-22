@@ -314,3 +314,7 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .enemy-label .status-burn { color: #e1b084; }
 .enemy-label .status-bleed { color: #e29a9a; }
 .enemy-label .status-concussion { color: #e1c477; }
+.training-dummy-settings fieldset, #training-tools fieldset { display: grid; gap: 7px; margin: 8px 0; border: 1px solid #687a83; padding: 8px; min-width: 0; }
+#training-tools .analysis-log { padding-left: 20px; margin: 8px 0; text-align: left; }
+#training-tools .analysis-log li { margin-bottom: 8px; overflow-wrap: anywhere; }
+#training-tools .diagnostic-values { font-size: 0.75rem; }

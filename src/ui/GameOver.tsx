@@ -16,6 +16,10 @@ export function GameOver() {
     if (!element.open) element.showModal()
     return () => { if (element.open) element.close() }
   }, [])
+  if (state.training) return <dialog ref={dialog} className="game-over-dialog" aria-labelledby="training-defeat" onCancel={(event) => event.preventDefault()}>
+    <h2 id="training-defeat">Training paused</h2><p>The real run is preserved.</p>
+    <button autoFocus onClick={() => state.train({ kind: 'reset' })}>Reset training</button><button onClick={state.leaveTraining}>Leave Training</button>
+  </dialog>
   return (
     <dialog ref={dialog} className="game-over-dialog" aria-labelledby="game-over-title" onCancel={(event) => event.preventDefault()}>
       <h2 id="game-over-title">GAME OVER</h2>

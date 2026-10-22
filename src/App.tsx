@@ -12,6 +12,7 @@ import { useHudLayout } from './ui/useHudLayout'
 import { PLAYTEST_TOOLS_ENABLED } from './game/logic/playtesting'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
+const TrainingTools = lazy(() => import('./ui/TrainingTools'))
 const DungeonTools = lazy(() => import('./ui/DungeonTools'))
 
 export function App() {
@@ -19,6 +20,8 @@ export function App() {
   const screen = useAppStore((state) => state.screen)
   const showTitle = useAppStore((state) => state.showTitle)
   const defeated = usePawnStore((state) => state.status === 'defeat' || state.hp <= 0)
+  const training = usePawnStore((state) => state.training)
+  const leaveTraining = usePawnStore((state) => state.leaveTraining)
   const floor = usePawnStore((state) => state.floorNumber)
   const root = useRef<HTMLElement>(null)
   useHudLayout(root, screen === 'scene')
@@ -28,18 +31,19 @@ export function App() {
   return (
     <TooltipProvider><main ref={root} className="scene-screen" tabIndex={-1}>
       <header className="scene-header">
-        <div><h1>PAWNRIFT</h1><p className="level-label">LEVEL {floor}</p><TransformationHUD /></div>
+        <div><h1>PAWNRIFT</h1><p className="level-label">{training ? 'TRAINING GROUNDS' : `LEVEL ${floor}`}</p><TransformationHUD /></div>
         <CombatStatus />
       </header>
       <div className="scene-viewport">
         <Suspense fallback={<p className="scene-loading" role="status">Opening the box…</p>}>
           <FoundationScene />
         </Suspense>
-        {PLAYTEST_TOOLS_ENABLED && <Suspense fallback={null}><DungeonTools /></Suspense>}
+        {PLAYTEST_TOOLS_ENABLED && <Suspense fallback={null}>{training ? <TrainingTools /> : <DungeonTools />}</Suspense>}
       </div>
       <footer className="scene-footer" data-tooltip-avoid>
         <div className="game-actions">
           <CombatHUD />
+          {training && <button className="secondary-button" onClick={leaveTraining}>Leave Training</button>}
           <button className="secondary-button" onClick={showTitle}>Return to menu</button>
         </div>
         <div className="scene-controls" role="img" aria-label="Move with WASD or arrows. Knight walks normally; Shift selects four L-jumps. Bishop walks normally; Shift selects diagonals. Slides require a clear currently visible lane. Click highlighted destinations for all jumps/slides. Faint outlines are unscouted attempts. Scroll to zoom.">

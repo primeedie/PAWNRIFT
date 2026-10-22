@@ -4,6 +4,7 @@ import { canSeeContent } from './visibility'
 
 export function combatIndicator(event: CombatEvent) {
   if (!event.seen) return null
+  if (event.kind === 'stun') return { text: 'STUN', tone: 'blocked' }
   if (event.kind === 'parry') return { text: 'PARRIED', tone: 'blocked' }
   if (event.kind === 'heal' && (event.amount ?? 0) > 0) return { text: `+${event.amount}`, tone: 'heal' }
   if (event.kind === 'hit' || event.kind === 'counter') return {

@@ -1,3 +1,5 @@
+import { createTraining, trainingControl, type TrainingCommand, type TrainingSession } from '../logic/training'
+import { recordAnalysis } from '../logic/combatAnalysis'
 import { create } from 'zustand'
 import { type Cell } from '../logic/movement'
 import { floorSeed, generateDungeon, type LayoutStyle } from '../logic/dungeon'
@@ -15,6 +17,10 @@ const initialDungeon = generateDungeon(newRunSeed(''))
 
 export type TurnPhase = 'ready' | 'player' | 'enemies'
 type PawnState = GameState & {
+  training: TrainingSession | null
+  enterTraining: () => boolean
+  leaveTraining: () => boolean
+  train: (command: TrainingCommand) => boolean
   from: Cell
   fromElevation: number
   isMoving: boolean
@@ -59,8 +65,39 @@ type PawnState = GameState & {
   advancePlayback: (actionId: number, phase: TurnPhase) => void
 }
 
+// Complete data-only snapshot. Functions stay on the store; all gameplay data is deep copied.
+let savedRun: Partial<PawnState> | undefined
+let trainingId = 0
 export const usePawnStore = create<PawnState>((set, get) => ({
   ...createGame(initialDungeon),
+  training: null,
+  enterTraining: () => {
+    const state = get()
+    if (state.training || state.phase !== 'ready') return false
+    savedRun = structuredClone(Object.fromEntries(Object.entries(state).filter(([, value]) => typeof value !== 'function'))) as Partial<PawnState>
+    const fresh = createTraining(++trainingId)
+    set({ ...fresh.game, training: fresh.session, from: fresh.game.cell, fromElevation: 0, isMoving: false, phase: 'ready',
+      actionId: state.actionId + 1, runActive: true, revealAll: false, selectedCardId: undefined, selectedAbility: false,
+      abilityDestination: undefined, diagnosticLayers: [], diagnosticsEnabled: false, lastMovementRejection: undefined, lastAction: undefined })
+    return true
+  },
+  leaveTraining: () => {
+    const state = get()
+    if (!state.training || !savedRun) return false
+    const methods = Object.fromEntries(Object.entries(state).filter(([, value]) => typeof value === 'function'))
+    const restore = savedRun; savedRun = undefined
+    set({ ...methods, ...restore, training: null, actionId: state.actionId + 1 } as PawnState, true)
+    return true
+  },
+  train: (command) => {
+    const state = get()
+    if (!state.training || state.phase !== 'ready') return false
+    const result = trainingControl(state, state.training, command)
+    if (!result) return false
+    set({ ...result.game, training: result.session, actionId: state.actionId + 1, from: result.game.cell,
+      fromElevation: result.game.elevation, isMoving: false, selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined })
+    return true
+  },
   from: initialDungeon.spawn,
   fromElevation: 0,
   isMoving: false,
@@ -85,7 +122,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   regenerateFloor: (seed, style) => {
     const state = get()
-    if (!state.runActive || state.phase !== 'ready' || state.hp <= 0) return false
+    if (state.training || !state.runActive || state.phase !== 'ready' || state.hp <= 0) return false
     const dungeon = generateDungeon(seed ?? state.dungeon.seed, style ?? (seed === undefined ? state.dungeon.style : undefined))
     set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck, energy: state.energy, maxEnergy: state.maxEnergy,
       focus: state.focus, turn: state.turn, transformations: state.transformations, passives: { ...state.passives },
@@ -116,6 +153,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   transitionFloor: (seed, testing = false) => {
     const state = get()
+    if (state.training) return false
     if ((testing && !PLAYTEST_TOOLS_ENABLED) || state.phase !== 'ready' || state.hp <= 0 || (!state.runActive)
       || (state.status !== 'victory' && !testing)) return false
     const dungeon = generateDungeon(seed ?? floorSeed(state.masterSeed, state.floorNumber + 1))
@@ -139,7 +177,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   debugBossWin: (form, attunement) => {
     const state = get()
-    if (PLAYTEST_TOOLS_ENABLED && state.runActive && state.phase === 'ready' && state.status === 'playing')
+    if (!state.training && PLAYTEST_TOOLS_ENABLED && state.runActive && state.phase === 'ready' && state.status === 'playing')
       set({ transformations: recordTransformationBossWin(state.transformations, form, attunement), playtestMode: true })
   },
   debugDefeat: () => {
@@ -158,11 +196,12 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     const cardInstanceId = get().selectedCardId
     return cardInstanceId ? get().submitAction({ kind: 'card', cardInstanceId, target }) : false
   },
-  restartRun: () => get().loadDungeon(newRunSeed(get().dungeon.seed)),
+  restartRun: () => { const state = get(); if (state.training) state.train({ kind: 'reset' }); else state.loadDungeon(newRunSeed(state.dungeon.seed)) },
   suspendRun: () => set((state) => ({ runActive: false, selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, actionId: state.actionId + 1 })),
   resumeRun: () => set((state) => ({ runActive: true, actionId: state.actionId + 1 })),
   loadDungeon: (seed, style) => {
     const state = get()
+    if (state.training) return
     if (state.status === 'defeat' && !state.deathRetentionDone && retentionChoices(state.transformations).length) return
     const retained = state.status === 'defeat' && !state.deathRetentionDone
       ? retainAfterDeath(state.transformations)! : transformationsForNewRun(state.transformations)
@@ -204,7 +243,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     }
     if (phase === 'player') {
       const resolved = resolveEnemyPhase(state)
-      set({ ...resolved, from: state.cell, isMoving: false,
+      set({ ...resolved, training: state.training ? { ...state.training, analysis: recordAnalysis(state.training.analysis, resolved.events, state.actionId) } : null, from: state.cell, isMoving: false,
         phase: resolved.status === 'defeat' ? 'ready' : 'enemies',
         actionId: resolved.status === 'defeat' ? state.actionId + 1 : state.actionId })
     }

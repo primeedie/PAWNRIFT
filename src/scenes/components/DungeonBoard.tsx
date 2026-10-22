@@ -46,7 +46,10 @@ export function DungeonBoard() {
                 scale={tile.decoration.kind === 'tree' ? 0.32 : 0.42} rotation={[0, tile.rotation, 0]}>
                 <GeometricProp kind={tile.decoration.kind} />
               </group>}
-              {sameCell(tile, dungeon.exit) && <ExitMarker />}
+              {state.signatures.reveal?.cells.includes(id) && <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
+                <ringGeometry args={[0.57, 0.585, 4]} /><meshBasicMaterial color={state.signatures.reveal.foresight ? '#a698c1' : '#c1aa76'} transparent opacity={0.6} depthWrite={false} />
+              </mesh>}
+              {state.mode !== 'training' && sameCell(tile, dungeon.exit) && <ExitMarker />}
             </FoggedTerrain>
             {preview && <group position={[0, state.explored.has(id) ? elevationAt(dungeon, tile) : 0, 0]}><LegalTileHighlight uncertain={preview.uncertain}
               selected={!!state.abilityDestination && sameCell(state.abilityDestination, tile)} /></group>}

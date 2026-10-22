@@ -1,6 +1,6 @@
 ﻿# PAWNRIFT
 
-Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7A.4 adds form passives, timed statuses, attack mini-boards and a public King test preview; movement, signatures and compact HUD remain intact. Transformation lifecycle, cards and fresh normal-run seeds remain intact.
+Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7B adds humanoid chess models, event-driven animations and isolated public Training Grounds with configurable dummies and real damage analysis. Stage 7A.4 mechanics remain intact; the earlier King prototype remains outside training. Transformation lifecycle, cards and fresh normal-run seeds remain intact.
 
 **Stack:** TypeScript, React/Vite, Three.js/React Three Fiber, Drei, Zustand, and Vitest. No backend or runtime services.
 
@@ -96,6 +96,8 @@ Cloudflare Pages setup (deployment is authorized):
 Vite's base is explicitly `/`. This app uses state-based navigation at the domain root. Cloudflare Pages supplies SPA fallback when no top-level `404.html` exists, so no custom redirect file is needed. See the official [React deployment guide](https://developers.cloudflare.com/pages/framework-guides/deploy-a-react-site/), [SPA behavior](https://developers.cloudflare.com/pages/configuration/serving-pages/), and [Node version settings](https://developers.cloudflare.com/pages/configuration/build-image/).
 
 ## Architecture and verification
+
+Stage 7B: open **Playtest Tools → Enter Training Grounds**, then close controls to use the normal board, WASD/arrows, E, Q, Space and cards. Training controls offer five forms/attunements, open/line/cluster/blocked/perch/Eye scenarios, 1–3 configurable wooden dummies, passive/sparring responses and player/target positioning. Eye uses actual fog; other training scenarios expose the arena for full-lane movement. **Combat Analysis** shows resolved damage components, independent Bleed contributions, mitigation/overkill and DPT. Reset comparison restores configured targets; Leave Training restores the paused run. Training is not persisted on refresh. The earlier King prototype remains outside training with no new model.
 
 `src/game/logic` contains pure generation, movement, fog, AI, cards/deck, and turn rules. `src/game/state` coordinates atomic run state and navigation. `src/scenes` presents those rules; `src/ui` holds controls/hand and playback coordination; `src/data` holds typed cards, balance, and palettes; `src/utils` holds seeded randomness and framing math.
 

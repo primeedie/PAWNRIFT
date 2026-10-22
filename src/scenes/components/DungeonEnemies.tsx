@@ -1,3 +1,4 @@
+import { TrainingDummy } from './TrainingDummy'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
@@ -44,7 +45,7 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
     const a = gridToWorld(enemy.from.column, enemy.from.row), b = gridToWorld(enemy.cell.column, enemy.cell.row)
     root.current.position.set(MathUtils.lerp(a[0], b[0], eased), Math.sin(t * Math.PI) * 0.035, MathUtils.lerp(a[2], b[2], eased))
     flash.current = Math.max(0, flash.current - delta)
-    material.current?.color.set(flash.current ? impactColor : '#626d78')
+    material.current?.color.set(flash.current ? impactColor : enemy.kind === 'dummy' ? '#97745d' : '#626d78')
   })
   return (
     <group ref={root} name={enemy.id} onClick={(event) => {
@@ -56,6 +57,7 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
       else if (state.selectedAbility) state.tryAbility(currentForm(state.transformations) === 'knight' ? enemy.id : undefined)
       else state.tryAttack(enemy.id)
     }}>
+      {enemy.kind === 'dummy' ? <TrainingDummy materialRef={material} /> : <>
       <mesh position={[0, 0.08, 0]}>
         <cylinderGeometry args={[0.26, 0.29, 0.16, 8]} />
         <meshLambertMaterial color="#46515f" flatShading />
@@ -76,15 +78,16 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
         <boxGeometry args={[0.16, 0.045, 0.035]} />
         <meshBasicMaterial color={enemy.intent === 'attack' ? '#f2ba76' : '#c9786f'} />
       </mesh>
-      <Html position={[0, 1.05, 0]} center zIndexRange={[4, 0]} className="enemy-label" style={{ pointerEvents: 'none' }}>
-        <span>Rookling · {enemy.hp}/{enemy.maxHp}</span>
+      </>}
+      <Html position={[0, 1.18, 0]} center zIndexRange={[4, 0]} className="enemy-label" style={{ pointerEvents: 'none' }}>
+        <span>{enemy.kind === 'dummy' ? `Dummy (${enemy.boss ? 'boss' : enemy.elite ? 'elite' : 'normal'})` : 'Rookling'} · {enemy.hp}/{enemy.maxHp}</span>
         <span className="health-track" role="progressbar" aria-label="Rookling health" aria-valuemin={0} aria-valuemax={enemy.maxHp} aria-valuenow={enemy.hp}>
           <span style={{ width: `${100 * enemy.hp / enemy.maxHp}%` }} />
         </span>
         <small data-threat={enemy.intent === 'attack'}>{enemyIntentLabel(enemy)}</small>
         {foresight && <small>Next: {foresight}</small>}
         {enemy.burn && <small className="status-burn">Burn 1 x {enemy.burn.turnsLeft}</small>}
-        {!!enemy.bleed?.length && <small className="status-bleed">Bleed {enemy.bleed.length}/3</small>}
+        {!!enemy.bleed?.length && <small className="status-bleed">Bleed {enemy.bleed.map((stack) => `◆${stack.turnsLeft}`).join(' ')}</small>}
         {enemy.concussion !== undefined && <small className="status-concussion">Concussion {enemy.concussion === 0 ? 'next response' : enemy.concussion}</small>}
         {enemy.stunned && <small className="status-concussion">STUNNED</small>}
         {!!enemy.stunImmunity && <small>Stun immunity {enemy.stunImmunity}</small>}

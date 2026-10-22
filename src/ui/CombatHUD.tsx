@@ -13,10 +13,10 @@ function describeEvent(event: CombatEvent) {
     case 'guard': return 'Guard ready'
     case 'heal': return `Restored ${event.amount} HP`
     case 'focus': return 'Focus gained'
-    case 'windup': return event.actor === 'pawn' ? 'Royal Decree winding up' : 'Rookling readies a strike'
+    case 'windup': return event.actor === 'pawn' ? 'Royal Decree winding up' : event.actor.startsWith('dummy-') ? 'Dummy readies a strike' : 'Rookling readies a strike'
     case 'stun': return 'Concussion: response skipped'
-    case 'miss': return 'Rookling misses'
-    case 'defeat': return event.actor === 'pawn' ? 'Defeated' : 'Rookling defeated'
+    case 'miss': return event.actor.startsWith('dummy-') ? 'Dummy misses' : 'Rookling misses'
+    case 'defeat': return event.actor === 'pawn' ? 'Defeated' : event.actor.startsWith('dummy-') ? 'Dummy defeated' : 'Rookling defeated'
     case 'victory': return 'Floor cleared'
     default: return ''
   }

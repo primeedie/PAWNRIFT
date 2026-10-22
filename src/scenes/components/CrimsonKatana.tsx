@@ -1,8 +1,28 @@
-import { useRef } from 'react'
+import { useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { usePawnStore } from '../../game/state/pawnStore'
+import type { CharacterPose } from '../../utils/characterAnimation'
 import { passiveBalance } from '../../data/passives'
-import { DoubleSide, ExtrudeGeometry, Group, Shape } from 'three'
+import { BoxGeometry, DoubleSide, ExtrudeGeometry, Group, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, RingGeometry, Shape } from 'three'
+
+const katanaBox = new BoxGeometry(1, 1, 1)
+const katanaMaterials = {
+  guard: new MeshStandardMaterial({ color: '#30313b', metalness: 0.35, roughness: 0.6, flatShading: true }),
+  collar: new MeshStandardMaterial({ color: '#743042', metalness: 0.25, roughness: 0.65, flatShading: true }),
+  grip: new MeshLambertMaterial({ color: '#22252c', flatShading: true }),
+  wrap: new MeshLambertMaterial({ color: '#902a3c', flatShading: true }),
+  pommel: new MeshStandardMaterial({ color: '#35323e', metalness: 0.3, roughness: 0.65, flatShading: true }),
+  mouth: new MeshStandardMaterial({ color: '#45414b', metalness: 0.3, roughness: 0.65, flatShading: true }),
+  crimsonFitting: new MeshLambertMaterial({ color: '#722c3d', flatShading: true }),
+  tip: new MeshStandardMaterial({ color: '#47404b', metalness: 0.3, roughness: 0.65, flatShading: true }),
+  mount: new MeshLambertMaterial({ color: '#34313a', flatShading: true }),
+  spine: new MeshStandardMaterial({ color: '#211c25', roughness: 0.65, metalness: 0.25, flatShading: true }),
+  blade: new MeshStandardMaterial({ color: '#8f1831', emissive: '#770d22', emissiveIntensity: 0.12, roughness: 0.6, metalness: 0.15, flatShading: true }),
+  edge: new MeshStandardMaterial({ color: '#ee4253', emissive: '#bd2039', emissiveIntensity: 0.22, roughness: 0.5, metalness: 0.15, flatShading: true }),
+  sheath: new MeshStandardMaterial({ color: '#24242d', roughness: 0.8, metalness: 0.1, flatShading: true }),
+  trail: new MeshBasicMaterial({ color: '#c44b5b', transparent: true, opacity: 0.45, depthWrite: false, side: DoubleSide }),
+}
+const trailGeometry = new RingGeometry(0.45, 0.49, 12, 1, 0, 1.4)
 
 // Original faceted sweep, split into contiguous spine/body/edge bands.
 // Each station is [height, spine X, cutting-edge X]; the final point is the tip.
@@ -34,15 +54,9 @@ const edge = bladeBand(0.84, 1)
 export function CrimsonBlade() {
   return (
       <group name="crimson-blade" dispose={null}>
-        <mesh geometry={spine}>
-          <meshStandardMaterial color="#211c25" roughness={0.65} metalness={0.25} flatShading />
-        </mesh>
-        <mesh geometry={blade}>
-          <meshStandardMaterial color="#8f1831" emissive="#770d22" emissiveIntensity={0.12} roughness={0.6} metalness={0.15} flatShading />
-        </mesh>
-        <mesh geometry={edge}>
-          <meshStandardMaterial color="#ee4253" emissive="#bd2039" emissiveIntensity={0.22} roughness={0.5} metalness={0.15} flatShading />
-        </mesh>
+        <mesh geometry={spine} material={katanaMaterials.spine} />
+        <mesh geometry={blade} material={katanaMaterials.blade} />
+        <mesh geometry={edge} material={katanaMaterials.edge} />
       </group>
   )
 }
@@ -50,28 +64,13 @@ export function CrimsonBlade() {
 export function KatanaHilt() {
   return (
     <group name="katana-hilt">
-      <mesh position={[0, 0.115, 0]} rotation={[0, Math.PI / 8, 0]}>
-        <boxGeometry args={[0.17, 0.035, 0.12]} />
-        <meshStandardMaterial color="#30313b" metalness={0.35} roughness={0.6} />
-      </mesh>
-      <mesh position={[0, 0.145, 0]}>
-        <boxGeometry args={[0.084, 0.035, 0.06]} />
-        <meshStandardMaterial color="#743042" metalness={0.25} roughness={0.65} />
-      </mesh>
-      <mesh position={[0, -0.005, 0]}>
-        <boxGeometry args={[0.063, 0.2, 0.065]} />
-        <meshLambertMaterial color="#22252c" />
-      </mesh>
+      <mesh position={[0, 0.115, 0]} rotation={[0, Math.PI / 8, 0]} geometry={katanaBox} scale={[0.17, 0.035, 0.12]} material={katanaMaterials.guard} />
+      <mesh position={[0, 0.145, 0]} geometry={katanaBox} scale={[0.084, 0.035, 0.06]} material={katanaMaterials.collar} />
+      <mesh position={[0, -0.005, 0]} geometry={katanaBox} scale={[0.063, 0.2, 0.065]} material={katanaMaterials.grip} />
       {[-0.065, -0.015, 0.035, 0.075].map((y) => (
-        <mesh key={y} position={[0, y, 0]} rotation={[0, 0, -0.35]}>
-          <boxGeometry args={[0.073, 0.017, 0.071]} />
-          <meshLambertMaterial color="#902a3c" />
-        </mesh>
+        <mesh key={y} position={[0, y, 0]} rotation={[0, 0, -0.35]} geometry={katanaBox} scale={[0.073, 0.017, 0.071]} material={katanaMaterials.wrap} />
       ))}
-      <mesh position={[0, -0.115, 0]}>
-        <boxGeometry args={[0.078, 0.03, 0.078]} />
-        <meshStandardMaterial color="#35323e" metalness={0.3} roughness={0.65} />
-      </mesh>
+      <mesh position={[0, -0.115, 0]} geometry={katanaBox} scale={[0.078, 0.03, 0.078]} material={katanaMaterials.pommel} />
     </group>
   )
 }
@@ -100,33 +99,27 @@ sheathGeometry.translate(0, 0, -0.0375)
 export function KatanaSheath() {
   return (
     <group name="katana-sheath">
-      <mesh geometry={sheathGeometry} dispose={null}>
-        <meshStandardMaterial color="#24242d" roughness={0.8} metalness={0.1} flatShading />
-      </mesh>
-      <mesh position={[0.002, 0.17, 0]}>
-        <boxGeometry args={[0.144, 0.055, 0.086]} />
-        <meshStandardMaterial color="#45414b" roughness={0.65} metalness={0.3} />
-      </mesh>
-      <mesh position={[0.004, 0.22, 0]}>
-        <boxGeometry args={[0.137, 0.025, 0.08]} />
-        <meshLambertMaterial color="#722c3d" />
-      </mesh>
-      <mesh position={[0.058, 1.025, 0]} rotation={[0, 0, -0.35]}>
-        <boxGeometry args={[0.083, 0.085, 0.084]} />
-        <meshStandardMaterial color="#47404b" roughness={0.65} metalness={0.3} />
-      </mesh>
-      <mesh position={[0.052, 0.976, 0]} rotation={[0, 0, -0.2]}>
-        <boxGeometry args={[0.094, 0.024, 0.082]} />
-        <meshLambertMaterial color="#722c3d" />
-      </mesh>
+      <mesh geometry={sheathGeometry} material={katanaMaterials.sheath} />
+      <mesh position={[0.002, 0.17, 0]} geometry={katanaBox} scale={[0.144, 0.055, 0.086]} material={katanaMaterials.mouth} />
+      <mesh position={[0.004, 0.22, 0]} geometry={katanaBox} scale={[0.137, 0.025, 0.08]} material={katanaMaterials.crimsonFitting} />
+      <mesh position={[0.058, 1.025, 0]} rotation={[0, 0, -0.35]} geometry={katanaBox} scale={[0.083, 0.085, 0.084]} material={katanaMaterials.tip} />
+      <mesh position={[0.052, 0.976, 0]} rotation={[0, 0, -0.2]} geometry={katanaBox} scale={[0.094, 0.024, 0.082]} material={katanaMaterials.crimsonFitting} />
     </group>
   )
 }
 
-export function SheathedKatana() {
+export function SheathedKatana({ motion: externalMotion }: { motion?: RefObject<CharacterPose> } = {}) {
   const drawn = useRef<Group>(null), stored = useRef<Group>(null), trail = useRef<Group>(null)
   const motion = useRef({ id: -1, elapsed: 0 })
   useFrame((_, delta) => {
+    if (externalMotion && drawn.current && stored.current && trail.current) {
+      const p = externalMotion.current, unsheathed = p.draw > 0.04
+      stored.current.visible = !unsheathed; drawn.current.visible = unsheathed
+      drawn.current.position.set(0.35 * p.draw, -0.86 * p.draw, 0.08 * p.draw)
+      drawn.current.rotation.z = -1.1 * p.slash + p.guard * 0.25
+      trail.current.visible = p.slash > 0.2 && !p.guard
+      return
+    }
     const state = usePawnStore.getState()
     if (motion.current.id !== state.actionId) motion.current = { id: state.actionId, elapsed: 0 }
     const playing = state.runActive && state.phase === 'player' && state.lastAction === 'attack' && !state.transformations.active
@@ -146,16 +139,13 @@ export function SheathedKatana() {
     // Pawn faces +Z: left is -X, scabbard extends backward along -Z.
     // Separate attachment / sheath / sword pivots prepare future draw motions only.
     <group name="left-hip-weapon-rig">
-      <mesh name="hip-mount" position={[-0.265, 0.43, 0.11]}>
-        <boxGeometry args={[0.23, 0.04, 0.05]} />
-        <meshLambertMaterial color="#34313a" />
-      </mesh>
-      <group name="left-hip-weapon-attachment" position={[-0.4, 0.45, 0.1]} rotation={[-1.82, 0, 0]} scale={0.64}>
+      <mesh name="hip-mount" position={[-0.18, 0.43, 0.11]} geometry={katanaBox} scale={[0.23, 0.04, 0.05]} material={katanaMaterials.mount} />
+      <group name="left-hip-weapon-attachment" position={[-0.26, 0.45, 0.1]} rotation={[-1.82, 0, 0]} scale={0.64}>
         <KatanaSheath />
         <group ref={stored} name="sheathed-sword"><CrimsonKatana bladeVisible={false} /></group>
         <group ref={drawn} name="sword-draw-pivot" visible={false}><CrimsonKatana /></group>
         <group ref={trail} position={[0.25, -0.25, 0]} visible={false} rotation={[0, 0, -0.5]}>
-          <mesh><ringGeometry args={[0.45, 0.49, 12, 1, 0, 1.4]} /><meshBasicMaterial color="#c44b5b" transparent opacity={0.45} depthWrite={false} side={DoubleSide} /></mesh>
+          <mesh geometry={trailGeometry} material={katanaMaterials.trail} />
         </group>
       </group>
     </group>
