@@ -44,7 +44,7 @@ export function CombatHUD() {
   return (
     <div className="combat-hud">
       <div className="combat-actions" aria-label="Combat actions">
-        <button disabled={locked || attackTargets(state).length === 0} onClick={() => state.tryAttack()} title="Attack an adjacent enemy (E)"><kbd>E</kbd><span>– Attack</span></button>
+        <button disabled={locked || attackTargets(state).length === 0} onClick={() => state.tryAttack()} title="Attack one eligible enemy (E); ordinary melee reaches all 8 neighbors"><kbd>E</kbd><span>– Attack</span></button>
         <button disabled={locked} onClick={() => state.submitAction({ kind: 'defend' })} title="Guard and counter this turn (Q)"><kbd>Q</kbd><span>– Defend</span></button>
         <button disabled={locked} onClick={() => state.submitAction({ kind: 'wait' })} title="Wait one turn (Space or period)"><kbd>Space</kbd><span>– Wait</span></button>
         {state.status === 'victory' && <button onClick={() => state.regenerateFloor()}>Restart floor</button>}

@@ -21,6 +21,18 @@ const lanes = [ ['bishop', c(7, 7)], ['rook', c(7, 0)], ['rook', c(0, 7)],
   ['queen', c(7, 7)], ['queen', c(7, 0)], ['queen', c(0, 7)] ] as const
 
 describe('full-lane sliding', () => {
+  it('Bishop can stop at every visible tile in a seven-cell diagonal, in all four directions', () => {
+    for (const origin of [c(0, 0), c(7, 0), c(0, 7), c(7, 7)]) {
+      const state = { ...game('bishop'), cell: origin }
+      for (let distance = 1; distance <= 7; distance++) {
+        const destination = c(origin.column + (origin.column ? -distance : distance), origin.row + (origin.row ? -distance : distance))
+        expect(movementPreviews(state)).toContainEqual({ ...destination, uncertain: false })
+        const moved = resolveTurn(state, { kind: 'move', destination })!
+        expect(moved.cell).toEqual(destination)
+        expect(moved.turn).toBe(1)
+      }
+    }
+  })
   it.each(lanes)('%s slides seven clear visible cells in one action with one enemy response', (form, destination) => {
     const base = game(form)
     const enemyCell = destination.row === 0 ? c(6, 1) : c(1, 6)

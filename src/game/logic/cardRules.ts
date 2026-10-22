@@ -1,8 +1,8 @@
 import { cardBalance, cards } from '../../data/cards'
 import type { GameState } from './combat'
 import { cellId } from './dungeon'
-import { gridDistance, hasLineOfSight } from './enemyAI'
-import { canMove, sameCell, type Cell } from './movement'
+import { hasLineOfSight } from './enemyAI'
+import { canMove, isAdjacent, sameCell, type Cell } from './movement'
 import { canSeeContent } from './visibility'
 import { BOARD_SIZE } from '../../utils/grid'
 
@@ -17,10 +17,10 @@ export function cardOptions(state: GameState, instanceId: string): { reason?: st
   const effect = card.effect
   if (effect.kind === 'damage') {
     const targets: CardTarget[] = state.enemies.filter((enemy) => enemy.hp > 0
-      && gridDistance(state.cell, enemy.cell) === 1 && canSeeContent(cellId(enemy.cell), state)
+      && isAdjacent(state.cell, enemy.cell) && canSeeContent(cellId(enemy.cell), state)
       && hasLineOfSight(state.dungeon, state.cell, enemy.cell)
       && !state.occupied.some((cell) => sameCell(cell, enemy.cell))
-      && !state.dungeon.tiles.find((tile) => sameCell(tile, enemy.cell))?.blocksMovement)
+      && state.dungeon.tiles.some((tile) => sameCell(tile, enemy.cell) && !tile.blocksMovement))
       .map((enemy) => ({ kind: 'enemy', enemyId: enemy.id }))
     return { targets, reason: targets.length ? undefined : 'No adjacent visible foe' }
   }

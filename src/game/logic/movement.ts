@@ -20,6 +20,11 @@ export function sameCell(a: Cell, b: Cell) {
   return a.column === b.column && a.row === b.row
 }
 
+// Melee adjacency includes all eight neighboring cells; movement keeps its own piece rules.
+export function isAdjacent(a: Cell, b: Cell) {
+  return Math.max(Math.abs(a.column - b.column), Math.abs(a.row - b.row)) === 1
+}
+
 export function adjacentCell(cell: Cell, direction: Direction): Cell {
   const step = steps[direction]
   return { column: cell.column + step.column, row: cell.row + step.row }

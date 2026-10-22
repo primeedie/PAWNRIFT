@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { Group, MathUtils, MeshLambertMaterial } from 'three'
 import { turnTiming } from '../../data/combatBalance'
-import { enemyIntentLabel, foresightIntent, type Enemy } from '../../game/logic/combat'
+import { attackTargets, enemyIntentLabel, foresightIntent, type Enemy } from '../../game/logic/combat'
 import { cellId } from '../../game/logic/dungeon'
 import { canSeeContent } from '../../game/logic/visibility'
 import { usePawnStore, type TurnPhase } from '../../game/state/pawnStore'
@@ -90,16 +90,17 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
 
 export function DungeonEnemies() {
   const state = usePawnStore()
-  const targets = state.phase !== 'ready' ? [] : state.selectedCardId ? cardOptions(state, state.selectedCardId).targets
+  const targets = state.phase !== 'ready' || state.status !== 'playing' ? [] : state.selectedCardId ? cardOptions(state, state.selectedCardId).targets
     : state.selectedAbility && state.abilityDestination && !abilityReason(state)
       ? vaultTargets(state, state.abilityDestination, true).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id }))
       : state.selectedAbility && currentForm(state.transformations) === 'queen'
-        ? visibleEnemies(state).filter((enemy) => gridDistance(enemy.cell, state.cell) <= 3).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id })) : []
+        ? visibleEnemies(state).filter((enemy) => gridDistance(enemy.cell, state.cell) <= 3).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id })) : state.selectedAbility ? []
+          : attackTargets(state).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id }))
   return <group name="dungeon-enemies">
     {visibleEnemies(state).map((enemy) => (
       <group key={enemy.id}>
         {targets.some((target) => target.kind === 'enemy' && target.enemyId === enemy.id)
-          && <group position={gridToWorld(enemy.cell.column, enemy.cell.row)}><LegalTileHighlight /></group>}
+          && <group position={gridToWorld(enemy.cell.column, enemy.cell.row)}><LegalTileHighlight attack /></group>}
         <Rookling enemy={enemy} phase={state.phase} interpolate={canSeeContent(cellId(enemy.from), state)} />
         {enemy.intent === 'attack' && enemy.attackTarget && canSeeContent(cellId(enemy.attackTarget), state) && (
           <mesh position={gridToWorld(enemy.attackTarget.column, enemy.attackTarget.row).map((v, i) => i === 1 ? 0.025 : v) as [number, number, number]}

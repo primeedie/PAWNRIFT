@@ -99,9 +99,7 @@ export function movementBoard(state: GameState) {
 }
 
 export function attackTargets(state: GameState) {
-  if (currentForm(state.transformations) !== 'pawn') return formAttackTargets(state)
-  return state.enemies.filter((enemy) => enemy.hp > 0 && gridDistance(state.cell, enemy.cell) === 1
-    && canSeeContent(cellId(enemy.cell), state))
+  return formAttackTargets(state)
 }
 
 // Future forms can supply a different movement predicate; any accepted destination still costs one turn.

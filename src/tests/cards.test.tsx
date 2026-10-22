@@ -97,14 +97,14 @@ describe('cards use the unified deterministic world turn', () => {
     expect(resolveTurn({ ...state, energy: 2 }, { kind: 'wait' })!.energy).toBe(3)
     expect(resolveTurn(state, { kind: 'defend' })!.energy).toBe(3)
   })
-  it('cards killed by player cannot respond; missing, concealed, distant, diagonal and dead targets are invalid', () => {
+  it('cards killed by player cannot respond; missing, concealed, distant and dead targets are invalid', () => {
     const state = holding(fixture(), 'cut')
     const play = action(state, 'cut', { kind: 'enemy', enemyId: 'rookling-1' })
     const killed = resolveTurn({ ...state, enemies: [{ ...state.enemies[0], hp: 4 }] }, play)!
     expect(killed.hp).toBe(state.hp)
     expect(killed.enemies[0].hp).toBe(0)
     expect(killed.events.some((event) => event.actor === 'rookling-1' && event.kind === 'hit')).toBe(false)
-    for (const cell of [{ column: 6, row: 3 }, { column: 4, row: 4 }]) {
+    for (const cell of [{ column: 6, row: 3 }, { column: 5, row: 5 }]) {
       expect(resolveTurn({ ...state, enemies: [{ ...state.enemies[0], cell }] }, play)).toBeNull()
     }
     expect(resolveTurn({ ...state, visible: new Set([cellId(state.cell)]), explored: new Set(Array.from({ length: 64 }, (_, i) => i)) }, play)).toBeNull()
