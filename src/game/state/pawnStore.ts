@@ -182,7 +182,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
       set({ transformations: recordTransformationBossWin(state.transformations, form, attunement), playtestMode: true })
   },
   debugDefeat: () => {
-    if (PLAYTEST_TOOLS_ENABLED && get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat', passives: emptyPassives(), signatures:{...state.signatures,samuraiCharges:0,parryReady:false},
+    if (PLAYTEST_TOOLS_ENABLED && get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat', passives: emptyPassives(), block:0,blockSources:[],fortified:undefined,preparedCounter:0, signatures:{...state.signatures,samuraiCharges:0,parryReady:false},
       selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, deathRetentionDone: false, playtestMode: true, actionId: state.actionId + 1 }))
   },
   selectedCardId: undefined,
@@ -239,7 +239,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     // Stale, duplicate, and pre-regeneration callbacks cannot process a turn twice.
     if (!state.runActive || state.actionId !== id || state.phase !== phase || phase === 'ready') return
     if (state.status === 'defeat' || state.hp <= 0) {
-      set({ status: 'defeat', hp: 0, passives: emptyPassives(), signatures:{...state.signatures,samuraiCharges:0,parryReady:false}, phase: 'ready', isMoving: false, guarding: false, actionId: state.actionId + 1 })
+      set({ status: 'defeat', hp: 0, passives: emptyPassives(), block:0,blockSources:[],fortified:undefined,preparedCounter:0, signatures:{...state.signatures,samuraiCharges:0,parryReady:false}, phase: 'ready', isMoving: false, guarding: false, actionId: state.actionId + 1 })
       return
     }
     if (phase === 'player') {

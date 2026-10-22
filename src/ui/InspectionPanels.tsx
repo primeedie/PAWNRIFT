@@ -9,6 +9,8 @@ import { enemyName, enemyStatuses } from './enemyPresentation'
 import { enemyIntentLabel, foresightIntent } from '../game/logic/combat'
 import { restoreGameFocus } from './hudInteraction'
 import { characterDesigns } from '../data/characterDesigns'
+import { attunementAppearance } from '../data/attunementAppearance'
+import { blockPools,blockWindowLabel } from '../game/logic/protection'
 
 function Row({ label, children }: { label: string; children: ReactNode }) { return <div><dt>{label}</dt><dd>{children}</dd></div> }
 
@@ -21,13 +23,15 @@ export function CharacterInformation() {
   return <section id="character-information" className="inspection-panel character-information" role="region" tabIndex={-1} aria-labelledby="character-information-title" data-inspection-root data-tooltip-avoid>
     <header><h2 id="character-information-title"><span aria-hidden="true">{formSymbols[stats.form]}</span> {formNames[stats.form]}</h2>
       <button onClick={()=>{ui.closeCharacter();document.querySelector<HTMLButtonElement>('.form-identity-icon')?.focus()}} aria-label="Close character information">×</button></header>
-    <p className={`inspection-attunement attunement-${active?.attunement ?? 'light'}`}>{active ? `${active.attunement==='light'?'Light':'Dark'} attunement` : 'Pawn · untransformed'}</p>
+    <p className={`inspection-attunement attunement-${active?.attunement ?? 'light'}`}>{active ? `${active.attunement==='light'?'Light':'Dark'} · ${attunementAppearance[active.attunement].name}` : 'Pawn · untransformed'}</p>
     <p className="inspection-note">Weapon: {characterDesigns[stats.form][active?.attunement??'light']}</p>
     <h3>Combat</h3><dl className="inspection-stats">
       <Row label="Next basic"><strong>{stats.damage}</strong>{stats.bonus>0 && <> + <strong>{stats.bonus}</strong> {stats.form==='pawn'?'follow-up':'Smite'}</>}</Row>
       <Row label="Range"><strong>{stats.range}</strong> tile{stats.range!==1?'s':''} · {stats.directions.toLowerCase()}</Row>
       {stats.focus>0 && <Row label="Focus included"><strong>+{stats.focus}</strong> on main hit</Row>}
-      <Row label="Current Block"><strong>{stats.block}</strong></Row>
+      <Row label="Current Block"><strong>{stats.block}</strong> {blockWindowLabel(state)}</Row>
+      {blockPools(state).map(pool=><Row key={pool.id} label={pool.name}><strong>{pool.amount}</strong> · {pool.windowsLeft} response{pool.windowsLeft===1?'':'s'}</Row>)}
+      {state.fortified&&<Row label="Bastion retaliation"><strong>{state.fortified.damage}</strong> · once within {state.fortified.windowsLeft} response{state.fortified.windowsLeft===1?'':'s'}</Row>}
       {stats.basicBlock>0 && <Row label="Block on basic"><strong>+{stats.basicBlock}</strong> this response</Row>}
       <Row label="Defend"><strong>−{combatBalance.guardReduction}</strong> incoming{stats.guarding>0?' · guarding now':''}</Row>
       {stats.form==='king' && <Row label="Royal Poise"><strong>−{p.kingPoise}</strong> first direct hit per response</Row>}

@@ -1,6 +1,6 @@
 # PAWNRIFT — Game Design
 
-This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 7B.3: articulated character/equipment polish and Bishop basic range refinement**, including its attunement-specific equipment and Samurai Mode amendment, preserving Stage 7B.2 inspection and other combat values. Stage 7C tutorial, Stage 8 progression/randomized deck composition and Stage 10 saving are future work. Publish verified updates to GitHub and Cloudflare; directly deploy the tested build if it is not live. **Provisional** balance needs playtesting. **Open** design is not permission to invent later systems. Basic movement and attacks never require dice.
+This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 7B.4: Hallowed/Void construction, exclusive Bishop equipment, weapon presentation and defensive lifetimes**, preserving inspection, Samurai Mode and other combat values. Stage 7C tutorial, Stage 8 progression/randomized deck composition and Stage 10 saving are future work. Publish verified updates to GitHub and Cloudflare; directly deploy the tested build if it is not live. **Provisional** balance needs playtesting. **Open** design is not permission to invent later systems. Basic movement and attacks never require dice.
 
 ## Concept and pillars
 
@@ -41,14 +41,14 @@ Stage 6 settles the starting deck, hand, and resource timing below. **Open:** de
 | Card | Copies | Cost | Effect |
 | --- | --- | --- | --- |
 | Cut | 3 | 1 | Deal 4 to an adjacent foe |
-| Ward | 2 | 1 | Block a total of 3 during this enemy response |
-| Riposte | 2 | 1 | Block a total of 1; counter the first actual strike for 4 |
-| Slip | 2 | 1 | Move one clear orthogonal tile; block 1 this response |
+| Ward | 2 | 1 | Block a total of 3 across 2 enemy responses |
+| Riposte | 2 | 1 | Block 1 across 2 responses; counter the first actual strike this response for 4 |
+| Slip | 2 | 1 | Move one clear orthogonal tile; Block 1 across 2 responses |
 | Focus | 1 | 0 | Gain 1 Focus, capped at 3; each point adds 1 to the next basic/card/signature strike, then all are consumed |
 | Crimson | 1 | 3 | Deal 7 to an adjacent foe |
 | Mend | 1 | 2 | Heal 4, capped at maximum HP |
 
-- Card block is a shared pool across incoming strikes; block and prepared counters expire after the coming response, even if foes only telegraph or miss. A prepared counter requires a real strike and a surviving Pawn, and triggers once. Basic Q guard/counter retains its existing behavior. Focus persists until a successful strike or run reset.
+- Card Block is finite absorption across incoming strikes, with separate source pools lasting 2 responses including activation. Prepared card counters still expire after the coming response, even if foes only telegraph or miss. A prepared counter requires a real strike and a surviving Pawn, and triggers once. Basic Q guard/counter retains its existing behavior. Focus persists until a successful strike or run reset.
 - The compact bottom hand sits in reserved screen space below the Canvas. Click to inspect/select; click a highlighted foe/tile to target, or use Play for self cards. Cancel/Escape is free. Names, costs, effects, playability, energy, Focus, and pile counts remain readable. Normal controls can still submit basic actions.
 - Player HP has a muted crimson bar plus current/max numbers. Living enemies expose compact bars only in current sight, including under debug reveal. Stable event IDs drive damage/healing/BLOCKED values that rise/fade, stagger per recipient, expire after 850 ms, and are capped at 12 concurrent indicators. Labels follow recipients and obey current sight. Pawn recoil and the existing enemy hit flash provide restrained feedback; no attack animation is implemented.
 - Defeat and fresh-run/same-seed floor reset preserve their existing semantics and reset deck, resources, targeting, and event IDs atomically. There are no card rewards, upgrades, removals, saving, transformations, Light/Dark modifiers, dice effects, or synergies yet. Definition/instance separation and the discriminated effect/action types provide extension points without implementing those systems.
@@ -63,7 +63,7 @@ The hand is a centered collection of individual portrait cards targeting a conte
 
 Stage 6.1 adds presentation only: Attack/crimson, Defense/steel blue, Mobility/desaturated teal, and Utility/violet category symbols and labels; a shared lightning-shaped Energy icon on cards and HUD; explicit typed keyword tokens; and one central glossary for Energy, Block, Focus, Counter/Riposte, Draw, Discard, Damage, and Healing. Hover, keyboard focus, or tap explains a term; Help lists the same entries. Tooltips sit above the HUD, clamp to the viewport, scroll for long content, remain readable while hovered/focused or pinned by tap, and dismiss with Escape/outside click. Dismissal does not click through or consume an action. Card selection and keyword controls are separate semantic buttons. Smaller hands scroll horizontally instead of shrinking type. No effect, deck, energy, movement, damage formula, AI, fog, generation, or Game Over rule changes.
 
-Descriptions now explicitly name damage/targets, who receives healing, and temporary protection. The glossary clarifies that a response includes all eligible enemies, unused Block and Riposte expire even without an incoming strike, Riposte requires survival and triggers despite full blocking, Focus does not increase counters, and used cards can return immediately on a reshuffle. These clarify existing behavior rather than changing it.
+Descriptions explicitly name damage/targets, who receives healing, and temporary protection. The glossary clarifies that a response includes all eligible enemies, protection windows tick even without a strike, Riposte requires survival and triggers despite full blocking, Focus does not increase counters, and used cards can return immediately on a reshuffle. Stage 7B.4 supersedes the original single-response card Block lifetime; Riposte's counter remains immediate-only.
 
 ### Stage 7A transformation gameplay
 
@@ -87,7 +87,7 @@ Each successful signature is one synchronized world action with **no Energy or e
 | Pawn - Crimson Reversal / Samurai Mode | 10 subsequent turns | Immediately grant 3 automatic parries until used or floor end. Skip activation-turn cooldown tick. No automatic retaliation, no refresh while active/cooling; clear protection on transformation/death. Normal Q remains independent. |
 | Knight - Vaulting Charge | 7 turns | Legal L-leap plus clear straight lance thrust, range 2, as one action; both landing and currently visible target required. Light: base 3 + 2 damage; Dark: base 3 and 3 temporary Block. Valid designated perches allowed. |
 | Bishop - Astral Eye | Once per actual floor, shared Light/Dark | Seeded weighted choice among in-bounds 4x4 regions containing unexplored terrain, weight unexplored-count squared; independent of objectives/entities. Cast response and next response provide the two completed-turn visibility window. Terrain is remembered; remote entities/statuses disappear afterward. Fully explored floors disable it for free. Light: newly discovered foes Exposed, next eligible received attack +2 once, expires after provisional 3 subsequent turns. Dark: one next planned response shown for currently revealed foes; hazards will be identified when a hazard system exists. |
-| Rook - Iron Bastion | 9 turns | Light 4 Block + first eligible adjacent retaliation 5; Dark 8 Block + retaliation 2. One retaliation maximum; survival and clear range 1 required. Block/retaliation expire after this response, used or not. |
+| Rook - Iron Bastion | 9 turns | Light 4 Block + first eligible adjacent retaliation 5; Dark 8 Block + retaliation 2. One retaliation maximum; survival and clear range 1 required. Stage 7B.4: Block lasts 3 responses; retaliation eligible within the first 2. |
 | Queen - Dread Sovereign | 10 turns | Visible enemies in centered 3x3 take Light 7 / Dark 4 damage. Visible foes within provisional Manhattan radius 3 receive Fear for one response: valid retreat away, otherwise hesitate; cancel pending strike. Boss flag resists Fear (no bosses implemented). Dark additionally weakens the next actual strike by provisional 1. No dungeon-wide control. |
 
 Astral Eye uses a separate deterministic stream derived from floor seed, current turn and sorted explored cells; it consumes neither layout nor deck randomness. The real completed-floor hook resets Eye and temporary reveal once, preserving cooldowns. No enemies, treasure or hazards are fabricated for the reveal; only current Rooklings exist. Fear/Exposed are bounded rule state, never permanent remembered entity markers. Dark weakness lasts until the next real strike and does not stack.
@@ -212,6 +212,28 @@ Training supports four dummies to exercise the fourth-hit limit. Per-dummy sparr
 
 Automated coverage checks one through four attacks, excluded classifications, single-action costs, cooldown/active rejection, lifecycle, Sharpener/Riposte, session isolation, sequential event presentation, distinct weapon geometry and reachable grips across attunements. No browser surface was connected for this amendment; rendered clipping, weapon readability, animation quality and FPS remain unverified. Presentation dimensions/timings remain provisional. Floating form-name boxes stay removed; camera, cards, enemy bars/inspection and training-only King remain intact.
 
+### Stage 7B.4 - Hallowed/Void corruption and defensive lifetimes
+
+This supersedes earlier shared/recolored costumes, Bishop's paired equipment and Rook's Light greataxe. Light is **Hallowed corruption**: ritual symmetry, ceremonial ivory/porcelain armor, pale gold trim, halo/cathedral geometry and restrained cracks. Dark is **Void corruption**: asymmetry, incomplete headwear, separated armor fragments, actual gaps and torn cloth in slate/violet. Neither is a moral alignment. The base Pawn has one uncorrupted appearance; its sheath, iai follow-up and Samurai Mode remain intact.
+
+| Form | Hallowed construction | Void construction |
+| --- | --- | --- |
+| Knight | Ordered horse visor/mane, symmetric armor, cavalry lance and committed thrust | Broken horse visor, irregular/missing mane segments, fragmented armor, slim spear and guarded recovery |
+| Bishop | Structured split mitre, ordered robe panels, ceremonial staff only | Unequal hood/mitre fragments, torn robes, open armor ribs, tome only |
+| Rook | Four battlements, broad ordered plates, ceremonial warhammer | Uneven separated battlements/shoulders, fractured armor, split-head warhammer with intact striking face |
+| Queen | Ordered pointed crown, ceremonial royal panels, dual claws and slicing motion | Broken crown, consumed regalia, dual knuckles and compact forceful punches |
+| King (Training only) | Symmetric crown/regalia, pristine broad greatsword | Broken crown, hollow armor and greatsword with actual notches/cutout |
+
+Equipment slots and appearance are source-driven. Bishop mounts exactly one weapon; the other slot renders nothing. Staff magic starts at its focus; tome magic starts at its pages, with a hinged casting page and an empty-hand gesture. Rook/King orient hammer face/cutting edge into their weighted stroke using quaternion interpolation and linked support grips; Knight retains tip-led thrusts. Animation cannot add damage, actions or world turns. Geometry/materials are shared, with no new assets, packages, lights or heavy effects. Other targeting, passives, damage, cooldowns, fog, camera and enemy statistics are unchanged.
+
+**Provisional protection configuration:** card Block 2 enemy-response windows; Bastion Block 3; Bastion retaliation eligible for the first 2, once per activation. The immediate response counts first, including telegraph-only/no-op phases. Q/Defend remains 1 response with existing reduction/counters; Riposte's counter, basic-granted Block and Dark Vaulting Charge retain 1-response lifetimes. Bastion retains Light 4 Block/5 retaliation and Dark 8 Block/2 retaliation.
+
+Block is a finite pool per source, not repeated damage reduction. Hits consume earliest-expiring pools first, depleted sources vanish, and each remaining source expires independently. New grants replace their own source and never renew unrelated pools. No existing global Block cap was found; none is invented. Paid card/action costs, short lifetimes and same-source replacement bound accumulation. Only accepted enemy phases tick durations. Existing manual/Q/prepared-counter priority is preserved; Bastion is consumed only when its retaliation actually resolves. Floor completion, death and run resets clear temporary protection. Training uses the same resolver and exact snapshot restoration. Compact HUD/inspection shows actual amounts/windows without a new permanent panel.
+
+**Boss audit:** Chimera Knight, Yin and Yang Bishop, Twin Towers and Queen of Pain, including both variants, are **C: concept/documentation only**. Mirror is also concept-only. No boss model assets, boss-specific geometry or functioning boss AI exist; transformation meshes and boss-ranked training dummies are not boss implementations. There are no category A/B candidates, so no bosses were made summonable and no empty Experimental Bosses controls were added. Future suitable summons must remain centrally gated, temporary and isolated from progression; no boss AI, rewards or encounters are implemented here.
+
+Automated coverage includes source expiry/partial absorption, immediate/empty responses, Bastion once-only retaliation, unchanged Defend, floor/death cleanup, exact Training restoration, exclusive Bishop slots, structural variants, edge/face alignment and linked grip reach. Rendered silhouette/clipping, attack quality and FPS remain unverified because no browser preview was available. Presentation proportions and timing remain provisional pending visual playtesting.
+
 ### Run seeds and Stage 8 starter plan
 
 The repeated first layout came from the fixed initial seed and Play resuming that initialization board. Initial state and first Play now use fresh cryptographic run-boundary seeds. New Run and Restart always choose fresh seeds; Resume preserves an existing living run, including pending enemy playback. Play after victory starts fresh. An explicitly entered seed/style remains reproducible and is passed unchanged into the generator; generation algorithms and seeded randomness are unchanged. The title distinguishes Resume from New Run.
@@ -278,7 +300,7 @@ Since one biome visit yields only one variant encounter, collecting both variant
 | Pawn | Red katana (shared identity) | Red katana (shared identity) |
 | Knight | Lance | Spear |
 | Bishop | Staff | Book |
-| Rook | Greataxe | Hammer |
+| Rook | Hallowed warhammer | Void warhammer |
 | Queen | Claws | Knuckles |
 | King — late postgame | Greatsword | Dual swords |
 

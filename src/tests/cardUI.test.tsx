@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cardBalance, cards, starterCards } from '../data/cards'
+import { defenseBalance } from '../data/defenseBalance'
 import { cardCategories, cardPresentation } from '../data/cardPresentation'
 import { glossary, plainCardText } from '../data/glossary'
 import { CardDescription, CardHand } from '../ui/CardHand'
@@ -35,8 +36,9 @@ describe('typed card copy and glossary', () => {
   })
   it('explains all implemented keywords, limits and expiration without promising future effects', () => {
     expect(Object.keys(glossary)).toEqual(expect.arrayContaining(['energy', 'block', 'focus', 'counter', 'draw', 'discard', 'damage', 'healing']))
-    expect(glossary.block.explanation).toContain('after the coming enemy response')
-    expect(glossary.block.explanation).toContain('even if enemies only move')
+    expect(glossary.block.explanation).toContain(`card Block lasts ${defenseBalance.cardWindows} enemy responses`)
+    expect(glossary.block.explanation).toContain(`Iron Bastion ${defenseBalance.bastionBlockWindows}`)
+    expect(glossary.block.explanation).toContain('The immediate response counts first')
     expect(glossary.counter.explanation).toContain('if you survive')
     expect(glossary.counter.explanation).toContain('even if Block prevents all damage')
     expect(glossary.counter.explanation).toContain('expires after that response')

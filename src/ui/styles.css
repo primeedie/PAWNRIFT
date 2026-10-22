@@ -76,6 +76,7 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .form-confirm button { margin: 0 6px 6px 0; }
 .form-unavailable { color: var(--ui-secondary); font-size: 0.75rem; }
 .samurai-charge-icons { display: inline-flex; gap: 3px; color: var(--ui-attack); font-size: 0.78rem; }
+.protection-status { color: var(--ui-defense); font-size: 0.72rem; }
 .transformation-feedback { min-height: 1.4em; margin: 5px 0 0; color: var(--ui-secondary); font-size: 0.75rem; }
 .transformation-feedback:empty { display: none; }
 .death-retention { display: grid; gap: 9px; margin: 0 0 18px; text-align: left; color: var(--ui-text); border: 1px solid var(--ui-secondary); }

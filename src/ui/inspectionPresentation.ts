@@ -5,6 +5,7 @@ import { combatBalance } from '../data/combatBalance'
 import { passiveBalance } from '../data/passives'
 import { signatureAbilities, abilityBalance as a } from '../data/abilities'
 import { abilityReason } from '../game/logic/signatures'
+import { defenseBalance } from '../data/defenseBalance'
 
 // Read-only previews from the same configured values as combat; no damage/status mutation.
 export function characterStats(state: GameState) {
@@ -27,7 +28,7 @@ export function signatureInfo(state: GameState) {
     pawn: signatureAbilities.pawn.summary,
     knight: `L-leap and thrust for ${a.lanceDamage+(light?a.chargeLightBonus:0)} damage${light?'':` + ${a.chargeDarkBlock} Block`}; choose a visible foe within ${formBalance.knight.attackRange} clear orthogonal tiles of landing.`,
     bishop: `Reveal a seeded unexplored 4×4 for ${a.eyeTurns} responses; ${light?`newly discovered foes gain Exposed +${a.exposedBonus}`:'see one next enemy plan'}.`,
-    rook: `Gain ${light?a.rookLightBlock:a.rookDarkBlock} Block and retaliate for ${light?a.rookLightRetaliation:a.rookDarkRetaliation} against the first nearby strike; expires after this response.`,
+    rook: `Gain ${light?a.rookLightBlock:a.rookDarkBlock} Block for ${defenseBalance.bastionBlockWindows} responses; retaliate once for ${light?a.rookLightRetaliation:a.rookDarkRetaliation} within the first ${defenseBalance.bastionRetaliationWindows}.`,
     queen: `Surrounding 3×3 deals ${light?a.queenLightDamage:a.queenDarkDamage} damage; Fear within ${a.fearRange} tiles${light?'':`, next foe strike −${a.queenWeakness}`}.`,
     king: `After one enemy response, strike visible foes in a 5×5: ${light?passiveBalance.decreeLightInner:passiveBalance.decreeDarkInner}/${light?passiveBalance.decreeLightOuter:passiveBalance.decreeDarkOuter} inner/outer damage${light?'':', eligible outward knockback'}; Smite is shared.`,
   }

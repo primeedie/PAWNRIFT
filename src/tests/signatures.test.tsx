@@ -136,7 +136,7 @@ describe('signatures share synchronized turns and cooldowns', () => {
       expect(player.block).toBe(attunement === 'light' ? 4 : 8)
       const cast = resolveEnemyPhase(player)
       expect(cast.events.filter((e) => e.kind === 'counter').map((e) => e.amount)).toEqual([attunement === 'light' ? 5 : 2])
-      expect(cast).toMatchObject({ block: 0, preparedCounter: 0, hp: 12 })
+      expect(cast).toMatchObject({ block: attunement==='light'?0:4, preparedCounter: 0, hp: 12 })
     }
   })
 })

@@ -1,12 +1,13 @@
-import { BoxGeometry, ConeGeometry, CylinderGeometry, DoubleSide, ExtrudeGeometry, MeshBasicMaterial, MeshLambertMaterial, OctahedronGeometry, RingGeometry, Shape, SphereGeometry } from 'three'
+import { BoxGeometry, ConeGeometry, CylinderGeometry, DoubleSide, ExtrudeGeometry, MeshBasicMaterial, MeshLambertMaterial, OctahedronGeometry, Path, RingGeometry, Shape, SphereGeometry } from 'three'
 import { characterPalettes } from '../../data/characterDesigns'
 import type { Attunement } from '../../data/forms'
 
 export type V = [number, number, number]
 type Tone = keyof typeof characterPalettes.light
 // Silhouette profiles are built once and shared by both attunements and every remount.
-function profile(outline: [number, number][]) {
+function profile(outline: [number, number][],holes:[number,number][][]=[]) {
   const shape = new Shape(); outline.forEach(([x, y], i) => i ? shape.lineTo(x, y) : shape.moveTo(x, y)); shape.closePath()
+  for(const points of holes){const hole=new Path();points.forEach(([x,y],i)=>i?hole.lineTo(x,y):hole.moveTo(x,y));hole.closePath();shape.holes.push(hole)}
   const mesh = new ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false, steps: 1 }); mesh.translate(0, 0, -0.5); return mesh
 }
 export const geometry = { box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 10, 6),
@@ -14,6 +15,9 @@ export const geometry = { box: new BoxGeometry(1, 1, 1), sphere: new SphereGeome
   blade: profile([[-0.16,-0.5],[0.16,-0.5],[0.5,-0.30],[0.32,0.25],[0,0.5],[-0.32,0.25],[-0.5,-0.30]]),
   greatblade: profile([[-0.18,-0.5],[0.18,-0.5],[0.18,-0.40],[0.48,-0.30],[0.37,0.30],[0,0.5],[-0.37,0.30],[-0.48,-0.30],[-0.18,-0.40]]),
   leaf: profile([[0,-0.5],[0.28,-0.25],[0.5,0.03],[0.32,0.28],[0,0.5],[-0.32,0.28],[-0.5,0.03],[-0.28,-0.25]]),
+  voidBlade: profile([[-0.18,-0.5],[0.18,-0.5],[0.48,-0.30],[0.37,0.30],[0,0.5],[-0.28,0.22],[-0.15,0.13],[-0.36,0.02],[-0.20,-0.08],[-0.45,-0.21]],[ [[-0.09,-0.04],[0.07,-0.04],[0.07,0.19],[-0.09,0.19]] ]),
+  tornCloth: profile([[-0.5,0.5],[0.5,0.5],[0.36,-0.45],[0.10,-0.22],[-0.05,-0.5],[-0.22,-0.29],[-0.5,-0.40]]),
+  brokenRing: new RingGeometry(0.12,0.15,10,1,0,4.4),
   axe: profile([[-0.5,-0.35],[-0.30,0.40],[0.08,0.26],[0.48,0.5],[0.50,-0.3],[0.22,-0.5],[-0.03,-0.13]]),
   claw: profile([[-0.35,-0.5],[0.35,-0.5],[0.45,0.1],[0.12,0.5],[-0.12,0.18]]),
   mitre: profile([[-0.5,-0.5],[0.5,-0.5],[0.43,0.08],[0.12,0.5],[-0.02,0.16],[-0.14,0.5],[-0.43,0.08]]),

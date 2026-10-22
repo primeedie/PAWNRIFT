@@ -1,4 +1,4 @@
-import { Euler, Quaternion, Vector3 } from 'three'
+import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
 import type { CharacterForm } from '../data/characterDesigns'
 import type { CharacterPose } from './characterAnimation'
 import type { Attunement } from '../data/forms'
@@ -14,6 +14,21 @@ export function sheathPosition(draw:number):Triple {
 }
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t
 const aimPoint=new Vector3(),aimOrientation=new Quaternion(),aimEuler=new Euler()
+const surfaceX=new Vector3(),surfaceY=new Vector3(),surfaceZ=new Vector3(),surfaceBasis=new Matrix4(),surfaceQuaternion=new Quaternion(),surfaceBase=new Quaternion(),surfaceBlend=new Quaternion(),surfaceEuler=new Euler()
+function surfaceGrip(p:CharacterPose,rotation:Triple,weight:number):Triple{
+  // Local +X is the hammer's striking face / sword's cutting edge. The shaft or
+  // blade length follows +Y; +Z is the sword's broad flat, perpendicular to travel.
+  aimOrientation.setFromEuler(aimEuler.set(p.lean,p.twist,0)).invert()
+  surfaceX.set(0,-0.85,0.52).normalize().applyQuaternion(aimOrientation)
+  surfaceY.set(0,0.52,0.85).normalize().applyQuaternion(aimOrientation)
+  surfaceZ.crossVectors(surfaceX,surfaceY).normalize()
+  surfaceBasis.makeBasis(surfaceX,surfaceY,surfaceZ)
+  surfaceQuaternion.setFromRotationMatrix(surfaceBasis)
+  surfaceBase.setFromEuler(surfaceEuler.set(...rotation))
+  surfaceBlend.slerpQuaternions(surfaceBase,surfaceQuaternion,weight)
+  surfaceEuler.setFromQuaternion(surfaceBlend)
+  return [surfaceEuler.x,surfaceEuler.y,surfaceEuler.z]
+}
 function aimGrip(position:Triple,rotation:Triple,p:CharacterPose,weight:number):Triple {
   // Counter torso wind-up so the weapon, not just the character root, meets the
   // selected tile's direction at contact. No target/occupancy queries in the rig.
@@ -37,12 +52,19 @@ export function handPose(form:CharacterForm,p:CharacterPose,side:-1|1,variant:At
     if(variant==='dark'){position=[0.14,0.67,0.12+p.thrust*0.16];rotation=aimGrip(position,[0.80+p.thrust*0.55,0,-0.08],p,p.thrust)}
   } else if(form==='bishop') {
     position=[0.23,0.64+p.cast*0.08,0.18];rotation=[0.10+p.cast*0.42,0.10,0.10]
-    if(side===-1) return {position:[-0.17,0.63+p.cast*0.10,0.25],rotation:[0.3-p.cast*0.2,0.12,0.08]}
+    if(variant==='dark'){
+      position=[-0.02,0.71+p.cast*0.06,0.28];rotation=[-0.30,0.12,0.08]
+      if(side===-1)return {position:[-0.17,0.63+p.cast*0.08,0.25],rotation:[0.3-p.cast*0.2,0.12,0.08]}
+    }else if(side===-1)return {position:[-0.20,0.57+p.cast*0.08,0.12],rotation:[-0.25,0.10,-0.1]}
   } else if(form==='rook'||form==='king') {
     position=[0.07,0.65+Math.max(0,-p.swing)*0.30,0.20+Math.max(0,p.swing)*0.12]
     rotation=[0.30+p.swing*1.18,0.16-p.swing*0.38,-0.18+p.swing*0.20]
     if(form==='king') {position=[0.08,0.68+Math.max(0,-p.swing)*0.32,0.24+Math.max(0,p.swing)*0.10];rotation=[0.18+p.swing*1.40,0.25-p.swing*0.55,-0.35+p.swing*0.42]}
-    rotation=aimGrip(position,rotation,p,Math.max(0,p.swing))
+    if(variant==='dark'){
+      if(form==='rook')position=[-0.02,0.66+Math.max(0,-p.swing)*0.26,0.18+Math.max(0,p.swing)*0.14]
+      else {position=[0.04,0.65+Math.max(0,-p.swing)*0.29,0.24+Math.max(0,p.swing)*0.10];rotation=[0.12+p.swing*1.40,0.20-p.swing*0.50,-0.25+p.swing*0.34]}
+    }
+    rotation=surfaceGrip(p,rotation,Math.max(0,p.swing))
     if(p.guard) {position=[0.06,0.68,0.25];rotation=[0.18,0,-0.18]}
   } else {
     position=[side*0.24-side*p.swing*0.20,0.67+p.swing*0.04,0.18+Math.max(0,p.swing)*0.22]

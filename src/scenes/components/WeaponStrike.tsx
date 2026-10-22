@@ -12,7 +12,7 @@ import { geometry, effects, palettes } from './CharacterParts'
 
 // Bounded presentation of already-resolved events. No timers, RNG, callbacks to
 // the resolver, or independent damage. World endpoints do not rotate with the rig.
-export function WeaponStrike({form,variant,rightHand,leftHand,reducedMotion}:{form:CharacterForm;variant:Attunement;rightHand:RefObject<Group|null>;leftHand:RefObject<Group|null>;reducedMotion:boolean}) {
+export function WeaponStrike({form,variant,rightHand,castOrigin,reducedMotion}:{form:CharacterForm;variant:Attunement;rightHand:RefObject<Group|null>;castOrigin:RefObject<Group|null>;reducedMotion:boolean}) {
   const state=usePawnStore(),bolt=useRef<Group>(null),impact=useRef<Group>(null),trail=useRef<Group>(null)
   const scratch=useRef({key:'',elapsed:0,captured:false,origin:new Vector3(),target:new Vector3(),point:new Vector3(),direction:new Vector3(),up:new Vector3(0,1,0)})
   useFrame((_,delta)=>{
@@ -32,11 +32,11 @@ export function WeaponStrike({form,variant,rightHand,leftHand,reducedMotion}:{fo
     const [x,,z]=gridToWorld(event.cell.column,event.cell.row)
     s.target.set(x,0.62,z)
     if(form==='bishop'||(form==='knight'&&Math.max(Math.abs(event.cell.column-state.cell.column),Math.abs(event.cell.row-state.cell.row))===2)) {
-      const socket=form==='bishop'&&variant==='dark'?leftHand.current:rightHand.current
+      const socket=form==='bishop'?castOrigin.current:rightHand.current
       if(t>=0&&t<=1&&socket){
         if(!s.captured){
           socket.updateWorldMatrix(true,false)
-          s.origin.set(0,form==='bishop'?(variant==='dark'?0.06:0.70):0.89,0)
+          s.origin.set(0,form==='bishop'?0:0.89,0)
           socket.localToWorld(s.origin);s.captured=true
         }
         s.point.lerpVectors(s.origin,s.target,Math.min(1,t));parent.worldToLocal(s.point)

@@ -29,7 +29,7 @@ export type DiagnosticLayer = typeof diagnosticLayers[number]
 export function applyPlaytest(state: GameState, action: PlaytestAction): GameState | null {
   if (!PLAYTEST_TOOLS_ENABLED || state.status !== 'playing' || state.hp <= 0) return null
   if (state.mode !== 'training' && (action.kind === 'king-availability' || ('form' in action && action.form === 'king'))) return null
-  const next: GameState = { ...state, events: [], guarding: false, block: 0, preparedCounter: 0 }
+  const next: GameState = { ...state, events: [], guarding: false, block: 0, blockSources:[],fortified:undefined,preparedCounter: 0 }
   if (action.kind === 'king-availability') {
     if (state.transformations.active?.form === 'king') return null
     const reconstruction = { ...state.transformations.reconstruction }; delete reconstruction.king

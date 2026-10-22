@@ -127,7 +127,11 @@ describe('articulated weapon presentation',()=>{
       const origin=new Vector3(...grip.position).applyEuler(torso)
       const axis=new Vector3(0,1,0).applyEuler(new Euler(...grip.rotation)).applyEuler(torso)
       const toward=new Vector3(0,0.65,1).sub(origin).normalize()
-      expect(axis.dot(toward),form).toBeGreaterThan(0.995)
+      if(form==='rook'||form==='king'){
+        const face=new Vector3(1,0,0).applyEuler(new Euler(...grip.rotation)).applyEuler(torso)
+        expect(face.dot(new Vector3(0,-0.85,0.52).normalize()),`${form} striking face/edge`).toBeGreaterThan(0.995)
+        expect(axis.dot(face)).toBeCloseTo(0)
+      }else expect(axis.dot(toward),form).toBeGreaterThan(0.995)
     }
   })
   it('sequences resolved Bishop splash after the primary without modifying events or damage',()=>{

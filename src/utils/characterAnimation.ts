@@ -87,6 +87,8 @@ export function characterPose(form: CharacterForm, cue: AnimationCue, progress: 
   if (cue === 'hit') { pose.lean = wave * 0.15; pose.twist = -wave * 0.06 }
   if(variant==='dark'&&form==='knight'){pose.lean*=0.5;pose.crouch+=0.008}
   if(variant==='dark'&&form==='queen'){pose.twist*=0.6;pose.crouch+=0.018;pose.hip*=0.5}
+  if(form!=='pawn'&&variant==='light'&&cue==='idle'){pose.twist=0;pose.hip=0}
+  if(variant==='dark'&&(form==='bishop'||form==='rook'||form==='king')){pose.twist-=0.07;pose.head+=0.025;pose.hip=-0.008;pose.crouch+=0.008}
   if (reduced) { pose.lean = 0; pose.twist = 0; pose.leftLeg = pose.rightLeg = 0; pose.cape = 0; pose.scale = 1; pose.pulse = 0; pose.slash *= 0.2 }
   return pose
 }

@@ -4,6 +4,7 @@ import { enemyName } from './enemyPresentation'
 import { aimBasicAttack, inspectedEnemy, useInspectionStore } from './inspectionStore'
 import { closeHudPanels } from './hudInteraction'
 import { usePawnStore } from '../game/state/pawnStore'
+import { blockWindowLabel } from '../game/logic/protection'
 
 function describeEvent(event: CombatEvent) {
   switch (event.kind) {
@@ -50,6 +51,8 @@ export function CombatHUD() {
   return (
     <div className="combat-hud">
       <div className="combat-actions" aria-label="Combat actions">
+        {state.block>0&&<span className="protection-status">Block <strong>{state.block}</strong> · {blockWindowLabel(state)}</span>}
+        {state.fortified&&<span className="protection-status">Fortified · {state.fortified.windowsLeft} retaliation response{state.fortified.windowsLeft===1?'':'s'}</span>}
         <button disabled={locked || attackTargets(state).length === 0} onClick={() => state.tryAttack()} title="Attack one eligible enemy (E); directions depend on current form"><kbd>E</kbd><span>– Attack</span></button>
         <button disabled={locked || attackTargets(state).length===0} aria-pressed={inspection.aimingAttack} onClick={()=>{closeHudPanels();aimBasicAttack()}}>Choose target</button>
         {inspection.aimingAttack && <button onClick={()=>useInspectionStore.setState({aimingAttack:false})}>Cancel attack</button>}

@@ -13,6 +13,8 @@ import { cloneEnemy } from './damage'
 export { damageEnemy } from './damage'
 import { emitDamage, pushEnemy, smiteBudget, splitBonus } from './passives'
 import { gridDistance } from './enemyAI'
+import { blockPools,blockTotal,grantBlock } from './protection'
+import { defenseBalance } from '../../data/defenseBalance'
 
 export type SignatureState = {
   cooldowns: Record<ChessForm, number>
@@ -82,7 +84,7 @@ export function resolveSignature(state: GameState, options: { destination?: Cell
   const form = currentForm(state.transformations), light = state.transformations.active?.attunement === 'light'
   if (form !== 'knight' && (options.destination || options.targetId)) return null
   const next: GameState = { ...state, enemies: state.enemies.map(cloneEnemy), passives: { ...state.passives }, events: [],
-    block: 0, preparedCounter: 0, guarding: false, lastAction: 'ability',
+    blockSources:blockPools(state), preparedCounter: 0, guarding: false, lastAction: 'ability',
     signatures: { ...state.signatures, cooldowns: { ...state.signatures.cooldowns, [form]: signatureAbilities[form].cooldown },
       usedThisTurn: form, parryReady: false } }
   const emit = (event: Omit<CombatEvent, 'id' | 'seen'>) => next.events.push({ ...event, id: ++next.eventSerial, seen: true })
@@ -101,7 +103,7 @@ export function resolveSignature(state: GameState, options: { destination?: Cell
     next.facing = directionTo(next.cell, target.cell)
     emit({ kind: 'move', actor: 'pawn', cell: next.cell })
     strike(target, balance.lanceDamage, light ? balance.chargeLightBonus : 0)
-    next.block = light ? 0 : balance.chargeDarkBlock
+    next.blockSources=grantBlock(next.blockSources,{id:'vaulting-charge',name:'Vaulting Charge',amount:light?0:balance.chargeDarkBlock,windowsLeft:defenseBalance.otherAbilityWindows})
   } else if (form === 'bishop') {
     const cells = chooseAstralRegion(state.dungeon, state.explored, state.turn)!
     next.signatures.eyeUsed = true
@@ -111,8 +113,8 @@ export function resolveSignature(state: GameState, options: { destination?: Cell
       enemy.exposedTurns = balance.exposedTurns
     emit({ kind: 'reveal', actor: 'pawn', cell: next.cell })
   } else if (form === 'rook') {
-    next.block = light ? balance.rookLightBlock : balance.rookDarkBlock
-    next.preparedCounter = light ? balance.rookLightRetaliation : balance.rookDarkRetaliation
+    next.blockSources=grantBlock(next.blockSources,{id:'iron-bastion',name:'Iron Bastion',amount:light?balance.rookLightBlock:balance.rookDarkBlock,windowsLeft:defenseBalance.bastionBlockWindows})
+    next.fortified={damage:light?balance.rookLightRetaliation:balance.rookDarkRetaliation,windowsLeft:defenseBalance.bastionRetaliationWindows}
     emit({ kind: 'guard', actor: 'pawn', cell: next.cell })
   } else if (form === 'king') {
     next.signatures.decree = { origin: { ...state.cell }, light }
@@ -128,7 +130,7 @@ export function resolveSignature(state: GameState, options: { destination?: Cell
       }
     }
   }
-  return { ...next, ...signatureFog(next) }
+  return { ...next,block:blockTotal(next.blockSources), ...signatureFog(next) }
 }
 
 export function resolveRoyalDecree(state: GameState) {
