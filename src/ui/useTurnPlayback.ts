@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { passiveBalance } from '../data/passives'
 import { turnTiming } from '../data/combatBalance'
 import { usePawnStore } from '../game/state/pawnStore'
 
@@ -9,9 +10,11 @@ export function useTurnPlayback() {
   const advance = usePawnStore((state) => state.advancePlayback)
   const active = usePawnStore((state) => state.runActive)
   const defeated = usePawnStore((state) => state.status === 'defeat' || state.hp <= 0)
+  const playerMs = usePawnStore((state) => state.events.some((event) => (event.delayMs ?? 0) > 0)
+    || (!state.transformations.active && state.lastAction === 'attack') ? passiveBalance.iaiMs : turnTiming.playerMs)
   useEffect(() => {
     if (phase === 'ready' || !active || defeated) return
-    const timer = window.setTimeout(() => advance(id, phase), phase === 'player' ? turnTiming.playerMs : turnTiming.enemyMs)
+    const timer = window.setTimeout(() => advance(id, phase), phase === 'player' ? playerMs : turnTiming.enemyMs)
     return () => window.clearTimeout(timer)
-  }, [phase, id, advance, active, defeated])
+  }, [phase, id, advance, active, defeated, playerMs])
 }

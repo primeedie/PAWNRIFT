@@ -7,6 +7,7 @@ import type { CardTarget } from '../logic/cardRules'
 import { sameCell } from '../logic/movement'
 import { completeTransformationFloor, grantTransformation, recordTransformationBossWin, retainAfterDeath, retentionChoices, transformationsForNewRun } from '../logic/transformations'
 import type { Attunement, BossForm } from '../../data/forms'
+import { emptyPassives } from '../logic/passives'
 import { emptySignatures, vaultDestinations } from '../logic/signatures'
 import { applyPlaytest, movementRejection, PLAYTEST_TOOLS_ENABLED, type PlaytestAction, type DiagnosticLayer } from '../logic/playtesting'
 
@@ -87,7 +88,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     if (!state.runActive || state.phase !== 'ready' || state.hp <= 0) return false
     const dungeon = generateDungeon(seed ?? state.dungeon.seed, style ?? (seed === undefined ? state.dungeon.style : undefined))
     set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck, energy: state.energy, maxEnergy: state.maxEnergy,
-      focus: state.focus, turn: state.turn, transformations: state.transformations,
+      focus: state.focus, turn: state.turn, transformations: state.transformations, passives: { ...state.passives },
       signatures: { ...emptySignatures(), cooldowns: { ...state.signatures.cooldowns }, eyeUsed: state.signatures.eyeUsed },
       from: dungeon.spawn, fromElevation: 0, isMoving: false, phase: 'ready', actionId: state.actionId + 1, playtestMode: true,
       selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, revealAll: false, lastAction: undefined, lastMovementRejection: undefined })
@@ -120,6 +121,8 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     const dungeon = generateDungeon(seed ?? floorSeed(state.masterSeed, state.floorNumber + 1))
     set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck,
       energy: state.energy, maxEnergy: state.maxEnergy, focus: state.focus, turn: state.turn,
+      passives: { ...emptyPassives(), ...(state.transformations.active?.form === 'king' && state.transformations.active.floorsLeft > 1
+        ? { smite: state.passives.smite, kingBasics: state.passives.kingBasics } : {}) },
       transformations: completeTransformationFloor(state.transformations), floorNumber: state.floorNumber + 1,
       playtestMode: state.playtestMode || testing,
       signatures: { ...emptySignatures(), cooldowns: { ...state.signatures.cooldowns } },
@@ -140,7 +143,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
       set({ transformations: recordTransformationBossWin(state.transformations, form, attunement), playtestMode: true })
   },
   debugDefeat: () => {
-    if (PLAYTEST_TOOLS_ENABLED && get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat',
+    if (PLAYTEST_TOOLS_ENABLED && get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat', passives: emptyPassives(),
       selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, deathRetentionDone: false, playtestMode: true, actionId: state.actionId + 1 }))
   },
   selectedCardId: undefined,
@@ -196,7 +199,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     // Stale, duplicate, and pre-regeneration callbacks cannot process a turn twice.
     if (!state.runActive || state.actionId !== id || state.phase !== phase || phase === 'ready') return
     if (state.status === 'defeat' || state.hp <= 0) {
-      set({ status: 'defeat', hp: 0, phase: 'ready', isMoving: false, guarding: false, actionId: state.actionId + 1 })
+      set({ status: 'defeat', hp: 0, passives: emptyPassives(), phase: 'ready', isMoving: false, guarding: false, actionId: state.actionId + 1 })
       return
     }
     if (phase === 'player') {

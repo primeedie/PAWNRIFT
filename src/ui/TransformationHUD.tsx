@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { formBalance, formNames, formSymbols, type Attunement, type BossForm } from '../data/forms'
+import { combatPassives, passiveBalance } from '../data/passives'
+import { AttackGuide } from './AttackGuide'
 import { signatureAbilities } from '../data/abilities'
 import { activationReason, currentForm } from '../game/logic/transformations'
 import { abilityReason } from '../game/logic/signatures'
@@ -21,6 +23,7 @@ export function TransformationHUD() {
   const active = forms.active, ability = signatureAbilities[form]
   const basicDamage = (form === 'pawn' ? combatBalance.playerDamage : formBalance[form].damage
     + (active?.attunement === 'light' ? formBalance.lightDamage : 0)) + state.focus
+  const basicBonus = form === 'pawn' ? state.passives.sharpener : form === 'king' ? Math.min(passiveBalance.smiteCap, state.passives.smite + passiveBalance.smiteGain) : 0
   const basicBlock = (form === 'rook' ? formBalance.rook.basicBlock : 0) + (active?.attunement === 'dark' ? formBalance.darkBlock : 0)
   const signatureHelp = state.focus && (form === 'knight' || form === 'queen')
     ? ability.summary.replace(/\.$/, ` (first hit also gains ${state.focus} Focus damage).`) : ability.summary
@@ -69,7 +72,7 @@ export function TransformationHUD() {
           </div>)}
           {candidate && <div className="form-confirm">
             <strong>{formNames[candidate.form]} · {candidate.attunement === 'light' ? 'Light' : 'Dark'}</strong>
-            <MovementGuide form={candidate.form} />
+            <MovementGuide form={candidate.form} /><AttackGuide form={candidate.form} />
             <p>Basic: <strong>{formBalance[candidate.form].damage + state.focus + (candidate.attunement === 'light' ? formBalance.lightDamage : 0)}</strong> damage{state.focus > 0 ? ' including Focus' : ''} · <strong>{(candidate.form === 'rook' ? formBalance.rook.basicBlock : 0) + (candidate.attunement === 'dark' ? 1 : 0)}</strong> Block.</p>
             <p>{reason ?? '1 charge · 2 floors · 1 world turn.'}</p>
             <button disabled={locked || !!reason} onClick={(event) => {
@@ -81,8 +84,8 @@ export function TransformationHUD() {
       </details>
       <details className="form-picker" name="hud-panels">
         <summary>Moves</summary><div className="form-picker-panel hud-panel" data-tooltip-avoid>
-          <strong>{formNames[form]} movement</strong><MovementGuide form={form} />
-          <p>Basic: <strong>{basicDamage}</strong> damage · <strong>{basicBlock}</strong> Block{state.focus ? ' (includes Focus)' : ''}.</p>
+          <strong>{formNames[form]} movement</strong><MovementGuide form={form} /><details><summary>Basic attack directions</summary><AttackGuide form={form} /></details>
+          <p>Basic: <strong>{basicDamage}</strong> damage{basicBonus > 0 && <> + <strong>{basicBonus}</strong> {form === 'pawn' ? 'follow-up' : 'Smite next hit'}</>} · <strong>{basicBlock}</strong> Block{state.focus ? ' (includes Focus)' : ''}.</p>
           <KeywordTooltip topic="movement" className="info-trigger">ⓘ Movement details</KeywordTooltip>
           {form === 'knight' && <p>Walk: WASD/arrows. Leap: click L-destinations; Shift+key for four jumps.</p>}
         </div>
@@ -96,6 +99,14 @@ export function TransformationHUD() {
         </div>
       </details>}
       {PLAYTEST_TOOLS_ENABLED && <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button>}
+    </div>
+    <div className="passive-summary">
+      <KeywordTooltip topic="passive" extra={combatPassives[form].summary}>
+        <span aria-hidden="true">{combatPassives[form].icon}</span> {combatPassives[form].name}
+        {form === 'pawn' ? <strong> {state.passives.sharpener}/5</strong>
+          : form === 'knight' ? <strong> Reach 2 | 10%</strong> : form === 'bishop' ? <strong> Splash 1 | Burn 1x2</strong>
+            : form === 'queen' ? <strong> Bleed 2x3</strong> : form === 'king' ? <strong> +{state.passives.smite}/10</strong> : null}
+      </KeywordTooltip>
     </div>
     <div className="form-ability">
       <span aria-hidden="true" className="ability-icon">{ability.icon}</span><strong>{ability.name}</strong>

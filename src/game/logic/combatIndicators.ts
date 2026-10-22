@@ -7,7 +7,7 @@ export function combatIndicator(event: CombatEvent) {
   if (event.kind === 'parry') return { text: 'PARRIED', tone: 'blocked' }
   if (event.kind === 'heal' && (event.amount ?? 0) > 0) return { text: `+${event.amount}`, tone: 'heal' }
   if (event.kind === 'hit' || event.kind === 'counter') return {
-    text: event.amount ? `−${event.amount}` : 'BLOCKED', tone: event.amount ? 'damage' : 'blocked',
+    text: event.effect ? `${event.effect === 'sharpener' ? 'Iai' : event.effect === 'pierce' && event.penetrated ? `Pierce (${event.penetrated} DEF)` : event.effect} ${event.amount ? `−${event.amount}` : 'BLOCKED'}${event.blocked ? ` (${event.blocked} Block)` : ''}` : event.amount ? `−${event.amount}` : 'BLOCKED', tone: event.amount ? 'damage' : 'blocked',
   }
   return null
 }

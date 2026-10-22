@@ -1,8 +1,26 @@
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { Mesh } from 'three'
+import { usePawnStore } from '../../game/state/pawnStore'
+import { passiveBalance } from '../../data/passives'
 import { SheathedKatana } from './CrimsonKatana'
 
 // A living chess piece: oversized round crown, collar, and flared pedestal body.
 // Tiny limbs and a simple face add personality without a human swordsman silhouette.
 export function PawnModel() {
+  const hand = useRef<Mesh>(null), motion = useRef({ id: -1, elapsed: 0 })
+  useFrame((_, delta) => {
+    const state = usePawnStore.getState()
+    if (motion.current.id !== state.actionId) motion.current = { id: state.actionId, elapsed: 0 }
+    const playing = state.runActive && state.phase === 'player' && state.lastAction === 'attack' && !state.transformations.active
+    if (playing) motion.current.elapsed += delta * 1000
+    const t = playing ? Math.min(1, motion.current.elapsed / passiveBalance.iaiMs) : 0
+    const reach = playing ? Math.sin(t * Math.PI) : 0
+    if (hand.current) {
+      hand.current.position.set(0.235 - 0.40 * reach, 0.46 + 0.04 * reach, 0.015 + 0.16 * reach)
+      hand.current.rotation.z = 0.24 - 0.95 * reach
+    }
+  })
   return (
     <group>
       {[-0.105, 0.105].map((x) => (
@@ -58,7 +76,7 @@ export function PawnModel() {
         <meshLambertMaterial color="#7c6554" />
       </mesh>
       {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * 0.235, 0.46, 0.015]} rotation={[0, 0, side * 0.24]}>
+        <mesh ref={side === 1 ? hand : undefined} key={side} position={[side * 0.235, 0.46, 0.015]} rotation={[0, 0, side * 0.24]}>
           <capsuleGeometry args={[0.055, 0.13, 2, 6]} />
           <meshLambertMaterial color="#e9dfc3" flatShading />
         </mesh>

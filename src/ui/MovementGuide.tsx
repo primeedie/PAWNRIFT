@@ -8,13 +8,14 @@ export function movementDiagram(form: ChessForm) {
     const straight = (x === 0) !== (y === 0)
     const leap = (Math.abs(x) === 1 && Math.abs(y) === 2) || (Math.abs(x) === 2 && Math.abs(y) === 1)
     const kind = x === 0 && y === 0 ? 'center' : form === 'pawn' ? distance === 1 ? 'walk' : 'empty'
+      : form === 'king' ? Math.max(Math.abs(x), Math.abs(y)) === 1 ? 'walk' : 'empty'
       : form === 'knight' ? distance === 1 ? 'walk' : leap ? 'leap' : 'empty'
         : form === 'bishop' && distance === 1 ? 'walk' : (form === 'bishop' ? diagonal : form === 'rook' ? straight : diagonal || straight) ? 'slide' : 'empty'
     return { id, x, y, kind }
   })
 }
 export function MovementGuide({ form }: { form: ChessForm }) {
-  const label = form === 'knight' ? 'Dot: walk 1. L: leap (2 + 1).' : form === 'pawn' ? 'One orthogonal step.' : form === 'bishop' ? 'Visible diagonals up to 7; walk 1. Shift + key: diagonal.' : 'Visible clear lanes: slide up to 7.'
+  const label = form === 'knight' ? 'Dot: walk 1. L: leap (2 + 1).' : form === 'pawn' ? 'One orthogonal step.' : form === 'king' ? 'One step in any direction.' : form === 'bishop' ? 'Visible diagonals up to 7; walk 1. Shift + key: diagonal.' : 'Visible clear lanes: slide up to 7.'
   return <figure className="movement-guide">
     <div className="movement-mini-board" data-form={form} role="img" aria-label={`${formNames[form]} movement diagram. ${label} Instructional only; actual terrain and occupants still apply.`}>
       {movementDiagram(form).map(({ id, x, y, kind }) => <span key={id} aria-hidden="true"

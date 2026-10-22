@@ -5,6 +5,8 @@ import { canKnightLand } from './perching'
 export function formMovement(form: ChessForm): MovementRule {
   if (form === 'pawn') return canMove
   return (from, to, board) => {
+    if (form === 'king') return Math.max(Math.abs(to.column - from.column), Math.abs(to.row - from.row)) === 1
+      && canOccupy(from, { ...board, occupied: [] }) && canOccupy(to, board)
     if (form === 'knight') {
       if (!canOccupy(from, { ...board, occupied: [] }) && !board.perches?.some((cell) => cell.column === from.column && cell.row === from.row)) return false
       const x = Math.abs(to.column - from.column), y = Math.abs(to.row - from.row)
@@ -36,7 +38,7 @@ export function chessDestinations(form: ChessForm, from: Cell, board: MovementBo
 export function formKeyDestination(form: ChessForm, from: Cell, direction: Direction, alternate = false): Cell {
   const index = { north: 0, east: 1, south: 2, west: 3 }[direction]
   const offsets = form === 'knight' && alternate ? [[-1, -2], [2, -1], [1, 2], [-2, 1]]
-    : (form === 'bishop' || form === 'queen') && alternate ? [[-1, -1], [1, -1], [1, 1], [-1, 1]]
+    : (form === 'bishop' || form === 'queen' || form === 'king') && alternate ? [[-1, -1], [1, -1], [1, 1], [-1, 1]]
       : [[0, -1], [1, 0], [0, 1], [-1, 0]]
   return { column: from.column + offsets[index][0], row: from.row + offsets[index][1] }
 }

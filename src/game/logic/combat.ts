@@ -10,8 +10,12 @@ import { formBalance, type BossForm, type Attunement } from '../../data/forms'
 import { activateTransformation, currentForm, emptyTransformations, endActivation, type TransformationState } from './transformations'
 import { formMovement } from './chessMovement'
 import { formAttackTargets } from './formCombat'
-import { damageEnemy, emptySignatures, finishSignatureTurn, resolveSignature, signatureFog, type SignatureState } from './signatures'
+import { emptySignatures, finishSignatureTurn, resolveSignature, signatureFog, type SignatureState } from './signatures'
 import { canKnightLand, elevationAt, pawnLanding, playerBoard, reversionReason } from './perching'
+import { passiveBalance } from '../../data/passives'
+import { cloneEnemy } from './damage'
+import { afterBasic, emitDamage, emptyPassives, smiteBudget, tickEnemyStatuses, skipConcussedResponse, type PassiveState, type DamageEffect } from './passives'
+import { resolveRoyalDecree } from './signatures'
 import { abilityBalance } from '../../data/abilities'
 
 export type PlayerAction =
@@ -38,14 +42,27 @@ export type Enemy = {
   fearTurns?: number
   weakenedDamage?: number
   boss?: boolean
+  elite?: boolean
+  uninterruptible?: boolean
+  defense?: number
+  block?: number
+  burn?: { turnsLeft: number; appliedTurn: number }
+  bleed?: { turnsLeft: number; appliedTurn: number }[]
+  concussion?: number
+  stunImmunity?: number
+  stunned?: boolean
 }
 export type CombatEvent = {
   id: number
-  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory' | 'heal' | 'focus' | 'transform' | 'revert' | 'reveal' | 'fear' | 'parry'
+  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory' | 'heal' | 'focus' | 'transform' | 'revert' | 'reveal' | 'fear' | 'parry' | 'stun'
   targetId?: string
   actor: 'pawn' | string
   cell: Cell
   amount?: number
+  blocked?: number
+  penetrated?: number
+  effect?: DamageEffect
+  delayMs?: number
   // Presentation may show an enemy event only if this was visible when it happened.
   seen: boolean
 }
@@ -68,6 +85,7 @@ export type GameState = FogState & {
   preparedCounter: number
   eventSerial: number
   transformations: TransformationState
+  passives: PassiveState
   signatures: SignatureState
   elevation: number
   lastAction?: PlayerAction['kind']
@@ -89,7 +107,7 @@ export function createGame(dungeon: Dungeon): GameState {
       maxHp: balance.enemyMaxHp, intent: 'idle', searchLeft: 0 }] : [],
     occupied: [], turn: 0, status: 'playing', guarding: false, events: [], eventSerial: 0,
     deck: createStarterDeck(dungeon.seed), energy: cardBalance.maxEnergy, maxEnergy: cardBalance.maxEnergy,
-    focus: 0, block: 0, preparedCounter: 0, transformations: emptyTransformations(), signatures: emptySignatures(), elevation: 0,
+    focus: 0, block: 0, preparedCounter: 0, passives: emptyPassives(), transformations: emptyTransformations(), signatures: emptySignatures(), elevation: 0,
     ...updateFog(dungeon.tiles, dungeon.spawn),
   }
 }
@@ -107,22 +125,28 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
   if (state.status !== 'playing' || state.hp <= 0) return null
   if (action.kind === 'ability') return resolveSignature(state, action)
   let cell = state.cell, facing = state.facing
-  const enemies = state.enemies.map((enemy) => ({ ...enemy }))
+  const enemies = state.enemies.map(cloneEnemy)
   const events: CombatEvent[] = []
   let eventSerial = state.eventSerial
   const emit = (event: Omit<CombatEvent, 'id'>) => events.push({ ...event, id: ++eventSerial })
   let { hp, energy, focus, deck } = state
   let transformations = state.transformations
+  const passives = { ...state.passives }
   const form = currentForm(transformations)
   const light = transformations.active?.attunement === 'light'
   const dark = transformations.active?.attunement === 'dark'
   let block = 0, preparedCounter = 0
-  const strike = (enemy: Enemy, damage: number) => {
+  const strike = (enemy: Enemy, damage: number, basic = false) => {
     facing = directionTo(cell, enemy.cell)
-    const amount = damageEnemy(enemy, damage + focus)
+    const bonus = form === 'pawn' ? basic ? passives.sharpener : Math.min(passives.sharpener, passiveBalance.sharpenerSkillCap) : 0
+    const smite = form === 'king' ? smiteBudget(passives, state.turn) : 0
+    const effect = form === 'knight' && basic ? 'pierce' : form === 'bishop' && basic ? 'splash'
+      : form === 'rook' && basic ? 'concussion' : form === 'queen' && basic ? 'severance' : form === 'king' ? 'smite' : undefined
+    emitDamage(enemy, [damage + focus + smite, ...(bonus ? [bonus] : [])],
+      (event) => emit({ ...event, seen: true }), { effect, followup: form === 'pawn' && (basic || bonus > 0),
+        penetration: form === 'knight' && basic ? passiveBalance.penetration : 0 })
     focus = 0
-    emit({ kind: 'hit', actor: 'pawn', targetId: enemy.id, cell: enemy.cell, amount, seen: true })
-    if (enemy.hp === 0) emit({ kind: 'defeat', actor: enemy.id, cell: enemy.cell, seen: true })
+    if (basic) afterBasic({ ...state, cell, enemies, passives }, enemy, (event) => emit({ ...event, seen: true }))
   }
   if (action.kind === 'move') {
     const board = movementBoard(state)
@@ -136,18 +160,20 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
     const target = attackTargets(state).find((enemy) => enemy.id === action.targetId)
     if (!target) return null
     const enemy = enemies.find((candidate) => candidate.id === target.id)!
-    strike(enemy, form === 'pawn' ? balance.playerDamage : formBalance[form].damage + (light ? formBalance.lightDamage : 0))
+    strike(enemy, form === 'pawn' ? balance.playerDamage : formBalance[form].damage + (light ? formBalance.lightDamage : 0), true)
     block = (form === 'rook' ? formBalance.rook.basicBlock : 0) + (dark ? formBalance.darkBlock : 0)
   } else if (action.kind === 'transform') {
     const next = activateTransformation(transformations, action.form, action.attunement)
     if (!next) return null
     transformations = next
+    if (action.form === 'king') { passives.smite = 0; passives.kingBasics = 0; passives.smiteTurn = undefined; passives.smiteSpent = 0 }
     emit({ kind: 'transform', actor: 'pawn', cell, seen: true })
   } else if (action.kind === 'revert') {
     if (reversionReason(state)) return null
     cell = { ...pawnLanding(state)! }
     facing = directionTo(state.cell, cell)
     transformations = endActivation(transformations, true)
+    passives.smite = 0; passives.kingBasics = 0; passives.smiteTurn = undefined; passives.smiteSpent = 0
     emit({ kind: 'revert', actor: 'pawn', cell, seen: true })
   } else if (action.kind === 'card') {
     if (!validCardTarget(state, action.cardInstanceId, action.target)) return null
@@ -179,7 +205,7 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
   } else if (action.kind === 'defend' || action.kind === 'wait') {
     emit({ kind: action.kind === 'defend' ? 'guard' : 'wait', actor: 'pawn', cell, seen: true })
   } else return null
-  const next = { ...state, cell, facing, enemies, events, eventSerial, hp, energy, focus, deck, block, preparedCounter, transformations,
+  const next = { ...state, passives, cell, facing, enemies, events, eventSerial, hp, energy, focus, deck, block, preparedCounter, transformations,
     elevation: currentForm(transformations) === 'knight' ? elevationAt(state.dungeon, cell) : 0,
     signatures: { ...state.signatures, usedThisTurn: undefined, parryReady: false },
     guarding: action.kind === 'defend', lastAction: action.kind }
@@ -189,17 +215,24 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
 // Exactly one ordered action per eligible living enemy. No clocks, effects, React, or global randomness.
 export function resolveEnemyPhase(state: GameState): GameState {
   if (state.status !== 'playing' || state.hp <= 0) {
-    return state.hp <= 0 && state.status !== 'defeat' ? { ...state, hp: 0, status: 'defeat', guarding: false } : state
+    return state.hp <= 0 && state.status !== 'defeat' ? { ...state, passives: emptyPassives(), hp: 0, status: 'defeat', guarding: false } : state
   }
-  const enemies = state.enemies.map((enemy) => ({ ...enemy, from: enemy.cell }))
+  const enemies = state.enemies.map((enemy) => ({ ...cloneEnemy(enemy), from: enemy.cell }))
+  const passives = { ...state.passives }
   const events = [...state.events]
   let hp = state.hp
   let block = state.block, preparedCounter = state.preparedCounter, eventSerial = state.eventSerial
   let parryReady = state.signatures.parryReady
+  let poiseUsed = false
+  const king = currentForm(state.transformations) === 'king'
   const emit = (event: Omit<CombatEvent, 'seen' | 'id'>) => events.push({ ...event, id: ++eventSerial,
-    seen: event.actor === 'pawn' || canSeeContent(cellId(event.cell), state) })
+    seen: event.targetId === 'pawn' || (event.actor === 'pawn' && !event.targetId) || canSeeContent(cellId(event.cell), state) })
   for (const enemy of [...enemies].sort((a, b) => a.id.localeCompare(b.id))) {
     if (enemy.hp <= 0 || hp <= 0) continue
+    tickEnemyStatuses(enemy, state.turn, emit)
+    if (enemy.hp <= 0) continue
+    if (skipConcussedResponse(enemy)) { emit({ kind: 'stun', actor: enemy.id, cell: enemy.cell }); continue }
+    if (enemy.uninterruptible) continue
     if ((enemy.fearTurns ?? 0) > 0 && !enemy.boss) {
       const board = movementBoard({ ...state, enemies })
       const distance = gridDistance(enemy.cell, state.cell)
@@ -217,7 +250,9 @@ export function resolveEnemyPhase(state: GameState): GameState {
       if (hits) {
         const parried = parryReady
         parryReady = false
-        const incoming = parried ? 0 : Math.max(0, balance.enemyDamage - (enemy.weakenedDamage ?? 0) - (state.guarding ? balance.guardReduction : 0))
+        const poise = king && !poiseUsed && !parried ? passiveBalance.kingPoise : 0
+        if (poise) poiseUsed = true
+        const incoming = parried ? 0 : Math.max(0, balance.enemyDamage - poise - (enemy.weakenedDamage ?? 0) - (state.guarding ? balance.guardReduction : 0))
         enemy.weakenedDamage = 0
         const absorbed = Math.min(block, incoming)
         block -= absorbed
@@ -227,10 +262,12 @@ export function resolveEnemyPhase(state: GameState): GameState {
         else emit({ kind: 'hit', actor: enemy.id, targetId: 'pawn', cell: state.cell, amount: damage })
         if (hp > 0 && (parried || state.guarding || preparedCounter > 0)
           && gridDistance(enemy.cell, state.cell) <= abilityBalance.retaliationRange && hasLineOfSight(state.dungeon, state.cell, enemy.cell)) {
-          const counter = damageEnemy(enemy, parried ? abilityBalance.pawnCounter : state.guarding ? balance.counterDamage : preparedCounter)
+          const counterBase = parried ? abilityBalance.pawnCounter : state.guarding ? balance.counterDamage : preparedCounter
+          const bonus = currentForm(state.transformations) === 'pawn' && parried ? Math.min(passives.sharpener, passiveBalance.sharpenerSkillCap) : 0
+          const smite = king ? smiteBudget(passives, state.turn) : 0
+          emitDamage(enemy, [counterBase + smite, ...(bonus ? [bonus] : [])],
+            (event) => emit(event.kind === 'hit' && event.effect !== 'sharpener' ? { ...event, kind: 'counter' } : event), { followup: false })
           preparedCounter = 0
-          emit({ kind: 'counter', actor: 'pawn', targetId: enemy.id, cell: enemy.cell, amount: counter })
-          if (enemy.hp === 0) emit({ kind: 'defeat', actor: enemy.id, cell: enemy.cell })
         }
       } else emit({ kind: 'miss', actor: enemy.id, cell: enemy.attackTarget })
       enemy.attackTarget = undefined
@@ -262,12 +299,14 @@ export function resolveEnemyPhase(state: GameState): GameState {
       if (enemy.searchLeft <= 0) { enemy.intent = 'idle'; enemy.lastSeen = undefined }
     }
   }
-  // Status/hazard tick hook: future effects belong here, once per accepted action, before terminal checks.
+  // Decree winds up through the complete response. Defeat cancels it before any shockwave.
+  const decree = hp > 0 ? resolveRoyalDecree({ ...state, enemies, hp, events, eventSerial, passives }) : undefined
+  if (decree) eventSerial = decree.eventSerial
   const status = hp <= 0 ? 'defeat' : sameCell(state.cell, state.dungeon.exit)
     && enemies.every((enemy) => enemy.hp <= 0) ? 'victory' : 'playing'
   if (status !== 'playing') emit({ kind: status, actor: 'pawn', cell: state.cell })
-  return finishSignatureTurn({ ...state, enemies, hp, status, events, eventSerial, guarding: false, block: 0, preparedCounter: 0,
-    energy: Math.min(state.maxEnergy, state.energy + cardBalance.energyPerTurn), turn: state.turn + 1 })
+  return finishSignatureTurn({ ...state, signatures: { ...state.signatures, decree: undefined }, passives: hp <= 0 ? emptyPassives() : passives, enemies, hp, status, events, eventSerial, guarding: false, block: 0, preparedCounter: 0,
+    focus: decree?.focus ?? state.focus, energy: Math.min(state.maxEnergy, state.energy + cardBalance.energyPerTurn), turn: state.turn + 1 })
 }
 
 export function resolveTurn(state: GameState, action: PlayerAction, movement?: MovementRule): GameState | null {

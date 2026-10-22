@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { bossForms, formNames, type Attunement, type BossForm } from '../data/forms'
+import { testForms, formNames, type Attunement, type BossForm } from '../data/forms'
 import { usePawnStore } from '../game/state/pawnStore'
 import { activationReason, currentForm } from '../game/logic/transformations'
 import { closeHudPanels } from './hudInteraction'
@@ -23,7 +23,7 @@ export default function TransformationTools() {
   return <fieldset className="transformation-dev-tools"><legend>Transformation testing</legend>
     <p>Forms share the Pawn model; movement and signatures change. Explicit overrides mark this as a test session.</p>
     <label>Form<select value={form} onChange={(event) => setForm(event.target.value as BossForm)}>
-      {bossForms.map((id) => <option key={id} value={id}>{formNames[id]}</option>)}
+      {testForms.map((id) => <option key={id} value={id}>{formNames[id]}</option>)}
     </select></label>
     <label>Attunement<select value={attunement} onChange={(event) => setAttunement(event.target.value as Attunement)}>
       <option value="light">Light</option><option value="dark">Dark</option>
@@ -48,7 +48,8 @@ export default function TransformationTools() {
     <button type="button" disabled={!!blocked || !state.transformations.active} onClick={() => override({ kind: 'revert' })}>Return to Pawn (test)</button>
     <button type="button" disabled={!!blocked} onClick={() => override({ kind: 'cooldown', form })}>Reset {formNames[form]} cooldown (test)</button>
     <button type="button" disabled={!!blocked} onClick={() => override({ kind: 'eye' })}>Reset Astral Eye use (test)</button>
-    <button type="button" disabled={!!blocked} onClick={() => state.debugBossWin(form, attunement)}>Simulate corresponding boss win</button>
+    <button type="button" disabled={!!blocked || form === 'king'} onClick={() => state.debugBossWin(form, attunement)}>Simulate corresponding boss win</button>
+    {form === 'king' && <button type="button" disabled={!!blocked || state.transformations.active?.form === 'king'} onClick={() => override({ kind: 'king-availability' })}>Restore King test eligibility (test)</button>}
     <button type="button" disabled={!!blocked} onClick={state.debugDefeat}>Test death retention</button>
     <details><summary>Transformation state</summary><dl className="diagnostic-values">
       <dt>Session</dt><dd>{state.playtestMode ? 'Playtest overrides used' : 'Normal rules'}</dd>

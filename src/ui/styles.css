@@ -307,3 +307,10 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 
 .dungeon-dev-tools { font-size: 0.8125rem; }
 .hud-panel p, .playtest-contents p { font: 0.875rem/1.55 system-ui, sans-serif; }
+
+.passive-summary { margin: 4px 0; font-size: 0.8rem; color: var(--ui-secondary); }
+.passive-summary strong { color: var(--ui-text); }
+.mini-cell[data-kind="attack"] { color: var(--ui-attack); }
+.enemy-label .status-burn { color: #e1b084; }
+.enemy-label .status-bleed { color: #e29a9a; }
+.enemy-label .status-concussion { color: #e1c477; }

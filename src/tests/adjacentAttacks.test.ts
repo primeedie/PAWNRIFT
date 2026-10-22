@@ -21,11 +21,11 @@ function game(form: ChessForm = 'pawn'): GameState {
 }
 
 describe('ordinary eight-neighbor melee is single-target', () => {
-  it.each(['pawn', 'rook', 'queen'] as const)('%s attacks any one of eight neighbors, with exactly one world response', (form) => {
+  it.each(['pawn', 'rook', 'queen'] as const)('%s uses its form-specific neighbor directions, with exactly one world response', (form) => {
     const state = game(form), before = structuredClone(state)
-    expect(attackTargets(state).map((target) => target.cell)).toEqual(neighbors)
+    expect(attackTargets(state).map((target) => target.cell)).toEqual(form === 'queen' ? neighbors : neighbors.filter((cell) => cell.column === 3 || cell.row === 3))
     expect(movementPreviews(state).some((cell) => neighbors.some((neighbor) => cellId(neighbor) === cellId(cell)))).toBe(false)
-    for (const target of state.enemies) {
+    for (const target of attackTargets(state)) {
       const action = { kind: 'attack', targetId: target.id } as const
       const player = resolvePlayerAction(state, action)!
       expect(player.enemies.filter((entry) => entry.hp < 30).map((entry) => entry.id)).toEqual([target.id])
@@ -68,13 +68,13 @@ describe('ordinary eight-neighbor melee is single-target', () => {
       expect(resolveTurn({ ...state, visible: base.visible }, { kind: 'attack', targetId: target.id })).toBeNull()
     }
   })
-  it('preserves Knight straight range 2 and Bishop diagonal range 2', () => {
+  it('preserves Knight straight range 2 while Bishop attacks all neighbors at range 1', () => {
     for (const form of ['knight', 'bishop'] as const) {
-      const base = game(form), target = enemy(form === 'bishop' ? c(5, 5) : c(5, 3))
+      const base = game(form), target = enemy(form === 'bishop' ? c(4, 4) : c(5, 3))
       const state = { ...base, enemies: [target], visible: new Set(Array.from({ length: 64 }, (_, id) => id)) }
       expect(attackTargets(state)).toEqual([target])
       expect(resolveTurn(state, { kind: 'attack', targetId: target.id })!.turn).toBe(1)
-      const offPattern = { ...target, cell: form === 'bishop' ? c(3, 4) : c(4, 4) }
+      const offPattern = { ...target, cell: form === 'bishop' ? c(5, 5) : c(4, 4) }
       expect(attackTargets({ ...state, enemies: [offPattern] })).toEqual([])
       expect(attackTargets({ ...state, occupied: [form === 'bishop' ? c(4, 4) : c(4, 3)] })).toEqual([])
     }

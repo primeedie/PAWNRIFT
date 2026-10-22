@@ -3,7 +3,7 @@ import { usePawnStore } from '../game/state/pawnStore'
 
 function describeEvent(event: CombatEvent) {
   switch (event.kind) {
-    case 'hit': return event.actor === 'pawn' ? `Strike · ${event.amount} damage` : event.amount ? `−${event.amount} HP` : 'Guarded'
+    case 'hit': return event.actor === 'pawn' ? `${event.effect === 'sharpener' ? 'Sharpener follow-up' : event.effect ?? 'Strike'} · ${event.amount} damage` : event.amount ? `−${event.amount} HP` : 'Guarded'
     case 'transform': return 'Transformation activated'
     case 'revert': return 'Returned to Pawn · recovery begins'
     case 'reveal': return 'Astral Eye reveals terrain and occupants'
@@ -13,7 +13,8 @@ function describeEvent(event: CombatEvent) {
     case 'guard': return 'Guard ready'
     case 'heal': return `Restored ${event.amount} HP`
     case 'focus': return 'Focus gained'
-    case 'windup': return 'Rookling readies a strike'
+    case 'windup': return event.actor === 'pawn' ? 'Royal Decree winding up' : 'Rookling readies a strike'
+    case 'stun': return 'Concussion: response skipped'
     case 'miss': return 'Rookling misses'
     case 'defeat': return event.actor === 'pawn' ? 'Defeated' : 'Rookling defeated'
     case 'victory': return 'Floor cleared'
@@ -44,7 +45,7 @@ export function CombatHUD() {
   return (
     <div className="combat-hud">
       <div className="combat-actions" aria-label="Combat actions">
-        <button disabled={locked || attackTargets(state).length === 0} onClick={() => state.tryAttack()} title="Attack one eligible enemy (E); ordinary melee reaches all 8 neighbors"><kbd>E</kbd><span>– Attack</span></button>
+        <button disabled={locked || attackTargets(state).length === 0} onClick={() => state.tryAttack()} title="Attack one eligible enemy (E); directions depend on current form"><kbd>E</kbd><span>– Attack</span></button>
         <button disabled={locked} onClick={() => state.submitAction({ kind: 'defend' })} title="Guard and counter this turn (Q)"><kbd>Q</kbd><span>– Defend</span></button>
         <button disabled={locked} onClick={() => state.submitAction({ kind: 'wait' })} title="Wait one turn (Space or period)"><kbd>Space</kbd><span>– Wait</span></button>
         {state.status === 'victory' && <button onClick={() => state.regenerateFloor()}>Restart floor</button>}

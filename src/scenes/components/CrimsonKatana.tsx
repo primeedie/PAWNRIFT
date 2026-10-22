@@ -1,4 +1,8 @@
-import { ExtrudeGeometry, Shape } from 'three'
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { usePawnStore } from '../../game/state/pawnStore'
+import { passiveBalance } from '../../data/passives'
+import { DoubleSide, ExtrudeGeometry, Group, Shape } from 'three'
 
 // Original faceted sweep, split into contiguous spine/body/edge bands.
 // Each station is [height, spine X, cutting-edge X]; the final point is the tip.
@@ -120,6 +124,24 @@ export function KatanaSheath() {
 }
 
 export function SheathedKatana() {
+  const drawn = useRef<Group>(null), stored = useRef<Group>(null), trail = useRef<Group>(null)
+  const motion = useRef({ id: -1, elapsed: 0 })
+  useFrame((_, delta) => {
+    const state = usePawnStore.getState()
+    if (motion.current.id !== state.actionId) motion.current = { id: state.actionId, elapsed: 0 }
+    const playing = state.runActive && state.phase === 'player' && state.lastAction === 'attack' && !state.transformations.active
+    if (playing) motion.current.elapsed += delta * 1000
+    const t = playing ? Math.min(1, motion.current.elapsed / passiveBalance.iaiMs) : 0
+    const unsheathed = playing && t > 0.18 && t < 0.82
+    if (drawn.current && stored.current && trail.current) {
+      stored.current.visible = !unsheathed
+      drawn.current.visible = unsheathed
+      const draw = t < 0.34 ? Math.max(0, (t - 0.18) / 0.16) : t < 0.57 ? 1 : Math.max(0, (0.82 - t) / 0.25)
+      drawn.current.position.set(0.35 * draw, -0.86 * draw, 0.08 * draw)
+      drawn.current.rotation.z = t < 0.34 ? 0 : Math.sin(Math.min(1, (t - 0.34) / 0.25) * Math.PI) * -1.1
+      trail.current.visible = unsheathed && t > 0.3 && t < 0.52
+    }
+  })
   return (
     // Pawn faces +Z: left is -X, scabbard extends backward along -Z.
     // Separate attachment / sheath / sword pivots prepare future draw motions only.
@@ -130,7 +152,11 @@ export function SheathedKatana() {
       </mesh>
       <group name="left-hip-weapon-attachment" position={[-0.4, 0.45, 0.1]} rotation={[-1.82, 0, 0]} scale={0.64}>
         <KatanaSheath />
-        <group name="sword-draw-pivot"><CrimsonKatana bladeVisible={false} /></group>
+        <group ref={stored} name="sheathed-sword"><CrimsonKatana bladeVisible={false} /></group>
+        <group ref={drawn} name="sword-draw-pivot" visible={false}><CrimsonKatana /></group>
+        <group ref={trail} position={[0.25, -0.25, 0]} visible={false} rotation={[0, 0, -0.5]}>
+          <mesh><ringGeometry args={[0.45, 0.49, 12, 1, 0, 1.4]} /><meshBasicMaterial color="#c44b5b" transparent opacity={0.45} depthWrite={false} side={DoubleSide} /></mesh>
+        </group>
       </group>
     </group>
   )

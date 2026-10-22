@@ -1,6 +1,7 @@
 ﻿import { useState } from 'react'
-import { bossForms, formNames, type ChessForm } from '../data/forms'
+import { testForms, formNames, type ChessForm } from '../data/forms'
 import { usePawnStore } from '../game/state/pawnStore'
+import { PassiveTools } from './PassiveTools'
 import type { PlaytestAction } from '../game/logic/playtesting'
 export function CombatTools() {
   const state = usePawnStore(), [form, setForm] = useState<ChessForm>('pawn'), [message, setMessage] = useState('')
@@ -13,11 +14,12 @@ export function CombatTools() {
     <button type="button" disabled={locked} onClick={() => run({ kind: 'energy' })}>Restore Energy</button>
     <button type="button" disabled={locked} onClick={() => run({ kind: 'focus' })}>Restore Focus</button>
     <label>Ability<select value={form} onChange={(event) => setForm(event.target.value as ChessForm)}>
-      {(['pawn', ...bossForms] as const).map((id) => <option key={id} value={id}>{formNames[id]}</option>)}
+      {(['pawn', ...testForms] as const).map((id) => <option key={id} value={id}>{formNames[id]}</option>)}
     </select></label>
     <button type="button" disabled={locked} onClick={() => run({ kind: 'cooldown', form })}>Reset selected cooldown</button>
     <button type="button" disabled={locked} onClick={() => run({ kind: 'cooldown' })}>Reset all cooldowns</button>
     <p>Turn {state.turn} - {state.phase}. Test enemies spawn only on valid visible cells.</p>
+    <PassiveTools />
     <p role="status">{message}</p>
   </fieldset>
 }

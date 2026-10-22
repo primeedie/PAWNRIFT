@@ -1,4 +1,4 @@
-import { bossForms, transformationRules, type Attunement, type BossForm, type ChessForm } from '../../data/forms'
+import { testForms, transformationRules, type Attunement, type BossForm, type ChessForm } from '../../data/forms'
 import { cardBalance } from '../../data/cards'
 import type { GameState } from './combat'
 import { cellId, distancesFrom, dungeonIssues, validCell } from './dungeon'
@@ -7,9 +7,13 @@ import { currentForm, endActivation, grantTransformation } from './transformatio
 import { pawnLanding, perchTiles, playerBoard, reversionReason } from './perching'
 import { signatureFog } from './signatures'
 import { chessDestinations, formMovement } from './chessMovement'
+import { applyBleed, applyBurn, applyConcussion, emptyPassives } from './passives'
+import { cloneEnemy } from './damage'
 import { knownPreviewState } from './formCombat'
 
 export type PlaytestAction =
+  | { kind: 'passive-reset' | 'sharpener-reset' | 'king-availability' }
+  | { kind: 'status'; targetId: string; effect: 'burn' | 'bleed' | 'concussion' | 'immunity' | 'clear' | 'clear-burn' | 'clear-bleed' | 'clear-concussion' }
   | { kind: 'replace'; form: BossForm; attunement: Attunement; replace: BossForm }
   | { kind: 'charges'; form: BossForm }
   | { kind: 'duration'; floors: number }
@@ -25,8 +29,26 @@ export type DiagnosticLayer = typeof diagnosticLayers[number]
 export function applyPlaytest(state: GameState, action: PlaytestAction): GameState | null {
   if (!PLAYTEST_TOOLS_ENABLED || state.status !== 'playing' || state.hp <= 0) return null
   const next: GameState = { ...state, events: [], guarding: false, block: 0, preparedCounter: 0 }
-  if (action.kind === 'replace') {
-    if (!bossForms.includes(action.form) || !state.transformations.inventory.some((item) => item.form === action.replace)
+  if (action.kind === 'king-availability') {
+    if (state.transformations.active?.form === 'king') return null
+    const reconstruction = { ...state.transformations.reconstruction }; delete reconstruction.king
+    next.transformations = { ...state.transformations, reconstruction }
+  } else if (action.kind === 'passive-reset') { next.passives = emptyPassives(); next.enemies = state.enemies.map((enemy) => ({ ...cloneEnemy(enemy), burn: undefined, bleed: undefined, concussion: undefined, stunImmunity: 0, stunned: false })) }
+  else if (action.kind === 'sharpener-reset') next.passives = { ...state.passives, sharpener: 0 }
+  else if (action.kind === 'status') {
+    if (!state.enemies.some((enemy) => enemy.id === action.targetId && enemy.hp > 0 && state.visible.has(cellId(enemy.cell)))) return null
+    next.enemies = state.enemies.map(cloneEnemy)
+    const enemy = next.enemies.find((enemy) => enemy.id === action.targetId)!
+    if (action.effect === 'burn') applyBurn(enemy, state.turn - 1)
+    else if (action.effect === 'bleed') applyBleed(enemy, state.turn - 1)
+    else if (action.effect === 'concussion') applyConcussion(enemy)
+    else if (action.effect === 'immunity') enemy.stunImmunity = 0
+    else if (action.effect === 'clear-burn') enemy.burn = undefined
+    else if (action.effect === 'clear-bleed') enemy.bleed = undefined
+    else if (action.effect === 'clear-concussion') { enemy.concussion = undefined; enemy.stunned = false }
+    else { enemy.burn = undefined; enemy.bleed = undefined; enemy.concussion = undefined; enemy.stunImmunity = 0; enemy.stunned = false }
+  } else if (action.kind === 'replace') {
+    if (!testForms.includes(action.form) || !state.transformations.inventory.some((item) => item.form === action.replace)
       || state.transformations.active?.form === action.replace || state.transformations.inventory.some((item) => item.form === action.form)) return null
     const reconstruction = { ...state.transformations.reconstruction }
     delete reconstruction[action.form]
@@ -44,8 +66,9 @@ export function applyPlaytest(state: GameState, action: PlaytestAction): GameSta
     if (reversionReason(state)) return null
     next.cell = { ...pawnLanding(state)! }; next.elevation = 0
     next.transformations = endActivation(state.transformations, true)
+    next.passives = { ...state.passives, smite: 0, kingBasics: 0, smiteTurn: undefined, smiteSpent: 0 }
   } else if (action.kind === 'cooldown') {
-    if (action.form && action.form !== 'pawn' && !bossForms.includes(action.form)) return null
+    if (action.form && action.form !== 'pawn' && !testForms.includes(action.form)) return null
     const cooldowns = { ...state.signatures.cooldowns }
     for (const form of Object.keys(cooldowns) as ChessForm[]) if (!action.form || action.form === form) cooldowns[form] = 0
     next.signatures = { ...state.signatures, cooldowns, usedThisTurn: undefined }

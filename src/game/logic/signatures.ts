@@ -8,17 +8,22 @@ import { canSeeContent, updateFog, visibleCells } from './visibility'
 import { canKnightLand, elevationAt, playerBoard } from './perching'
 import { directionTo, type Cell } from './movement'
 import { formAttackTargets, knownPreviewState } from './formCombat'
+import { passiveBalance } from '../../data/passives'
+import { cloneEnemy } from './damage'
+export { damageEnemy } from './damage'
+import { emitDamage, pushEnemy, smiteBudget, splitBonus } from './passives'
 import { gridDistance } from './enemyAI'
 
 export type SignatureState = {
   cooldowns: Record<ChessForm, number>
   usedThisTurn?: ChessForm
+  decree?: { origin: Cell; light: boolean }
   eyeUsed: boolean
   reveal: { cells: number[]; turnsLeft: number; foresight: boolean } | null
   parryReady: boolean
 }
 export function emptySignatures(): SignatureState {
-  return { cooldowns: { pawn: 0, knight: 0, bishop: 0, rook: 0, queen: 0 }, eyeUsed: false, reveal: null, parryReady: false }
+  return { cooldowns: { pawn: 0, knight: 0, bishop: 0, rook: 0, queen: 0, king: 0 }, eyeUsed: false, reveal: null, parryReady: false }
 }
 export function signatureFog(state: Pick<GameState, 'dungeon' | 'cell' | 'explored' | 'signatures'>) {
   const fog = updateFog(state.dungeon.tiles, state.cell, state.explored)
@@ -48,6 +53,11 @@ export function vaultTargets(state: GameState, destination: Cell, preview = fals
 export function vaultDestinations(state: GameState) {
   return Array.from({ length: 64 }, (_, id) => cellFromId(id)).filter((cell) => vaultTargets(state, cell, true).length)
 }
+export function royalDecreeTargets(state: GameState, origin: Cell = state.cell) {
+  return state.enemies.filter((enemy) => enemy.hp > 0 && canSeeContent(cellId(enemy.cell), state)
+    && Math.max(Math.abs(enemy.cell.column - origin.column), Math.abs(enemy.cell.row - origin.row)) <= 2)
+    .sort((a, b) => a.id.localeCompare(b.id))
+}
 export function abilityReason(state: GameState) {
   if (state.status !== 'playing' || state.hp <= 0) return 'Run ended.'
   const form = currentForm(state.transformations)
@@ -55,33 +65,24 @@ export function abilityReason(state: GameState) {
     if (state.signatures.eyeUsed) return 'Used this floor.'
     if (!chooseAstralRegion(state.dungeon, state.explored, state.turn)) return 'The entire map is explored.'
   } else if (state.signatures.cooldowns[form] > 0) return `${state.signatures.cooldowns[form]} turns remaining.`
+  if (form === 'king' && !royalDecreeTargets(state).length) return 'No visible foes in the 5x5.'
   if (form === 'knight' && !vaultDestinations(state).length) return 'No visible leap-and-thrust combination.'
   if (form === 'queen' && !state.enemies.some((enemy) => enemy.hp > 0 && canSeeContent(cellId(enemy.cell), state)
     && gridDistance(state.cell, enemy.cell) <= balance.fearRange)) return 'No visible foes within 3 tiles.'
-}
-
-// Damage is shared by basic attacks, cards, signatures and counters. Exposed triggers once, without stacking.
-export function damageEnemy(enemy: Enemy, amount: number) {
-  const damage = Math.min(enemy.hp, amount + ((enemy.exposedTurns ?? 0) > 0 ? balance.exposedBonus : 0))
-  enemy.hp -= damage
-  enemy.exposedTurns = 0
-  return damage
 }
 
 export function resolveSignature(state: GameState, options: { destination?: Cell; targetId?: string }): GameState | null {
   if (abilityReason(state)) return null
   const form = currentForm(state.transformations), light = state.transformations.active?.attunement === 'light'
   if (form !== 'knight' && (options.destination || options.targetId)) return null
-  const next: GameState = { ...state, enemies: state.enemies.map((enemy) => ({ ...enemy })), events: [],
+  const next: GameState = { ...state, enemies: state.enemies.map(cloneEnemy), passives: { ...state.passives }, events: [],
     block: 0, preparedCounter: 0, guarding: false, lastAction: 'ability',
     signatures: { ...state.signatures, cooldowns: { ...state.signatures.cooldowns, [form]: signatureAbilities[form].cooldown },
       usedThisTurn: form, parryReady: false } }
   const emit = (event: Omit<CombatEvent, 'id' | 'seen'>) => next.events.push({ ...event, id: ++next.eventSerial, seen: true })
   const strike = (enemy: Enemy, amount: number) => {
-    const damage = damageEnemy(enemy, amount + next.focus)
+    emitDamage(enemy, [amount + next.focus], emit)
     next.focus = 0
-    emit({ kind: 'hit', actor: 'pawn', targetId: enemy.id, cell: enemy.cell, amount: damage })
-    if (enemy.hp === 0) emit({ kind: 'defeat', actor: enemy.id, cell: enemy.cell })
   }
   if (form === 'pawn') {
     next.signatures.parryReady = true
@@ -107,6 +108,9 @@ export function resolveSignature(state: GameState, options: { destination?: Cell
     next.block = light ? balance.rookLightBlock : balance.rookDarkBlock
     next.preparedCounter = light ? balance.rookLightRetaliation : balance.rookDarkRetaliation
     emit({ kind: 'guard', actor: 'pawn', cell: next.cell })
+  } else if (form === 'king') {
+    next.signatures.decree = { origin: { ...state.cell }, light }
+    emit({ kind: 'windup', actor: 'pawn', cell: state.cell })
   } else {
     for (const enemy of [...next.enemies].sort((a, b) => a.id.localeCompare(b.id))) {
       if (enemy.hp <= 0 || !canSeeContent(cellId(enemy.cell), state)) continue
@@ -119,6 +123,23 @@ export function resolveSignature(state: GameState, options: { destination?: Cell
     }
   }
   return { ...next, ...signatureFog(next) }
+}
+
+export function resolveRoyalDecree(state: GameState) {
+  const decree = state.signatures.decree
+  if (!decree || state.hp <= 0) return
+  const targets = royalDecreeTargets(state, decree.origin)
+  const budget = targets.length ? smiteBudget(state.passives, state.turn) : 0
+  const emit = (event: Omit<CombatEvent, 'id' | 'seen'>) => state.events.push({ ...event, id: ++state.eventSerial, seen: true })
+  targets.forEach((enemy, index) => {
+    const inner = Math.max(Math.abs(enemy.cell.column - decree.origin.column), Math.abs(enemy.cell.row - decree.origin.row)) <= 1
+    const amount = decree.light ? inner ? passiveBalance.decreeLightInner : passiveBalance.decreeLightOuter
+      : inner ? passiveBalance.decreeDarkInner : passiveBalance.decreeDarkOuter
+    emitDamage(enemy, [amount + splitBonus(budget, targets.length, index) + state.focus], emit, { effect: 'smite' })
+    state.focus = 0
+    if (!decree.light) pushEnemy(state, enemy, decree.origin)
+  })
+  return state
 }
 
 export function finishSignatureTurn(state: GameState): GameState {

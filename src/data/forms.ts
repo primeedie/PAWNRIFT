@@ -1,5 +1,7 @@
 export const bossForms = ['knight', 'bishop', 'rook', 'queen'] as const
-export type BossForm = typeof bossForms[number]
+// King is exposed only through explicit prototype test grants, not boss rewards.
+export const testForms = [...bossForms, 'king'] as const
+export type BossForm = typeof testForms[number]
 export type ChessForm = 'pawn' | BossForm
 export type Attunement = 'light' | 'dark'
 export const transformationRules = { charges: 5, activeFloors: 2, recoveryFloors: 1, slots: 2 } as const
@@ -7,9 +9,10 @@ export const transformationRules = { charges: 5, activeFloors: 2, recoveryFloors
 export const formBalance = {
   lightDamage: 1, darkBlock: 1,
   knight: { slideRange: 0, attackRange: 2, damage: 3 },
-  bishop: { slideRange: 7, attackRange: 2, damage: 2 },
+  bishop: { slideRange: 7, attackRange: 1, damage: 2 },
   rook: { slideRange: 7, attackRange: 1, damage: 4, basicBlock: 2 },
   queen: { slideRange: 7, attackRange: 1, damage: 3 },
+  king: { slideRange: 0, attackRange: 1, damage: 4 },
 } as const
-export const formNames: Record<ChessForm, string> = { pawn: 'Pawn', knight: 'Knight', bishop: 'Bishop', rook: 'Rook', queen: 'Queen' }
-export const formSymbols: Record<ChessForm, string> = { pawn: '♟', knight: '♞', bishop: '♝', rook: '♜', queen: '♛' }
+export const formNames: Record<ChessForm, string> = { pawn: 'Pawn', knight: 'Knight', bishop: 'Bishop', rook: 'Rook', queen: 'Queen', king: 'King (test)' }
+export const formSymbols: Record<ChessForm, string> = { pawn: '♟', knight: '♞', bishop: '♝', rook: '♜', queen: '♛', king: '♚' }

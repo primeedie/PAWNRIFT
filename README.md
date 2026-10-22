@@ -1,6 +1,6 @@
 ﻿# PAWNRIFT
 
-Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7A.1 adds safe Knight walking/perching, confirmed reversion, five turn-based signatures, and a compact HUD with movement mini-boards. Transformation lifecycle, cards and fresh normal-run seeds remain intact.
+Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7A.4 adds form passives, timed statuses, attack mini-boards and a public King test preview; movement, signatures and compact HUD remain intact. Transformation lifecycle, cards and fresh normal-run seeds remain intact.
 
 **Stack:** TypeScript, React/Vite, Three.js/React Three Fiber, Drei, Zustand, and Vitest. No backend or runtime services.
 
@@ -28,7 +28,7 @@ The build checks TypeScript and writes `dist/`. Preview serves production files,
 | Control | Action |
 | --- | --- |
 | WASD / arrows / glowing neighbor | One orthogonal move |
-| E / Attack / click an eligible visible enemy | Single-target melee; ordinary adjacency includes all 8 neighbors |
+| E / Attack / click an eligible visible enemy | One primary target; legal directions depend on form |
 | Q / Defend | Guard and counter the next enemy response |
 | Space / period / Wait | Wait one turn |
 | Mouse wheel | Bounded camera zoom |
@@ -41,7 +41,7 @@ The build checks TypeScript and writes `dist/`. Preview serves production files,
 | Moves | Instructional 5x5 movement guide |
 | Return to Pawn > Confirm return | Forfeit duration; one turn; full subsequent recovery floor |
 
-W/Up decreases the row (−Z); D/Right increases the column (+X). The board axes appear diagonal on screen. Small crimson rings mark eligible attack targets; teal squares mark movement. Ordinary melee and adjacent damage cards affect only the chosen enemy, including diagonal neighbors. Knight/Bishop retain special straight/diagonal range 2, and signatures retain their own targeting. Valid actions advance the world once; invalid input, menus, camera controls, hover, and debug tools do not. Enemies act only in response to accepted actions. Rookling marks a strike tile one turn before attacking it; evade or defend.
+W/Up decreases the row (−Z); D/Right increases the column (+X). The board axes appear diagonal on screen. Small crimson rings mark eligible attack targets; teal squares mark movement. Basics: Pawn/Rook orthogonal 1; Knight orthogonal 2; Bishop/Queen/King all eight neighbors at range 1. Bishop adds its explicit small Swish splash. Adjacent damage cards keep eight-neighbor targeting, and signatures retain their own targeting. Valid actions advance the world once; invalid input, menus, camera controls, hover, and debug tools do not. Enemies act only in response to accepted actions. Rookling marks a strike tile one turn before attacking it; evade or defend.
 
 Transformed movement: Knight walks orthogonally; Shift selects four L-jumps and clicks allow all eight. Designated low flat blocks permit safe perching and dismounts. Bishop walks one orthogonal tile with WASD/arrows; Shift selects NW/NE/SE/SW diagonals for Bishop/Queen. Rook/Queen use ordinary orthogonal keys. Click destinations for full clear lanes (maximum 7); every traversed sliding tile must be currently visible, unoccupied and traversable. Normal one-tile sight usually limits slides to one tile; remembered terrain and terrain-reveal tools do not grant sight. Bishop walking costs no Energy or signature use. The 5x5 guide distinguishes diagonal slides from fallback walking. Faint unscouted outlines remain only for Pawn/Knight attempts. A valid move always costs one turn regardless of distance.
 

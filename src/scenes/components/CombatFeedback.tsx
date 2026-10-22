@@ -26,26 +26,36 @@ export function CombatFeedback() {
         const used = new Set(active.filter((entry) => entry.event.targetId === event.targetId).map((entry) => entry.lane))
         let lane = 0
         while (used.has(lane)) lane++
-        active.push({ event, born: now, lane })
+        active.push({ event, born: now + (event.delayMs ?? 0), lane })
       }
       return active.slice(-12)
     })
   }, [state.dungeon, state.events, state.eventSerial])
   useEffect(() => {
     if (!indicators.length) return
-    const delay = Math.max(0, Math.min(...indicators.map((entry) => entry.born + LIFETIME_MS)) - performance.now())
+    const now = performance.now()
+    const deadlines = indicators.flatMap((entry) => [entry.born > now ? entry.born : entry.born + LIFETIME_MS,
+      ...(entry.event.effect && entry.born + 140 > now ? [entry.born + 140] : [])])
+    const delay = Math.max(0, Math.min(...deadlines) - now)
     const timer = window.setTimeout(() => setIndicators((old) => old.filter((entry) => performance.now() - entry.born < LIFETIME_MS)), delay + 1)
     return () => window.clearTimeout(timer)
   }, [indicators])
   return <group name="combat-feedback">
-    {cursor.current.dungeon === state.dungeon && indicators.map(({ event, lane }) => {
+    {cursor.current.dungeon === state.dungeon && indicators.map(({ event, lane, born }) => {
       const indicator = combatIndicator(event)
       const cell = event.targetId === 'pawn' ? state.cell : state.enemies.find((enemy) => enemy.id === event.targetId)?.cell ?? event.cell
-      if (!indicator || !canSeeContent(cellId(cell), state)) return null
+      if (performance.now() < born || !indicator || !canSeeContent(cellId(cell), state)) return null
       const [x, , z] = gridToWorld(cell.column, cell.row)
-      return <Html key={event.id} position={[x, 1.35 + lane * 0.22 + (event.targetId === 'pawn' ? state.elevation : 0), z]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
+      const color = event.effect === 'splash' || event.effect === 'burn' ? '#b5a0d3'
+        : event.effect === 'concussion' || event.effect === 'smite' ? '#e1c477' : event.effect === 'pierce' ? '#94b7d6' : '#e29a9a'
+      return <group key={event.id}>
+        {event.effect && performance.now() - born < 140 && <mesh position={[x, 0.04, z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.34, 0.43, 12]} /><meshBasicMaterial color={color} transparent opacity={0.55} depthWrite={false} />
+        </mesh>}
+        <Html position={[x, 1.35 + lane * 0.22 + (event.targetId === 'pawn' ? state.elevation : 0), z]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
         <span className={`combat-number ${indicator.tone}`} style={{ marginLeft: (lane % 3) * 12 }}>{indicator.text}</span>
-      </Html>
+        </Html>
+      </group>
     })}
   </group>
 }

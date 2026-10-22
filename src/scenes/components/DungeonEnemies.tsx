@@ -9,7 +9,7 @@ import { canSeeContent } from '../../game/logic/visibility'
 import { usePawnStore, type TurnPhase } from '../../game/state/pawnStore'
 import { gridToWorld } from '../../utils/grid'
 import { cardOptions } from '../../game/logic/cardRules'
-import { abilityReason, vaultTargets } from '../../game/logic/signatures'
+import { abilityReason, royalDecreeTargets, vaultTargets } from '../../game/logic/signatures'
 import { LegalTileHighlight } from './LegalTileHighlight'
 import { visibleEnemies } from '../../game/logic/combatIndicators'
 import { currentForm } from '../../game/logic/transformations'
@@ -19,6 +19,9 @@ import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
 function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhase; interpolate: boolean }) {
   const state = usePawnStore()
   const foresight = foresightIntent(state, enemy.id)
+  const impact = state.events.filter((event) => event.targetId === enemy.id && event.kind === 'hit').at(-1)?.effect
+  const impactColor = impact === 'splash' || impact === 'burn' ? '#ad91bc' : impact === 'concussion' ? '#c4aa75'
+    : impact === 'pierce' ? '#89aec7' : '#b46864'
   const root = useRef<Group>(null)
   const material = useRef<MeshLambertMaterial>(null)
   const progress = useRef(0)
@@ -41,7 +44,7 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
     const a = gridToWorld(enemy.from.column, enemy.from.row), b = gridToWorld(enemy.cell.column, enemy.cell.row)
     root.current.position.set(MathUtils.lerp(a[0], b[0], eased), Math.sin(t * Math.PI) * 0.035, MathUtils.lerp(a[2], b[2], eased))
     flash.current = Math.max(0, flash.current - delta)
-    material.current?.color.set(flash.current ? '#b46864' : '#626d78')
+    material.current?.color.set(flash.current ? impactColor : '#626d78')
   })
   return (
     <group ref={root} name={enemy.id} onClick={(event) => {
@@ -80,6 +83,11 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
         </span>
         <small data-threat={enemy.intent === 'attack'}>{enemyIntentLabel(enemy)}</small>
         {foresight && <small>Next: {foresight}</small>}
+        {enemy.burn && <small className="status-burn">Burn 1 x {enemy.burn.turnsLeft}</small>}
+        {!!enemy.bleed?.length && <small className="status-bleed">Bleed {enemy.bleed.length}/3</small>}
+        {enemy.concussion !== undefined && <small className="status-concussion">Concussion {enemy.concussion === 0 ? 'next response' : enemy.concussion}</small>}
+        {enemy.stunned && <small className="status-concussion">STUNNED</small>}
+        {!!enemy.stunImmunity && <small>Stun immunity {enemy.stunImmunity}</small>}
         {!!enemy.exposedTurns && <small>Exposed +2</small>}
         {!!enemy.fearTurns && <small>Fear · 1 response</small>}
         {!!enemy.weakenedDamage && <small>Next strike −{enemy.weakenedDamage}</small>}
@@ -93,11 +101,15 @@ export function DungeonEnemies() {
   const targets = state.phase !== 'ready' || state.status !== 'playing' ? [] : state.selectedCardId ? cardOptions(state, state.selectedCardId).targets
     : state.selectedAbility && state.abilityDestination && !abilityReason(state)
       ? vaultTargets(state, state.abilityDestination, true).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id }))
+      : state.selectedAbility && currentForm(state.transformations) === 'king' && !abilityReason(state)
+        ? royalDecreeTargets(state).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id }))
       : state.selectedAbility && currentForm(state.transformations) === 'queen'
         ? visibleEnemies(state).filter((enemy) => gridDistance(enemy.cell, state.cell) <= 3).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id })) : state.selectedAbility ? []
           : attackTargets(state).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id }))
+  const presented = state.phase === 'player' ? state.enemies.filter((enemy) => canSeeContent(cellId(enemy.cell), state)
+    && (enemy.hp > 0 || state.events.some((event) => event.kind === 'defeat' && event.actor === enemy.id && event.seen))) : visibleEnemies(state)
   return <group name="dungeon-enemies">
-    {visibleEnemies(state).map((enemy) => (
+    {presented.map((enemy) => (
       <group key={enemy.id}>
         {targets.some((target) => target.kind === 'enemy' && target.enemyId === enemy.id)
           && <group position={gridToWorld(enemy.cell.column, enemy.cell.row)}><LegalTileHighlight attack /></group>}

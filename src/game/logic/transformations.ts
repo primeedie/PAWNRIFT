@@ -53,6 +53,7 @@ export function completeTransformationFloor(state: TransformationState): Transfo
 
 // Future boss-win hook; identity (not variant) counts. Full inventory preserves ready-to-claim progress.
 export function recordTransformationBossWin(state: TransformationState, form: BossForm, attunement: Attunement): TransformationState {
+  if (form === 'king') return state // No postgame acquisition/progression in the public prototype.
   const progress = state.reconstruction[form]
   if (progress === 0) return { ...state, reconstruction: { ...state.reconstruction, [form]: 1 } }
   if (progress === 1 || progress === 2) {
