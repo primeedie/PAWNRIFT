@@ -5,9 +5,14 @@ import { cardOptions } from '../game/logic/cardRules'
 import { usePawnStore } from '../game/state/pawnStore'
 import { EnergyIcon } from './EnergyIcon'
 import { KeywordTooltip } from './KeywordTooltip'
+import { CardIllustration } from './CardIllustration'
+
+function emphasizeValues(text: string) {
+  return text.split(/(\b\d+\b)/g).map((part, index) => /^\d+$/.test(part) ? <strong key={index}>{part}</strong> : part)
+}
 
 export function CardDescription({ tokens }: { tokens: readonly CardTextToken[] }) {
-  return <p className="card-description">{tokens.map((token, index) => typeof token === 'string' ? token
+  return <p className="card-description">{tokens.map((token, index) => typeof token === 'string' ? <span key={index}>{emphasizeValues(token)}</span>
     : <KeywordTooltip key={index} topic={token.keyword}>{token.text}</KeywordTooltip>)}</p>
 }
 
@@ -18,11 +23,11 @@ export function CardHand() {
   const locked = !state.runActive || state.phase !== 'ready' || state.status !== 'playing'
   // Floor resets/menu remounts discard presentation-only tooltips without touching game state.
   return <>
-    <section className="card-hand" aria-label="Card hand" data-tooltip-avoid onKeyDown={(event) => {
+    <section className="card-hand" aria-label="Card hand" onKeyDown={(event) => {
       event.stopPropagation()
       if (event.key === 'Escape') state.selectCard(undefined)
     }}>
-      <div className="hand-meta">
+      <div className="hand-meta" data-tooltip-avoid>
         <div className="hand-resources">
           <KeywordTooltip topic="energy" className="energy-total"><EnergyIcon /><span>ENERGY <strong>{state.energy}/{state.maxEnergy}</strong></span></KeywordTooltip>
           <span><KeywordTooltip topic="draw" /> {state.deck.draw.length}</span>
@@ -38,7 +43,7 @@ export function CardHand() {
           </>}
         </div>
       </div>
-      <div className="hand-cards">
+      <div className="hand-cards" role="group" aria-label="Playing cards. Scroll horizontally for more cards." tabIndex={0}>
         {state.deck.hand.map((instance) => {
           const card = cards[instance.definitionId]
           const presentation = cardPresentation[instance.definitionId]
@@ -49,17 +54,19 @@ export function CardHand() {
             ? `Costs ${card.cost} Energy; you have ${state.energy}. You need ${shortfall} more. A basic move, attack, defend, or wait restores 1 after enemies respond.`
             : `Costs ${card.cost} Energy, paid before the effect. Playing a valid card advances the world once.`
           return <article key={instance.instanceId} className="hand-card" data-category={presentation.category}
+            data-tooltip-avoid
             data-playable={!locked && !reason} data-selected={state.selectedCardId === instance.instanceId}
             data-locked={locked} onClick={() => { if (!locked) state.selectCard(instance.instanceId) }}>
             <button type="button" className="card-select" disabled={locked} aria-pressed={state.selectedCardId === instance.instanceId}
               aria-label={`Inspect ${card.name}. ${category.label}. ${card.cost} Energy. ${card.description}${reason ? ` ${reason}.` : ''}`}
               onClick={(event) => { event.stopPropagation(); state.selectCard(instance.instanceId) }}>
               <strong className="card-name">{card.name}</strong>
-              <span className="card-category"><span aria-hidden="true">{category.symbol}</span> {category.label}</span>
             </button>
             <KeywordTooltip topic="energy" className={`card-cost ${shortfall > 0 ? 'unaffordable' : ''}`} extra={energyHelp}>
               <EnergyIcon /><strong>{card.cost}</strong>
             </KeywordTooltip>
+            <CardIllustration card={instance.definitionId} />
+            <span className="card-category"><span aria-hidden="true">{category.symbol}</span> {category.label}</span>
             <CardDescription tokens={presentation.tokens} />
             {shortfall > 0 && <span className="card-unavailable">Need {shortfall} more Energy</span>}
           </article>

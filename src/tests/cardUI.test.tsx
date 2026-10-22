@@ -7,6 +7,7 @@ import { CardDescription, CardHand } from '../ui/CardHand'
 import { keywordEvents, outsideTooltip, tooltipKeyboard } from '../ui/tooltipEvents'
 import { tooltipPosition } from '../ui/tooltipLayout'
 import { usePawnStore } from '../game/state/pawnStore'
+import { CardIllustration } from '../ui/CardIllustration'
 
 vi.mock('../game/state/pawnStore', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../game/state/pawnStore')>()
@@ -84,6 +85,72 @@ describe('beginner card presentation', () => {
     expect(html).toContain('Costs')
     expect(html).toContain('you have 0')
     expect(html).not.toMatch(/class="keyword[^>]*disabled/)
+  })
+})
+
+describe('floating portrait hand', () => {
+  beforeEach(() => usePawnStore.getState().loadDungeon('floating-hand'))
+  it.each([1, 2, 3, 4, 8, 12])('renders %i individual cards without padding to four or mutating the deck', (count) => {
+    const state = usePawnStore.getState(), all = [...state.deck.hand, ...state.deck.draw]
+    const hand = all.slice(0, count)
+    usePawnStore.setState({ deck: { ...state.deck, hand, draw: all.slice(count) } })
+    const before = usePawnStore.getState()
+    const html = renderToStaticMarkup(<CardHand />)
+    expect(html.match(/<article /g)).toHaveLength(count)
+    expect(html.match(/class="card-illustration"/g)).toHaveLength(count)
+    expect(html.match(/keyword card-cost/g)).toHaveLength(count)
+    expect(html).toContain('Scroll horizontally for more cards.')
+    expect(usePawnStore.getState()).toBe(before)
+  })
+  it('gives every existing card a distinct decorative emblem and preserves readable effect values', () => {
+    const emblems = Object.keys(cards).map((id) => renderToStaticMarkup(<CardIllustration card={id as keyof typeof cards} />))
+    expect(new Set(emblems).size).toBe(Object.keys(cards).length)
+    for (const [id, presentation] of Object.entries(cardPresentation)) {
+      const html = renderToStaticMarkup(<CardDescription tokens={presentation.tokens} />)
+      for (const number of cards[id as keyof typeof cards].description.match(/\b\d+\b/g) ?? [])
+        expect(html).toContain(`<strong>${number}</strong>`)
+      expect(html.replace(/<[^>]+>/g, '')).toBe(cards[id as keyof typeof cards].description)
+    }
+  })
+  it('selection, keyword inspection and cancellation are free; self cards still play through the real resolver', () => {
+    const state = usePawnStore.getState(), all = [...state.deck.hand, ...state.deck.draw]
+    const ward = all.find((card) => card.definitionId === 'ward')!
+    usePawnStore.setState({ deck: { ...state.deck, hand: [ward], draw: all.filter((card) => card !== ward) }, enemies: [] })
+    const before = usePawnStore.getState()
+    state.selectCard(ward.instanceId)
+    const html = renderToStaticMarkup(<CardHand />)
+    expect(html).toContain('data-selected="true"')
+    expect(html).toContain('aria-pressed="true"')
+    expect(html).toContain('>Play</button>')
+    expect(usePawnStore.getState().turn).toBe(before.turn)
+    expect(usePawnStore.getState().energy).toBe(before.energy)
+    state.selectCard(undefined)
+    expect(usePawnStore.getState().selectedCardId).toBeUndefined()
+    state.selectCard(ward.instanceId)
+    expect(state.playSelectedCard({ kind: 'self' })).toBe(true)
+    const played = usePawnStore.getState()
+    expect(played.block).toBe(3)
+    expect(played.energy).toBe(before.energy - 1)
+    expect(played.selectedCardId).toBeUndefined()
+    expect(played.deck.hand).toHaveLength(4)
+    expect(played.deck.discard).toContainEqual(ward)
+    played.advancePlayback(played.actionId, 'player')
+    expect(usePawnStore.getState().turn).toBe(before.turn + 1)
+  })
+  it('retains visible enemy targeting and rejects invalid card targets without spending a turn', () => {
+    const state = usePawnStore.getState(), all = [...state.deck.hand, ...state.deck.draw]
+    const cut = all.find((card) => card.definitionId === 'cut')!
+    const cell = state.dungeon.tiles.find((tile) => !tile.blocksMovement
+      && Math.abs(tile.column - state.cell.column) + Math.abs(tile.row - state.cell.row) === 1)!
+    usePawnStore.setState({ deck: { ...state.deck, hand: [cut], draw: all.filter((card) => card !== cut) },
+      enemies: [{ id: 'card-target', kind: 'rookling', cell, from: cell, hp: 10, maxHp: 10, intent: 'idle', searchLeft: 0 }] })
+    state.selectCard(cut.instanceId)
+    expect(renderToStaticMarkup(<CardHand />)).toContain('Choose a highlighted target')
+    expect(state.playSelectedCard({ kind: 'enemy', enemyId: 'missing' })).toBe(false)
+    expect(usePawnStore.getState().turn).toBe(0)
+    expect(state.playSelectedCard({ kind: 'enemy', enemyId: 'card-target' })).toBe(true)
+    expect(usePawnStore.getState().enemies[0].hp).toBe(6)
+    expect(usePawnStore.getState().phase).toBe('player')
   })
 })
 

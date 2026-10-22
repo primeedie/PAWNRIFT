@@ -120,30 +120,30 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .combat-number.heal { color: #a5c6a3; }
 .combat-number.blocked { color: #d2d7ca; font-size: 0.65rem; }
 @keyframes combat-rise { 0% { opacity: 0; transform: translateY(5px); } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
-.scene-screen { --hand-height: 232px; grid-template-rows: auto minmax(0, 1fr) auto var(--hand-height); }
-.card-hand { grid-row: 4; z-index: 4; padding: 6px clamp(14px, 4vw, 56px) 12px; background: linear-gradient(#151d2af2, #121923); border-top: 1px solid #58626b66; min-width: 0; }
-.hand-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; max-width: 1040px; margin: 0 auto 8px; min-height: 38px; font-size: 0.7rem; color: var(--ui-secondary); }
+.scene-screen { --hand-height: 330px; grid-template-rows: auto minmax(0, 1fr) auto var(--hand-height); }
+.card-hand { --card-width: clamp(144px, 10vw, 156px); position: absolute; inset: auto 0 12px; z-index: 25; min-width: 0; pointer-events: none; background: transparent; border: 0; padding: 0; }
+.hand-meta { display: flex; flex-direction: column; align-items: center; gap: 5px; width: fit-content; max-width: calc(100% - 24px); margin: 0 auto; font-size: 0.75rem; color: var(--ui-secondary); pointer-events: auto; }
 .hand-meta strong { color: var(--ui-energy); }
-.hand-resources { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 16px; }
+.hand-resources { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 6px 10px; border-radius: 6px; background: #19232ef0; box-shadow: 0 2px 9px #080e1a40; }
 .hand-resources > span { white-space: nowrap; }
-.hand-cards { display: grid; grid-template-columns: repeat(4, minmax(185px, 1fr)); gap: 10px; max-width: 1040px; margin: auto; overflow-x: auto; padding: 3px 3px 8px; scrollbar-width: thin; }
-.hand-card { --card-accent: var(--ui-attack); position: relative; min-width: 0; height: 156px; display: flex; flex-direction: column; gap: 8px; text-align: left; color: var(--ui-text); background: var(--ui-panel); border: 1px solid #535d6b; border-top: 3px solid var(--card-accent); border-radius: 6px; padding: 10px 12px; transition: transform 130ms ease, background 130ms ease, border-color 130ms ease; }
+.hand-cards { display: flex; gap: 10px; width: max-content; max-width: calc(100% - 24px); margin: 0 auto; padding: 20px 10px 10px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #687785 transparent; pointer-events: auto; }
+.hand-card { --card-accent: var(--ui-attack); position: relative; flex: 0 0 var(--card-width); width: var(--card-width); aspect-ratio: 9 / 16; display: grid; grid-template-rows: auto 40px auto 1fr auto; gap: 6px; min-width: 0; padding: 10px; text-align: left; color: var(--ui-text); background: var(--ui-panel); border: 1px solid #697682; border-top: 3px solid var(--card-accent); border-radius: 8px; box-shadow: 0 5px 12px #080e1a66; transform-origin: center bottom; transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
 .hand-card[data-category="defense"] { --card-accent: var(--ui-defense); }
 .hand-card[data-category="mobility"] { --card-accent: var(--ui-mobility); }
 .hand-card[data-category="utility"] { --card-accent: var(--ui-utility); }
 .hand-card[data-playable="true"] { border-color: var(--card-accent); background: linear-gradient(135deg, #30303c, #222c38); }
-.hand-card[data-selected="true"] { border-color: #e1bb89; box-shadow: inset 0 0 0 1px #e1bb8966; transform: translateY(-2px); }
-.hand-card:hover { background: #333440; }
+.hand-card[data-selected="true"] { border-color: var(--ui-energy); box-shadow: 0 5px 16px #080e1a88, inset 0 0 0 1px var(--ui-energy); transform: translateY(-8px); z-index: 2; }
+.hand-card:focus-within { transform: translateY(-10px) scale(1.025); border-color: var(--card-accent); box-shadow: 0 8px 20px #080e1a88; z-index: 3; }
 .hand-card[data-locked="true"] .card-select { color: var(--ui-disabled); cursor: default; }
-.card-select { display: grid; gap: 3px; min-height: 38px; padding: 0 48px 0 0; text-align: left; color: inherit; border: none; background: none; }
-.card-name { font-size: 0.86rem; }
-.card-category { color: var(--card-accent); font-size: 0.66rem; }
+.card-select { display: flex; align-items: flex-start; min-height: 29px; min-width: 0; padding: 0 34px 0 0; text-align: left; color: inherit; border: none; background: none; }
+.card-name { font-size: 0.875rem; line-height: 1.4; overflow-wrap: normal; }
+.card-category { color: var(--card-accent); font-size: 0.7rem; line-height: 1.4; }
 .card-category > span { display: inline-block; width: 14px; text-align: center; }
-.keyword.card-cost { display: flex; align-items: center; gap: 3px; position: absolute; top: 9px; right: 9px; min-height: 28px; padding: 3px 7px; border: 1px solid #887582; border-radius: 5px; color: var(--ui-energy); background: #161d2b; text-decoration: none; font-size: 0.85rem; }
+.keyword.card-cost { display: flex; align-items: center; gap: 2px; position: absolute; top: 8px; right: 7px; min-height: 28px; padding: 2px 4px; border: 1px solid #887582; border-radius: 5px; color: var(--ui-energy); background: #161d2b; text-decoration: none; font-size: 0.85rem; }
 .keyword.card-cost.unaffordable { color: #e7a5ac; border-style: dashed; }
 .energy-icon { display: inline-block; width: 15px; height: 18px; vertical-align: middle; flex-shrink: 0; }
-.card-description { font-size: 0.75rem; line-height: 1.55; margin: 0; text-align: justify; text-justify: inter-word; }
-.card-unavailable { font-size: 0.65rem; color: var(--ui-attack); margin-top: auto; }
+.card-description { font: 0.875rem/1.4 system-ui, sans-serif; margin: 0; text-align: left; text-align-last: auto; word-spacing: normal; overflow-wrap: normal; hyphens: none; }
+.card-unavailable { font: 0.75rem/1.35 system-ui, sans-serif; color: var(--ui-attack); }
 .keyword { display: inline; padding: 0; border: 0; background: none; color: var(--ui-utility); font: inherit; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 .keyword:hover { color: #f1dcc2; }
 .keyword[data-keyword="block"], .keyword[data-keyword="counter"] { color: var(--ui-defense); }
@@ -161,7 +161,7 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .keyword-tooltip dl > div + div { margin-top: 14px; }
 .keyword-tooltip dd { margin: 3px 0 0; }
 .keyword-tooltip .tooltip-note { border-top: 1px solid #687181; padding-top: 9px; color: var(--ui-energy); }
-.card-targeting { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.card-targeting { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; max-width: 100%; font: 0.875rem/1.4 system-ui, sans-serif; text-align: center; border-radius: 5px; }
 .card-targeting button { background: #343340; border: 1px solid #9c7c82; border-radius: 3px; padding: 3px 7px; color: #e6dccc; font-size: inherit; }
 .enemy-label small { color: #bac9c6; font-size: 0.52rem; }
 .enemy-label small[data-threat="true"] { color: #e5ba7c; }
@@ -193,12 +193,8 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
   .dungeon-dev-tools { top: 112px; max-height: calc(100% - 124px); }
 }
 @media (max-width: 650px) {
-  .scene-screen { --hand-height: 264px; }
-  .card-hand { padding-inline: 10px; }
-  .hand-meta { flex-wrap: wrap; gap: 6px; font-size: 0.68rem; min-height: 66px; }
   .hand-resources { gap: 5px 12px; }
   .hand-cards { gap: 8px; }
-  .hand-card { height: 156px; }
   .scene-footer { padding: 10px 14px 14px; }
   .scene-controls { gap: 7px; }
   .key-cluster { grid-template-columns: repeat(3, 23px); grid-template-rows: repeat(2, 23px); gap: 2px; }
@@ -252,3 +248,26 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .scene-screen:has(.form-picker[open]) .dungeon-dev-tools { visibility: hidden; }
 .scene-header, .scene-footer { z-index: 30; }
 .dungeon-dev-tools { z-index: 40; }
+
+.card-illustration { display: block; width: 40px; height: 40px; margin: auto; color: var(--card-accent); }
+.card-art-frame { fill: #14202c; stroke: currentColor; stroke-width: 1; opacity: 0.45; }
+.card-description strong, .card-description .keyword { font-weight: 700; }
+.hand-cards:focus-visible { outline: 2px solid var(--ui-mobility); outline-offset: -2px; border-radius: 8px; }
+.card-select:focus-visible { outline-offset: 3px; border-radius: 2px; }
+.hand-card[data-selected="true"]:focus-within, .hand-card[data-selected="true"]:hover { border-color: var(--ui-energy); }
+.card-targeting:not(:empty) { background: #19232ef5; padding: 6px 10px; }
+@media (hover: hover) and (pointer: fine) {
+  .hand-card:hover { transform: translateY(-10px) scale(1.025); background: #333440; box-shadow: 0 8px 20px #080e1a88; z-index: 3; }
+}
+/* On wide desktops the controls flank the hand; narrower windows keep a separate row. */
+@media (min-width: 1000px) {
+  .scene-footer { position: absolute; inset: auto 24px 20px; padding: 0; pointer-events: none; }
+  .scene-footer button { pointer-events: auto; }
+  .scene-footer .game-actions { flex-direction: column; align-items: flex-start; max-width: 300px; gap: 8px; }
+  .scene-footer .combat-feedback { max-width: 300px; }
+  .scene-footer .scene-controls { gap: 8px; }
+  .card-hand .hand-cards, .card-hand .hand-meta { max-width: calc(100% - 650px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hand-card { transition: none; transform: none !important; }
+}
