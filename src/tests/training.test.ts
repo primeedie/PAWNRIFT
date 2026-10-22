@@ -122,7 +122,7 @@ describe('real 8x8 arena and dummy rules', () => {
       expect(first.enemies[0].intent).toBe('attack')
       const defended = resolveTurn(first, { kind: 'ability' })!
       expect(defended.hp).toBe(first.hp)
-      expect(defended.events.some((event) => event.kind === 'counter')).toBe(true)
+      expect(defended.events.some((event) => event.kind === 'counter')).toBe(form==='rook')
       expect(defended.turn).toBe(2)
       expect(defended.events.filter((event) => event.actor === enemy.id)).toHaveLength(form === 'pawn' ? 0 : 1)
     }

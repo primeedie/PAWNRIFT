@@ -80,11 +80,11 @@ describe('signatures share synchronized turns and cooldowns', () => {
     const player = resolvePlayerAction(state, { kind: 'ability' })!
     expect(player.energy).toBe(0)
     const cast = resolveEnemyPhase(player)
-    expect(cast.signatures.cooldowns.pawn).toBe(5)
+    expect(cast.signatures.cooldowns.pawn).toBe(10)
     expect(cast.turn).toBe(1)
     expect(resolveTurn(cast, { kind: 'ability' })).toBeNull()
     expect(resolveTurn(cast, { kind: 'move', destination: c(-1, 0) })).toBeNull()
-    expect(resolveTurn(cast, { kind: 'wait' })!.signatures.cooldowns.pawn).toBe(4)
+    expect(resolveTurn(cast, { kind: 'wait' })!.signatures.cooldowns.pawn).toBe(9)
     expect(state.signatures).toEqual(emptySignatures())
   })
   it('preserves cooldowns through reversion, activation and actual floors, with guarded duplicate inputs', () => {
@@ -104,16 +104,17 @@ describe('signatures share synchronized turns and cooldowns', () => {
     expect(usePawnStore.getState().signatures.cooldowns.rook).toBe(8)
     expect(usePawnStore.getState().signatures.eyeUsed).toBe(false)
   })
-  it('Crimson Reversal negates only one strike and counters once; normal Defend stays independent', () => {
+  it('Crimson Reversal automatically parries without retaliation and persists; normal Defend stays independent', () => {
     const state = { ...game(), enemies: [charged(), charged(foe('b', 3, 4))] }
     const cast = resolveTurn(state, { kind: 'ability' })!
-    expect(cast.events.filter((e) => e.kind === 'parry')).toHaveLength(1)
-    expect(cast.events.filter((e) => e.kind === 'counter').map((e) => e.amount)).toEqual([5])
-    expect(cast.hp).toBe(state.hp - 2)
-    expect(resolveTurn({ ...cast, enemies: [charged()] }, { kind: 'defend' })!.events.some((e) => e.kind === 'counter')).toBe(true)
+    expect(cast.events.filter((e) => e.kind === 'parry')).toHaveLength(2)
+    expect(cast.events.filter((e) => e.kind === 'counter')).toHaveLength(0)
+    expect(cast.hp).toBe(state.hp)
+    expect(resolveTurn({ ...game(), enemies: [charged()] }, { kind: 'defend' })!.events.some((e) => e.kind === 'counter')).toBe(true)
     const unused = resolveTurn({ ...game(), enemies: [] }, { kind: 'ability' })!
     expect(unused.signatures.parryReady).toBe(false)
-    expect(resolveTurn({ ...unused, enemies: [charged()] }, { kind: 'wait' })!.hp).toBe(unused.hp - 2)
+    expect(unused.signatures.samuraiCharges).toBe(3)
+    expect(resolveTurn({ ...unused, enemies: [charged()] }, { kind: 'wait' })!.hp).toBe(unused.hp)
   })
   it('Vaulting Charge validates the full leap and lance line before mutation, with distinct attunements', () => {
     for (const attunement of ['light', 'dark'] as const) {

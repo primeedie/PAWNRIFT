@@ -1,7 +1,16 @@
-import { characterTiming, type CharacterForm } from '../data/characterDesigns'
+import { characterTiming, parryPresentationMs, type CharacterForm } from '../data/characterDesigns'
+import { turnTiming } from '../data/combatBalance'
 import type { GameState } from '../game/logic/combat'
+import type { Attunement } from '../data/forms'
 
 export type AnimationCue = 'idle' | 'move' | 'attack' | 'signature' | 'defend' | 'parry' | 'counter' | 'hit' | 'transform' | 'revert' | 'death'
+export function enemyPresentationDuration(state:GameState){
+  return Math.max(turnTiming.enemyMs,...state.events.filter(e=>e.kind==='parry'&&e.actor==='pawn').map(e=>(e.delayMs??0)+parryPresentationMs))
+}
+export function parryPresentation(state:GameState,elapsed:number){
+  const event=state.events.find(e=>e.kind==='parry'&&e.actor==='pawn'&&elapsed>=(e.delayMs??0)&&elapsed<(e.delayMs??0)+parryPresentationMs)
+  return event?{progress:(elapsed-(event.delayMs??0))/parryPresentationMs,sourceId:event.sourceId}:undefined
+}
 export function animationCue(state: GameState, phase: 'ready' | 'player' | 'enemies'): AnimationCue {
   if (state.hp <= 0) return 'death'
   if (phase === 'enemies') {
@@ -37,7 +46,7 @@ export type CharacterPose = { lean: number; twist: number; leftArm: number; righ
   swing: number; thrust: number; cast: number; crouch: number; head: number; hip: number; bladeTurn: number }
 const ramp = (t: number, a: number, b: number) => Math.max(0, Math.min(1, (t-a)/(b-a)))
 const envelope = (t: number, a: number, b: number, c: number) => ramp(t,a,b)*(1-ramp(t,b,c))
-export function characterPose(form: CharacterForm, cue: AnimationCue, progress: number, reduced = false): CharacterPose {
+export function characterPose(form: CharacterForm, cue: AnimationCue, progress: number, reduced = false, variant:Attunement='light'): CharacterPose {
   const t = Math.max(0, Math.min(1, progress)), wave = Math.sin(Math.PI * t)
   const pose: CharacterPose = { lean: form==='knight'?-0.055:form==='rook'?0.035:0, twist: form==='queen'?-0.10:form==='bishop'?0.06:form==='pawn'?-0.055:0,
     leftArm: 0, rightArm: 0, leftLeg: 0, rightLeg: 0, draw: 0, slash: 0, guard: 0, pulse: 0, scale: 1, cape: 0,
@@ -67,7 +76,7 @@ export function characterPose(form: CharacterForm, cue: AnimationCue, progress: 
   }
   if (cue === 'signature') {
     pose.pulse = wave
-    if (form === 'pawn') { pose.guard = 1; pose.draw = wave; pose.bladeTurn=wave; pose.rightArm = -0.7 }
+    if (form === 'pawn') { pose.guard = 1; pose.crouch=0.025*wave; pose.rightArm = -0.7 }
     if (form === 'knight') { pose.thrust=envelope(t,0.54,440/characterTiming.knight.signature,0.96); pose.lean=-0.14*wave }
     if (form === 'bishop') { pose.cast=wave; pose.head=-0.08*wave }
     if (form === 'rook') { pose.guard = 1; pose.leftArm = -0.55; pose.rightArm = -0.6 }
@@ -76,6 +85,8 @@ export function characterPose(form: CharacterForm, cue: AnimationCue, progress: 
   }
   if (cue === 'defend' || cue === 'parry') { pose.guard = 1; pose.draw = form === 'pawn' ? wave : 0; pose.bladeTurn=form==='pawn'?wave:0; pose.rightArm = -0.65; pose.leftArm = -0.4; pose.lean = wave * 0.04 }
   if (cue === 'hit') { pose.lean = wave * 0.15; pose.twist = -wave * 0.06 }
+  if(variant==='dark'&&form==='knight'){pose.lean*=0.5;pose.crouch+=0.008}
+  if(variant==='dark'&&form==='queen'){pose.twist*=0.6;pose.crouch+=0.018;pose.hip*=0.5}
   if (reduced) { pose.lean = 0; pose.twist = 0; pose.leftLeg = pose.rightLeg = 0; pose.cape = 0; pose.scale = 1; pose.pulse = 0; pose.slash *= 0.2 }
   return pose
 }

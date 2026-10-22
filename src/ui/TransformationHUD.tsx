@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { formBalance, formNames, formSymbols, type Attunement, type BossForm } from '../data/forms'
 import { combatPassives } from '../data/passives'
 import { AttackGuide } from './AttackGuide'
-import { signatureAbilities } from '../data/abilities'
+import { signatureAbilities, abilityBalance } from '../data/abilities'
 import { activationReason, currentForm } from '../game/logic/transformations'
 import { abilityReason } from '../game/logic/signatures'
 import { reversionReason } from '../game/logic/perching'
@@ -13,6 +13,7 @@ import { characterStats, signatureInfo } from './inspectionPresentation'
 import { useInspectionStore } from './inspectionStore'
 import { closeHudPanels } from './hudInteraction'
 import { PLAYTEST_TOOLS_ENABLED } from '../game/logic/playtesting'
+import { useSamuraiDisplay } from './useSamuraiDisplay'
 
 export function TransformationHUD() {
   const state = usePawnStore(), forms = state.transformations, form = currentForm(forms)
@@ -25,8 +26,8 @@ export function TransformationHUD() {
   const active = forms.active, ability = signatureAbilities[form]
   const basicDamage=stats.damage,basicBonus=stats.bonus,basicBlock=stats.basicBlock
   const signatureHelp=info.tooltip
-  const status = form === 'bishop' ? state.signatures.eyeUsed ? 'Used this floor' : 'Available'
-    : state.signatures.cooldowns[form] ? `${state.signatures.cooldowns[form]} turns` : 'Ready'
+  const parries=useSamuraiDisplay()
+  const status = form==='pawn'&&parries>0?`SAMURAI MODE ${parries}/${abilityBalance.samuraiParries}`:form==='pawn'&&info.status==='Ready'?'READY':info.status
   const closePanel = (button: HTMLButtonElement) => { const details = button.closest('details'); if (details) details.open = false }
   const openTesting = () => {
     document.querySelectorAll<HTMLDetailsElement>('details[name="hud-panels"]').forEach((panel) => { panel.open = false })
@@ -112,6 +113,7 @@ export function TransformationHUD() {
     <div className="form-ability">
       <span aria-hidden="true" className="ability-icon">{ability.icon}</span><strong>{ability.name}</strong>
       <strong className="ability-status">{status}</strong>
+      {form==='pawn'&&parries>0&&<span className="samurai-charge-icons" aria-label={`${parries} automatic parries remaining`}>{Array.from({length:parries},(_,i)=><span key={i} aria-hidden="true">⚔</span>)}</span>}
       <KeywordTooltip topic="ability" extra={signatureHelp} className="info-trigger">ⓘ</KeywordTooltip>
       <button disabled={locked || !!unavailable} onClick={() => { closeHudPanels(); state.selectAbility() }}>{state.selectedAbility ? 'Targeting' : 'Use'}</button>
       {state.selectedAbility && <>

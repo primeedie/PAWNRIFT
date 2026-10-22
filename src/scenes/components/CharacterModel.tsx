@@ -2,9 +2,8 @@ import { useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Group, Vector3 } from 'three'
 import { characterDesigns, type CharacterForm } from '../../data/characterDesigns'
-import { turnTiming } from '../../data/combatBalance'
 import type { Attunement } from '../../data/forms'
-import { animationCue, characterPose, presentationDuration } from '../../utils/characterAnimation'
+import { animationCue, characterPose, presentationDuration, enemyPresentationDuration, parryPresentation } from '../../utils/characterAnimation'
 import { usePawnStore } from '../../game/state/pawnStore'
 import { SheathedKatana } from './CrimsonKatana'
 import { Part, geometry, palettes, effects, mantleGeometry } from './CharacterParts'
@@ -75,7 +74,7 @@ function Arm({form,variant,side,motion,hand}:{form:CharacterForm;variant:Attunem
   const solve=useRef(createArmSolver()), shoulder=useRef(new Vector3(side*characterDesigns[form].shoulder,0.81,0))
   const heavy=form==='rook'||form==='king'
   useFrame(()=>{
-    const socket=handPose(form,motion.current,side),joints=solve.current(shoulder.current,socket.position,socket.rotation,side)
+    const socket=handPose(form,motion.current,side,variant),joints=solve.current(shoulder.current,socket.position,socket.rotation,side)
     upper.current?.quaternion.copy(joints.upperRotation)
     elbow.current?.quaternion.copy(joints.lowerRotation)
     hand.current?.quaternion.copy(joints.handRotation)
@@ -134,15 +133,17 @@ export function CharacterModel({form,variant,reducedMotion=false}:{form:Characte
     if(motion.current.key!==key) motion.current={key,elapsed:0}
     if(state.runActive) motion.current.elapsed+=delta*1000
     intro.current+=delta*1000
-    const t=motion.current.elapsed/(state.phase==='enemies'?turnTiming.enemyMs:presentationDuration(state))
-    pose.current=characterPose(form,cue==='idle'&&state.training&&intro.current<340?'transform':cue,cue==='idle'&&state.training?intro.current/340:t,reducedMotion)
+    const t=motion.current.elapsed/(state.phase==='enemies'?enemyPresentationDuration(state):presentationDuration(state))
+    const parry=state.phase==='enemies'?parryPresentation(state,motion.current.elapsed):undefined
+    pose.current=characterPose(form,parry?'parry':cue==='idle'&&state.training&&intro.current<340?'transform':cue,parry?.progress??(cue==='idle'&&state.training?intro.current/340:t),reducedMotion,variant)
     const p=pose.current
+    if(form==='pawn'&&state.signatures.samuraiCharges>0){p.crouch+=0.012;p.lean-=0.025}
     if(body.current){body.current.position.set(p.hip,(reducedMotion?0:Math.sin(clock.elapsedTime*(form==='rook'?1.3:form==='queen'?1.9:2.1))*0.004)-p.crouch,0);body.current.scale.setScalar(p.scale)}
     if(torso.current)torso.current.rotation.set(p.lean,p.twist,form==='queen'?-0.025:0)
     if(head.current)head.current.rotation.set(p.head,-p.twist*0.65,0)
     if(cape.current)cape.current.rotation.x=p.cape+(reducedMotion?0:Math.sin(clock.elapsedTime*1.6)*0.02)
     if(mane.current)mane.current.rotation.x=reducedMotion?0:p.leftLeg*0.12+p.lean*0.3
-    if(barrier.current)barrier.current.visible=p.guard>0&&(heavy||cue==='parry')
+    if(barrier.current)barrier.current.visible=p.guard>0&&heavy
     if(pulse.current){pulse.current.visible=p.pulse>0.08;pulse.current.scale.setScalar(0.9+p.pulse*0.15)}
     if(decree.current){decree.current.visible=!reducedMotion&&state.phase==='enemies'&&state.events.some(e=>e.breakdown?.source==='Royal Decree');decree.current.scale.setScalar(0.35+Math.min(1,t)*2.1)}
   },-1)
@@ -186,9 +187,10 @@ export function CharacterModel({form,variant,reducedMotion=false}:{form:Characte
       </group>
     </group>
     <group ref={pulse} visible={false} name={`${form}-signature-emphasis`}>
-      <mesh geometry={geometry.ring} material={effects[variant]} position={form==='bishop'?[0,1.26,0.1]:[0,0.05,0]} rotation={form==='bishop'?[0,0,0]:[-Math.PI/2,0,0]} scale={form==='bishop'?1:2.8}/>
+      <mesh geometry={geometry.ring} material={form==='pawn'?effects.samurai:effects[variant]} position={form==='bishop'?[0,1.26,0.1]:[0,0.05,0]} rotation={form==='bishop'?[0,0,0]:[-Math.PI/2,0,0]} scale={form==='bishop'?1:2.8}/>
     </group>
     {form==='king'&&<group ref={decree} visible={false} name="resolved-royal-decree-wave"><mesh geometry={geometry.ring} material={effects[variant]} position={[0,0.035,0]} rotation={[-Math.PI/2,0,0]} scale={7}/></group>}
+    {form==='pawn'&&state.signatures.samuraiCharges>0&&<group name="samurai-protection-marks">{Array.from({length:state.signatures.samuraiCharges},(_,i)=><mesh key={i} geometry={geometry.blade} material={effects.samurai} position={[(i-1)*0.07,0.51,0.16]} scale={[0.025,0.075,0.025]}/>)}</group>}
     <WeaponStrike form={form} variant={variant} rightHand={rightHand} leftHand={leftHand} reducedMotion={reducedMotion}/>
   </group>
 }

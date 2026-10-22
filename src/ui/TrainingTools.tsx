@@ -5,6 +5,8 @@ import { defaultDummy, trainingDummyPositions, trainingScenarios, type DummySpec
 import { damagePerTurn } from '../game/logic/combatAnalysis'
 import { cellId } from '../game/logic/dungeon'
 import { closeHudPanels } from './hudInteraction'
+import { sparringPatterns } from '../game/logic/playerDefense'
+import { characterDesigns } from '../data/characterDesigns'
 
 function DummySettings({ spec, apply, locked }: { spec: DummySpec; apply: (command: TrainingCommand) => void; locked: boolean }) {
   const state = usePawnStore(), [draft, setDraft] = useState(spec)
@@ -14,6 +16,9 @@ function DummySettings({ spec, apply, locked }: { spec: DummySpec; apply: (comma
   return <details><summary>{spec.id} settings</summary><fieldset disabled={locked}>
     <label>Class<select value={draft.rank} onChange={(event) => setDraft({ ...draft, rank: event.target.value as DummySpec['rank'], knockback: event.target.value !== 'boss' })}>
       <option value="normal">Normal</option><option value="elite">Elite</option><option value="boss">Boss resistance</option>
+    </select></label>
+    <label>Sparring attack pattern<select value={draft.pattern??'telegraphed'} onChange={event=>setDraft({...draft,pattern:event.target.value as DummySpec['pattern']})}>
+      {sparringPatterns.map(pattern=><option key={pattern} value={pattern}>{pattern==='telegraphed'?'Marked melee (normal timing)':`${pattern} sample each response`}</option>)}
     </select></label>
     <label>HP<input type="number" min={1} max={100000} value={draft.hp} onChange={(event) => number('hp', event.target.value)} /></label>
     <label>Defense<input type="number" min={0} max={1000} value={draft.defense} onChange={(event) => number('defense', event.target.value)} list="defense-presets" /></label>
@@ -62,10 +67,11 @@ export default function TrainingTools() {
     event.stopPropagation(); if (event.key === 'Escape') closeHudPanels()
   }}><summary>Training Grounds</summary><div className="playtest-contents">
     <button onClick={closeHudPanels}>Close controls</button><button onClick={() => { closeHudPanels(); state.leaveTraining() }}>Leave Training</button>
-    <p>Isolated local session. Run resources, charges, turns and RNG remain paused. Close controls to move or attack.</p>
+    <p>Isolated local session. Run resources, charges, turns and RNG remain paused. Close controls to move or attack. Sample patterns are training-only; direct melee requires adjacency, other samples use range 4.</p>
     <details id="transformation-testing"><summary>Form and attunement</summary><fieldset disabled={locked}>
       <label>Form<select value={form} onChange={(event) => setForm(event.target.value as TrainingForm)}>{(['pawn', ...testForms] as const).map((id) => <option key={id} value={id}>{formNames[id]}</option>)}</select></label>
       <label>Attunement<select value={attunement} onChange={(event) => setAttunement(event.target.value as Attunement)}><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <p>Weapon: {characterDesigns[form][attunement]}</p>
       <button onClick={() => { apply({ kind: 'form', form, attunement }); closeHudPanels() }}>Equip training form (free)</button>
       <button onClick={() => apply({ kind: 'restore', resource: 'charges' })}>Reset training charges / recovery</button>
       <button onClick={() => apply({ kind: 'restore', resource: 'cooldowns' })}>Reset cooldowns / Eye</button>
@@ -74,10 +80,10 @@ export default function TrainingTools() {
       <label>Scenario<select value={training.scenario} onChange={(event) => apply({ kind: 'scenario', scenario: event.target.value as typeof training.scenario })}>{trainingScenarios.map((id) => <option key={id}>{id}</option>)}</select></label>
       <p>Open arena has full sight. Eye uses normal fog and actual seeded Astral Eye. Blocked/perch scenarios add designated solid test geometry.</p>
       <label>Dummies<select value={training.dummies.length} onChange={(event) => {
-        const cells = [...trainingDummyPositions(training.scenario), { column: 5, row: 3 }, { column: 2, row: 3 }, { column: 3, row: 2 }]
+        const cells = [...(training.scenario==='open'?[{column:4,row:3},{column:3,row:4},{column:2,row:3},{column:3,row:2}]:trainingDummyPositions(training.scenario)), { column: 5, row: 3 }, { column: 2, row: 3 }, { column: 3, row: 2 }]
           .filter((cell, index, list) => list.findIndex((entry) => entry.column === cell.column && entry.row === cell.row) === index && !state.dungeon.tiles.some((tile) => tile.column === cell.column && tile.row === cell.row && tile.blocksMovement) && (cell.column !== state.cell.column || cell.row !== state.cell.row))
         apply({ kind: 'dummies', specs: Array.from({ length: Number(event.target.value) }, (_, index) => ({ ...(training.dummies[index] ?? defaultDummy(index)), cell: cells[index] })) })
-      }}><option>1</option><option>2</option><option>3</option></select></label>
+      }}><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
       <button onClick={() => apply({ kind: 'dummy-reset' })}>Reset configured dummies</button>
       <label>Player column<input type="number" min={0} max={7} value={position.column} onChange={(event) => setPosition({ ...position, column: Number(event.target.value) })} /></label>
       <label>Player row<input type="number" min={0} max={7} value={position.row} onChange={(event) => setPosition({ ...position, row: Number(event.target.value) })} /></label>
@@ -88,9 +94,11 @@ export default function TrainingTools() {
     <details><summary>Resources and resets</summary><fieldset disabled={locked}>
       {(['hp', 'energy', 'focus', 'deck'] as const).map((resource) => <button key={resource} onClick={() => apply({ kind: 'restore', resource })}>Restore {resource}</button>)}
       <button onClick={() => apply({ kind: 'statuses' })}>Clear dummy statuses</button><button onClick={() => apply({ kind: 'passives' })}>Reset passive stacks</button>
+      <button onClick={()=>apply({kind:'samurai-reset'})}>Reset Samurai Mode (clear parries)</button>
       <button onClick={() => { closeHudPanels(); state.submitAction({ kind: 'wait' }) }}>Advance one training world turn</button>
       <button onClick={() => apply({ kind: 'reset' })}>Reset training comparison</button>
     </fieldset></details>
+    <details><summary>Automatic parry events</summary><p>Samurai Mode: {state.signatures.samuraiCharges}/3 · cooldown {state.signatures.cooldowns.pawn}</p><ol className="analysis-log">{training.analysis.history.filter(event=>event.parryKind==='samurai').slice(-9).map(event=><li key={event.id}>Auto-parry · {event.attackKind} · {event.parriesLeft}/3 remaining</li>)}</ol></details>
     <CombatAnalysis /><p role="status">{message}</p>
   </div></details>
 }

@@ -126,7 +126,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     const dungeon = generateDungeon(seed ?? state.dungeon.seed, style ?? (seed === undefined ? state.dungeon.style : undefined))
     set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck, energy: state.energy, maxEnergy: state.maxEnergy,
       focus: state.focus, turn: state.turn, transformations: state.transformations, passives: { ...state.passives },
-      signatures: { ...emptySignatures(), cooldowns: { ...state.signatures.cooldowns }, eyeUsed: state.signatures.eyeUsed },
+      signatures: { ...emptySignatures(), cooldowns: { ...state.signatures.cooldowns }, eyeUsed: state.signatures.eyeUsed, samuraiCharges: state.signatures.samuraiCharges },
       from: dungeon.spawn, fromElevation: 0, isMoving: false, phase: 'ready', actionId: state.actionId + 1, playtestMode: true,
       selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, revealAll: false, lastAction: undefined, lastMovementRejection: undefined })
     return true
@@ -182,7 +182,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
       set({ transformations: recordTransformationBossWin(state.transformations, form, attunement), playtestMode: true })
   },
   debugDefeat: () => {
-    if (PLAYTEST_TOOLS_ENABLED && get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat', passives: emptyPassives(),
+    if (PLAYTEST_TOOLS_ENABLED && get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat', passives: emptyPassives(), signatures:{...state.signatures,samuraiCharges:0,parryReady:false},
       selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, deathRetentionDone: false, playtestMode: true, actionId: state.actionId + 1 }))
   },
   selectedCardId: undefined,
@@ -239,7 +239,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     // Stale, duplicate, and pre-regeneration callbacks cannot process a turn twice.
     if (!state.runActive || state.actionId !== id || state.phase !== phase || phase === 'ready') return
     if (state.status === 'defeat' || state.hp <= 0) {
-      set({ status: 'defeat', hp: 0, passives: emptyPassives(), phase: 'ready', isMoving: false, guarding: false, actionId: state.actionId + 1 })
+      set({ status: 'defeat', hp: 0, passives: emptyPassives(), signatures:{...state.signatures,samuraiCharges:0,parryReady:false}, phase: 'ready', isMoving: false, guarding: false, actionId: state.actionId + 1 })
       return
     }
     if (phase === 'player') {

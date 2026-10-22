@@ -11,7 +11,7 @@ function describeEvent(event: CombatEvent) {
     case 'transform': return 'Transformation activated'
     case 'revert': return 'Returned to Pawn · recovery begins'
     case 'reveal': return 'Astral Eye reveals terrain and occupants'
-    case 'parry': return 'Crimson Reversal · strike negated'
+    case 'parry': return event.parryKind==='samurai'?`Samurai Mode · strike negated · ${event.parriesLeft}/3`:'Parried · strike negated'
     case 'fear': return 'Frightened foe hesitates'
     case 'counter': return `Counter · ${event.amount} damage`
     case 'guard': return 'Guard ready'

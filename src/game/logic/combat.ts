@@ -12,12 +12,13 @@ import { formMovement } from './chessMovement'
 import { formAttackTargets } from './formCombat'
 import { emptySignatures, finishSignatureTurn, resolveSignature, signatureFog, type SignatureState } from './signatures'
 import { canKnightLand, elevationAt, pawnLanding, playerBoard, reversionReason } from './perching'
-import { characterTiming } from '../../data/characterDesigns'
+import { characterTiming, parryPresentationMs } from '../../data/characterDesigns'
 import { passiveBalance } from '../../data/passives'
 import { cloneEnemy } from './damage'
 import { afterBasic, emitDamage, emptyPassives, smiteBudget, tickEnemyStatuses, skipConcussedResponse, type PassiveState, type DamageEffect } from './passives'
 import { resolveRoyalDecree } from './signatures'
 import { abilityBalance } from '../../data/abilities'
+import { defendIncoming, sparringAttack, type IncomingAttack, type SparringPattern } from './playerDefense'
 
 export type PlayerAction =
   | { kind: 'transform'; form: BossForm; attunement: Attunement }
@@ -31,7 +32,7 @@ export type PlayerAction =
 export type Enemy = {
   id: string
   kind: 'rookling' | 'dummy'
-  trainingDummy?: { behavior: 'passive' | 'sparring'; knockback: boolean }
+  trainingDummy?: { behavior: 'passive' | 'sparring'; knockback: boolean; pattern?: SparringPattern }
   cell: Cell
   from: Cell
   hp: number
@@ -65,6 +66,10 @@ export type CombatEvent = {
   penetrated?: number
   effect?: DamageEffect
   delayMs?: number
+  parryKind?: 'samurai' | 'manual'
+  sourceId?: string
+  parriesLeft?: number
+  attackKind?: IncomingAttack['kind']
   breakdown?: import('./combatAnalysis').DamageBreakdown
   // Presentation may show an enemy event only if this was visible when it happened.
   seen: boolean
@@ -217,7 +222,8 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
   } else return null
   const next = { ...state, passives, cell, facing, enemies, events, eventSerial, hp, energy, focus, deck, block, preparedCounter, transformations,
     elevation: currentForm(transformations) === 'knight' ? elevationAt(state.dungeon, cell) : 0,
-    signatures: { ...state.signatures, usedThisTurn: undefined, parryReady: false },
+    signatures: { ...state.signatures, usedThisTurn: undefined, parryReady: false,
+      samuraiCharges: currentForm(transformations)==='pawn'?state.signatures.samuraiCharges:0 },
     guarding: action.kind === 'defend', lastAction: action.kind }
   return { ...next, ...signatureFog(next) }
 }
@@ -225,7 +231,8 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
 // Exactly one ordered action per eligible living enemy. No clocks, effects, React, or global randomness.
 export function resolveEnemyPhase(state: GameState): GameState {
   if (state.status !== 'playing' || state.hp <= 0) {
-    return state.hp <= 0 && state.status !== 'defeat' ? { ...state, passives: emptyPassives(), hp: 0, status: 'defeat', guarding: false } : state
+    if(state.status==='defeat'&&state.hp===0&&state.signatures.samuraiCharges===0&&!state.signatures.parryReady)return state
+    return state.hp <= 0 ? { ...state, signatures:{...state.signatures,samuraiCharges:0,parryReady:false}, passives: emptyPassives(), hp: 0, status: 'defeat', guarding: false } : state
   }
   const enemies = state.enemies.map((enemy) => ({ ...cloneEnemy(enemy), from: enemy.cell }))
   const passives = { ...state.passives }
@@ -233,10 +240,34 @@ export function resolveEnemyPhase(state: GameState): GameState {
   let hp = state.hp
   let block = state.block, preparedCounter = state.preparedCounter, eventSerial = state.eventSerial
   let parryReady = state.signatures.parryReady
+  let samuraiCharges=currentForm(state.transformations)==='pawn'?state.signatures.samuraiCharges:0,parryIndex=0
   let poiseUsed = false
   const king = currentForm(state.transformations) === 'king'
   const emit = (event: Omit<CombatEvent, 'seen' | 'id'>) => events.push({ ...event, id: ++eventSerial,
     seen: event.targetId === 'pawn' || (event.actor === 'pawn' && !event.targetId) || canSeeContent(cellId(event.cell), state) })
+  const receive=(enemy:Enemy,attack:IncomingAttack)=>{
+    const result=defendIncoming(attack,{raw:Math.max(0,balance.enemyDamage-(enemy.weakenedDamage??0)),hp,block,
+      guard:state.guarding?balance.guardReduction:0,poise:king&&!poiseUsed?passiveBalance.kingPoise:0,charges:samuraiCharges,manual:parryReady})
+    samuraiCharges=result.charges
+    if(result.manual)parryReady=false
+    if(result.poiseUsed)poiseUsed=true
+    enemy.weakenedDamage=0;block-=result.blocked;hp-=result.damage
+    if(result.parried)emit({kind:'parry',actor:'pawn',targetId:'pawn',sourceId:enemy.id,cell:state.cell,
+      parryKind:result.automatic?'samurai':'manual',parriesLeft:samuraiCharges,attackKind:attack.kind,delayMs:parryIndex++*parryPresentationMs})
+    else emit({kind:'hit',actor:enemy.id,targetId:'pawn',cell:state.cell,amount:result.damage,blocked:result.blocked,attackKind:attack.kind})
+    const direct=attack.kind==='melee'||attack.kind==='projectile'
+    // Auto-parries are defense only. A separately prepared Riposte may still answer
+    // one direct strike; ordinary Defend/manual behavior stays independent.
+    if(hp>0&&direct&&(preparedCounter>0||(!result.automatic&&(result.manual||state.guarding)))
+      &&gridDistance(enemy.cell,state.cell)<=abilityBalance.retaliationRange&&hasLineOfSight(state.dungeon,state.cell,enemy.cell)){
+      const counterBase=result.manual?abilityBalance.pawnCounter:result.automatic?preparedCounter:state.guarding?balance.counterDamage:preparedCounter
+      const bonus=currentForm(state.transformations)==='pawn'&&result.manual?Math.min(passives.sharpener,passiveBalance.sharpenerSkillCap):0
+      const smite=king?smiteBudget(passives,state.turn):0
+      emitDamage(enemy,[counterBase+smite,...(bonus?[bonus]:[])],event=>emit(event.kind==='hit'&&event.effect!=='sharpener'?{...event,kind:'counter'}:event),
+        {followup:false,impactDelayMs:75,inputs:[{source:result.manual?'Manual parry':state.guarding&&!result.automatic?'Guard counter':state.lastAction==='ability'?'Iron Bastion':'Riposte',category:'counter',base:counterBase,passive:smite}]})
+      preparedCounter=0
+    }
+  }
   for (const enemy of [...enemies].sort((a, b) => a.id.localeCompare(b.id))) {
     if (enemy.hp <= 0 || hp <= 0) continue
     tickEnemyStatuses(enemy, state.turn, emit)
@@ -255,31 +286,20 @@ export function resolveEnemyPhase(state: GameState): GameState {
       continue
     }
     if (enemy.kind === 'dummy' && enemy.trainingDummy?.behavior === 'passive') { emit({ kind: 'wait', actor: enemy.id, cell: enemy.cell }); continue }
+    const pattern=state.mode==='training'&&enemy.kind==='dummy'?enemy.trainingDummy?.pattern:undefined
+    if(pattern&&pattern!=='telegraphed'){
+      const attack=sparringAttack(pattern),distance=gridDistance(enemy.cell,state.cell)
+      const reaches=distance>0&&distance<=(attack.kind==='melee'?1:balance.detectionRadius)
+        &&(attack.kind==='environment'||attack.kind==='dot'||hasLineOfSight(state.dungeon,enemy.cell,state.cell))
+      if(reaches)receive(enemy,attack)
+      else emit({kind:'miss',actor:enemy.id,cell:enemy.cell})
+      continue
+    }
     if (enemy.intent === 'attack' && enemy.attackTarget) {
       const hits = sameCell(enemy.attackTarget, state.cell) && gridDistance(enemy.cell, state.cell) === 1
         && hasLineOfSight(state.dungeon, enemy.cell, state.cell)
       if (hits) {
-        const parried = parryReady
-        parryReady = false
-        const poise = king && !poiseUsed && !parried ? passiveBalance.kingPoise : 0
-        if (poise) poiseUsed = true
-        const incoming = parried ? 0 : Math.max(0, balance.enemyDamage - poise - (enemy.weakenedDamage ?? 0) - (state.guarding ? balance.guardReduction : 0))
-        enemy.weakenedDamage = 0
-        const absorbed = Math.min(block, incoming)
-        block -= absorbed
-        const damage = Math.min(hp, incoming - absorbed)
-        hp -= damage
-        if (parried) emit({ kind: 'parry', actor: 'pawn', targetId: 'pawn', cell: state.cell })
-        else emit({ kind: 'hit', actor: enemy.id, targetId: 'pawn', cell: state.cell, amount: damage, blocked: absorbed })
-        if (hp > 0 && (parried || state.guarding || preparedCounter > 0)
-          && gridDistance(enemy.cell, state.cell) <= abilityBalance.retaliationRange && hasLineOfSight(state.dungeon, state.cell, enemy.cell)) {
-          const counterBase = parried ? abilityBalance.pawnCounter : state.guarding ? balance.counterDamage : preparedCounter
-          const bonus = currentForm(state.transformations) === 'pawn' && parried ? Math.min(passives.sharpener, passiveBalance.sharpenerSkillCap) : 0
-          const smite = king ? smiteBudget(passives, state.turn) : 0
-          emitDamage(enemy, [counterBase + smite, ...(bonus ? [bonus] : [])],
-            (event) => emit(event.kind === 'hit' && event.effect !== 'sharpener' ? { ...event, kind: 'counter' } : event), { followup: false, impactDelayMs: 75, inputs: [{ source: parried ? 'Crimson Reversal' : state.guarding ? 'Guard counter' : state.lastAction === 'ability' ? 'Iron Bastion' : 'Riposte', category: 'counter', base: counterBase, passive: smite }] })
-          preparedCounter = 0
-        }
+        receive(enemy,{kind:'melee'})
       } else emit({ kind: 'miss', actor: enemy.id, cell: enemy.attackTarget })
       enemy.attackTarget = undefined
       enemy.intent = 'idle'
@@ -317,7 +337,7 @@ export function resolveEnemyPhase(state: GameState): GameState {
   const status = hp <= 0 ? 'defeat' : state.mode !== 'training' && sameCell(state.cell, state.dungeon.exit)
     && enemies.every((enemy) => enemy.hp <= 0) ? 'victory' : 'playing'
   if (status !== 'playing') emit({ kind: status, actor: 'pawn', cell: state.cell })
-  return finishSignatureTurn({ ...state, signatures: { ...state.signatures, decree: undefined }, passives: hp <= 0 ? emptyPassives() : passives, enemies, hp, status, events, eventSerial, guarding: false, block: 0, preparedCounter: 0,
+  return finishSignatureTurn({ ...state, signatures: { ...state.signatures, decree: undefined, samuraiCharges:hp>0?samuraiCharges:0 }, passives: hp <= 0 ? emptyPassives() : passives, enemies, hp, status, events, eventSerial, guarding: false, block: 0, preparedCounter: 0,
     focus: decree?.focus ?? state.focus, energy: Math.min(state.maxEnergy, state.energy + cardBalance.energyPerTurn), turn: state.turn + 1 })
 }
 

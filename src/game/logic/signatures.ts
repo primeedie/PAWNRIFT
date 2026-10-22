@@ -21,9 +21,10 @@ export type SignatureState = {
   eyeUsed: boolean
   reveal: { cells: number[]; turnsLeft: number; foresight: boolean } | null
   parryReady: boolean
+  samuraiCharges: number
 }
 export function emptySignatures(): SignatureState {
-  return { cooldowns: { pawn: 0, knight: 0, bishop: 0, rook: 0, queen: 0, king: 0 }, eyeUsed: false, reveal: null, parryReady: false }
+  return { cooldowns: { pawn: 0, knight: 0, bishop: 0, rook: 0, queen: 0, king: 0 }, eyeUsed: false, reveal: null, parryReady: false, samuraiCharges: 0 }
 }
 export function signatureFog(state: Pick<GameState, 'dungeon' | 'cell' | 'explored' | 'signatures' | 'mode' | 'trainingVision'>) {
   if (state.mode === 'training' && state.trainingVision === 'full') {
@@ -64,6 +65,7 @@ export function royalDecreeTargets(state: GameState, origin: Cell = state.cell) 
 export function abilityReason(state: GameState) {
   if (state.status !== 'playing' || state.hp <= 0) return 'Run ended.'
   const form = currentForm(state.transformations)
+  if (form === 'pawn' && state.signatures.samuraiCharges > 0) return 'Samurai Mode is already active.'
   if (form === 'king' && state.mode !== 'training') return 'King is available in Training Grounds only.'
   if (form === 'bishop') {
     if (state.signatures.eyeUsed) return 'Used this floor.'
@@ -89,7 +91,7 @@ export function resolveSignature(state: GameState, options: { destination?: Cell
     next.focus = 0
   }
   if (form === 'pawn') {
-    next.signatures.parryReady = true
+    next.signatures.samuraiCharges = balance.samuraiParries
     emit({ kind: 'guard', actor: 'pawn', cell: next.cell })
   } else if (form === 'knight') {
     if (!options.destination || !vaultTargets(state, options.destination).some((enemy) => enemy.id === options.targetId)) return null
@@ -148,6 +150,7 @@ export function resolveRoyalDecree(state: GameState) {
 
 export function finishSignatureTurn(state: GameState): GameState {
   const signatures: SignatureState = { ...state.signatures, cooldowns: { ...state.signatures.cooldowns }, parryReady: false, usedThisTurn: undefined,
+    samuraiCharges: state.hp > 0 && currentForm(state.transformations) === 'pawn' ? Math.min(balance.samuraiParries,Math.max(0,state.signatures.samuraiCharges)) : 0,
     reveal: state.signatures.reveal && state.signatures.reveal.turnsLeft > 1
       ? { ...state.signatures.reveal, turnsLeft: state.signatures.reveal.turnsLeft - 1 } : null }
   for (const form of Object.keys(signatures.cooldowns) as ChessForm[]) if (form !== state.signatures.usedThisTurn)

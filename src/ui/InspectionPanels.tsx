@@ -8,6 +8,7 @@ import { inspectedEnemy, useInspectionStore } from './inspectionStore'
 import { enemyName, enemyStatuses } from './enemyPresentation'
 import { enemyIntentLabel, foresightIntent } from '../game/logic/combat'
 import { restoreGameFocus } from './hudInteraction'
+import { characterDesigns } from '../data/characterDesigns'
 
 function Row({ label, children }: { label: string; children: ReactNode }) { return <div><dt>{label}</dt><dd>{children}</dd></div> }
 
@@ -21,6 +22,7 @@ export function CharacterInformation() {
     <header><h2 id="character-information-title"><span aria-hidden="true">{formSymbols[stats.form]}</span> {formNames[stats.form]}</h2>
       <button onClick={()=>{ui.closeCharacter();document.querySelector<HTMLButtonElement>('.form-identity-icon')?.focus()}} aria-label="Close character information">×</button></header>
     <p className={`inspection-attunement attunement-${active?.attunement ?? 'light'}`}>{active ? `${active.attunement==='light'?'Light':'Dark'} attunement` : 'Pawn · untransformed'}</p>
+    <p className="inspection-note">Weapon: {characterDesigns[stats.form][active?.attunement??'light']}</p>
     <h3>Combat</h3><dl className="inspection-stats">
       <Row label="Next basic"><strong>{stats.damage}</strong>{stats.bonus>0 && <> + <strong>{stats.bonus}</strong> {stats.form==='pawn'?'follow-up':'Smite'}</>}</Row>
       <Row label="Range"><strong>{stats.range}</strong> tile{stats.range!==1?'s':''} · {stats.directions.toLowerCase()}</Row>

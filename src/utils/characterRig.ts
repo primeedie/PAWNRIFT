@@ -1,6 +1,7 @@
 import { Euler, Quaternion, Vector3 } from 'three'
 import type { CharacterForm } from '../data/characterDesigns'
 import type { CharacterPose } from './characterAnimation'
+import type { Attunement } from '../data/forms'
 
 export type Triple = [number,number,number]
 export const armLengths = { upper: 0.25, forearm: 0.24 } as const
@@ -23,7 +24,7 @@ function aimGrip(position:Triple,rotation:Triple,p:CharacterPose,weight:number):
 }
 // Desired hand sockets in torso coordinates. A shared two-hand grip is transformed
 // from weapon space, rather than independently animating the supporting hand.
-export function handPose(form:CharacterForm,p:CharacterPose,side:-1|1) : { position:Triple; rotation:Triple } {
+export function handPose(form:CharacterForm,p:CharacterPose,side:-1|1,variant:Attunement='light') : { position:Triple; rotation:Triple } {
   let position:Triple=[0.20,0.55,0.17], rotation:Triple=[0.18,0,0]
   if(form==='pawn') {
     const d=p.draw, cut=p.bladeTurn
@@ -33,6 +34,7 @@ export function handPose(form:CharacterForm,p:CharacterPose,side:-1|1) : { posit
     if(side===-1) return {position:sheathPosition(d),rotation:[-0.15,0,-0.15]}
   } else if(form==='knight') {
     position=[0.12,0.65,0.18+p.thrust*0.20];rotation=aimGrip(position,[1.15+p.thrust*0.38,0,0.08],p,p.thrust)
+    if(variant==='dark'){position=[0.14,0.67,0.12+p.thrust*0.16];rotation=aimGrip(position,[0.80+p.thrust*0.55,0,-0.08],p,p.thrust)}
   } else if(form==='bishop') {
     position=[0.23,0.64+p.cast*0.08,0.18];rotation=[0.10+p.cast*0.42,0.10,0.10]
     if(side===-1) return {position:[-0.17,0.63+p.cast*0.10,0.25],rotation:[0.3-p.cast*0.2,0.12,0.08]}
@@ -45,11 +47,16 @@ export function handPose(form:CharacterForm,p:CharacterPose,side:-1|1) : { posit
   } else {
     position=[side*0.24-side*p.swing*0.20,0.67+p.swing*0.04,0.18+Math.max(0,p.swing)*0.22]
     rotation=aimGrip(position,[1.25,side*(0.3-p.swing*0.8),side*-0.22],p,Math.max(0,p.swing))
+    if(variant==='dark'){
+      const punch=Math.max(0,p.swing)*(side===1?1:0.45)
+      position=[side*(0.22-punch*0.06),0.71-punch*0.025,0.14+punch*0.27]
+      rotation=aimGrip(position,[1.0,side*0.16,side*-0.12],p,punch)
+    }
     return {position,rotation}
   }
   if(side===-1) {
     // Left hand on the same shaft, below the right hand. Keep both sockets rigid.
-    const [rx,ry,rz]=rotation,grip=-0.115
+    const [rx,ry,rz]=rotation,grip=form==='knight'&&variant==='dark'?-0.16:-0.115
     // XYZ Euler's Y column, without allocating vectors/quaternions per frame.
     const x=-Math.cos(ry)*Math.sin(rz),y=Math.cos(rx)*Math.cos(rz)-Math.sin(rx)*Math.sin(ry)*Math.sin(rz),z=Math.sin(rx)*Math.cos(rz)+Math.cos(rx)*Math.sin(ry)*Math.sin(rz)
     position=[position[0]+grip*x,position[1]+grip*y,position[2]+grip*z]

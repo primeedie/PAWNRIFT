@@ -108,7 +108,7 @@ export function KatanaSheath() {
 }
 
 export function SheathedKatana({ motion, hand }: { motion: RefObject<CharacterPose>; hand: RefObject<Group | null> }) {
-  const drawn=useRef<Group>(null),stored=useRef<Group>(null),trail=useRef<Group>(null),scabbard=useRef<Group>(null)
+  const drawn=useRef<Group>(null),stored=useRef<Group>(null),trail=useRef<Group>(null),scabbard=useRef<Group>(null),deflection=useRef<Group>(null)
   const socket=useRef({point:new Vector3(),hand:new Quaternion(),parent:new Quaternion()})
   useFrame(()=>{
     if(!drawn.current||!stored.current||!trail.current||!hand.current) return
@@ -125,6 +125,7 @@ export function SheathedKatana({ motion, hand }: { motion: RefObject<CharacterPo
       drawn.current.quaternion.copy(target.parent.multiply(target.hand))
     }
     trail.current.visible=unsheathed&&p.bladeTurn>0.1&&p.slash>0.3&&!p.guard
+    if(deflection.current)deflection.current.visible=p.guard>0&&p.bladeTurn>0.70
     trail.current.position.copy(drawn.current.position);trail.current.quaternion.copy(drawn.current.quaternion)
   },-0.6)
   return <group name="left-hip-weapon-rig" dispose={null}>
@@ -133,7 +134,7 @@ export function SheathedKatana({ motion, hand }: { motion: RefObject<CharacterPo
       <KatanaSheath/>
       <group ref={stored} name="sheathed-sword"><CrimsonKatana bladeVisible={false}/></group>
     </group>
-    <group ref={drawn} name="sword-draw-pivot" visible={false} scale={katanaScale}><CrimsonKatana/></group>
+    <group ref={drawn} name="sword-draw-pivot" visible={false} scale={katanaScale}><CrimsonKatana/><group ref={deflection} visible={false} name="katana-deflection-flash"><mesh position={[0,0.67,0]} geometry={katanaBox} material={katanaMaterials.trail} scale={[0.12,0.05,0.12]}/></group></group>
     <group ref={trail} visible={false} scale={katanaScale}><mesh position={[0,0.40,0]} geometry={trailGeometry} material={katanaMaterials.trail}/></group>
   </group>
 }

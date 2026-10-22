@@ -52,7 +52,7 @@ export function WeaponStrike({form,variant,rightHand,leftHand,reducedMotion}:{fo
       impact.current.scale.setScalar(0.7+(s.elapsed-impactMs)/110*0.5)
       impact.current.visible=true
     }
-    if(form==='queen'&&s.elapsed>impactMs-45&&s.elapsed<impactMs+75&&rightHand.current){
+    if(form==='queen'&&variant==='light'&&s.elapsed>impactMs-45&&s.elapsed<impactMs+75&&rightHand.current){
       rightHand.current.updateWorldMatrix(true,false)
       s.point.set(0,0.18,0);rightHand.current.localToWorld(s.point);parent.worldToLocal(s.point)
       trail.current.position.copy(s.point);trail.current.visible=true
@@ -63,7 +63,7 @@ export function WeaponStrike({form,variant,rightHand,leftHand,reducedMotion}:{fo
       <mesh geometry={form==='bishop'?geometry.octahedron:geometry.blade} material={form==='bishop'?palettes[variant].accent:palettes[variant].metal} scale={form==='bishop'?[0.07,0.13,0.07]:[0.055,0.30,0.035]}/>
     </group>
     <group ref={impact} visible={false} name="weapon-impact">
-      <mesh geometry={geometry.ring} material={effects[variant]} rotation={[-Math.PI/2,0,0]} scale={form==='rook'||form==='king'?1.5:0.85}/>
+      <mesh geometry={form==='queen'&&variant==='dark'?geometry.octahedron:geometry.ring} material={effects[variant]} rotation={[-Math.PI/2,0,0]} scale={form==='queen'&&variant==='dark'?0.16:form==='rook'||form==='king'?1.5:0.85}/>
     </group>
     <group ref={trail} visible={false} name="claw-cutting-trail"><mesh geometry={geometry.arc} material={effects[variant]} rotation={[0,0,-0.3]}/></group>
   </group>

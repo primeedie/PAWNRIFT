@@ -6,7 +6,8 @@ import { gridToWorld } from '../../utils/grid'
 import { usePawnKeyboard } from '../../ui/usePawnKeyboard'
 import { CharacterModel } from './CharacterModel'
 import type { CharacterForm } from '../../data/characterDesigns'
-import { presentationDuration } from '../../utils/characterAnimation'
+import { presentationDuration, parryPresentation } from '../../utils/characterAnimation'
+import { cellId } from '../../game/logic/dungeon'
 import { useInspectionStore } from '../../ui/inspectionStore'
 
 const facingAngles = { north: Math.PI, east: Math.PI / 2, south: 0, west: -Math.PI / 2 }
@@ -15,6 +16,7 @@ export function PawnCharacter() {
   const root = useRef<Group>(null)
   const body = useRef<Group>(null)
   const progress = useRef(0)
+  const reaction=useRef({key:'',elapsed:0})
   const state = usePawnStore()
   const [reducedMotion, setReducedMotion] = useState(false)
   useEffect(() => {
@@ -50,10 +52,15 @@ export function PawnCharacter() {
       MathUtils.lerp(fromElevation, elevation, isMoving ? eased : 1) + (isMoving ? (reducedMotion ? 0 : Math.sin(t * Math.PI) * (transformations.active?.form === 'knight' && Math.abs(cell.column - from.column) + Math.abs(cell.row - from.row) === 3 ? 0.22 : 0.025)) : 0),
       MathUtils.lerp(start[2], end[2], isMoving ? eased : 1),
     )
-    const target = state.phase !== 'ready' ? state.events.find((event) => event.actor === 'pawn' && (event.kind === 'hit'||event.kind==='counter') && event.breakdown?.category !== 'dot' && event.breakdown?.source !== 'Swish splash' && event.effect !== 'sharpener')?.cell : undefined
+    const key=`${state.actionId}:${state.phase}`
+    if(reaction.current.key!==key)reaction.current={key,elapsed:0}
+    if(state.runActive)reaction.current.elapsed+=delta*1000
+    const parry=state.phase==='enemies'?parryPresentation(state,reaction.current.elapsed):undefined
+    const source=parry?.sourceId?state.enemies.find(enemy=>enemy.id===parry.sourceId&&state.visible.has(cellId(enemy.cell))):undefined
+    const target = source?.cell??(state.phase !== 'ready' ? state.events.find((event) => event.actor === 'pawn' && (event.kind === 'hit'||event.kind==='counter') && event.breakdown?.category !== 'dot' && event.breakdown?.source !== 'Swish splash' && event.effect !== 'sharpener')?.cell : undefined)
     const angle = target ? Math.atan2(target.column - cell.column, target.row - cell.row) : facingAngles[facing]
     const difference = Math.atan2(Math.sin(angle - root.current.rotation.y), Math.cos(angle - root.current.rotation.y))
-    root.current.rotation.y += difference * (1 - Math.exp(-18 * delta))
+    root.current.rotation.y += difference * (1 - Math.exp(-(parry?45:18) * delta))
     body.current.position.y = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 2.4) * 0.006
     recoil.current = Math.max(0, recoil.current - delta)
     body.current.rotation.x = reducedMotion ? 0 : Math.sin(recoil.current / 0.2 * Math.PI) * 0.08

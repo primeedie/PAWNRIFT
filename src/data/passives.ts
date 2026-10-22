@@ -13,7 +13,7 @@ export const passiveBalance = {
 } as const
 
 export const combatPassives = {
-  pawn: { name: 'Sharpener', icon: '◆', summary: 'Basics gain 1 stack after striking (max 5). Existing stacks deal a separate follow-up. Damaging cards and Crimson Reversal gain up to 3. Resets each floor.' },
+  pawn: { name: 'Sharpener', icon: '◆', summary: 'Basics gain 1 stack after striking (max 5). Existing stacks deal a separate follow-up. Damaging cards and eligible skills gain up to 3. Samurai Mode deals no damage or stacks. Resets each floor.' },
   knight: { name: 'Sky Piercer', icon: '↗', summary: 'Orthogonal reach 2; clear lane required. Basics ignore 10% of defense, rounded down. Block still absorbs damage.' },
   bishop: { name: 'Swish', icon: '◈', summary: 'Basic: splash 1 to up to 2 visible neighbors of the victim. Opposite checker color burns the victim for 1 on each of the next 2 responses.' },
   rook: { name: 'Stun Strike', icon: '⬡', summary: 'Basics apply one Concussion countdown. Normal/elite/boss respond 1/2/3 times, then skip once and resist reapplication for 2/3/5 turns. Hits never reset it.' },

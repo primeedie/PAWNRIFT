@@ -78,11 +78,11 @@ describe('Sharpener and shared mitigation', () => {
     expect(impacts(played).map((event) => event.amount)).toEqual([0, 2])
     expect(state).toEqual(snapshot)
   })
-  it('adds a capped skill follow-up to Crimson Reversal without generating a stack or extra counter', () => {
+  it('Samurai Mode preserves Sharpener stacks without creating damage, a stack or an automatic counter', () => {
     const state = { ...game(), passives: { ...emptyPassives(), sharpener: 5 }, enemies: [{ ...foe(), intent: 'attack' as const, attackTarget: c(3, 3) }] }
     const next = resolveTurn(state, { kind: 'ability' })!
-    expect(next.events.filter((event) => event.kind === 'counter')).toHaveLength(1)
-    expect(impacts(next)).toMatchObject([{ amount: 3, effect: 'sharpener' }])
+    expect(next.events.filter((event) => event.kind === 'counter')).toHaveLength(0)
+    expect(impacts(next)).toEqual([])
     expect(next.passives.sharpener).toBe(5)
     expect(next.turn).toBe(1)
   })
