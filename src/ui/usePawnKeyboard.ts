@@ -14,6 +14,7 @@ const directions: Record<string, Direction | undefined> = {
 export function usePawnKeyboard() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if(event.defaultPrevented)return
       const target = event.target
       if (event.ctrlKey || event.metaKey || event.altKey
         || (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select')))) return
@@ -24,7 +25,11 @@ export function usePawnKeyboard() {
       event.preventDefault()
       if (event.repeat) return // One keypress = one tile; no queued moves.
       const state = usePawnStore.getState()
-      if (key === 'escape') { useInspectionStore.getState().dismiss(); state.selectCard(undefined); closeHudPanels() }
+      if (key === 'escape') {
+        const ui=useInspectionStore.getState()
+        if(state.tutorial&&!gameplayBlocked()&&!state.selectedCardId&&!state.selectedAbility&&!ui.aimingAttack&&!ui.characterOpen&&!ui.enemyId)state.requestTutorialExit(true)
+        else {ui.dismiss();state.selectCard(undefined);closeHudPanels()}
+      }
       else if (gameplayBlocked()) state.recordInputBlocked()
       else if (direction) state.tryMove(formKeyDestination(currentForm(state.transformations), state.cell, direction, event.shiftKey))
       else if (key === 'e') state.tryAttack()

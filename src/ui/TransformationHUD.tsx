@@ -65,7 +65,7 @@ export function TransformationHUD() {
         <summary>Forms <strong>{forms.inventory.length}/2</strong></summary>
         <div className="form-picker-panel hud-panel" data-tooltip-avoid>
           <strong>Carried transformations</strong> <KeywordTooltip topic="transformation" className="info-trigger">ⓘ</KeywordTooltip>
-          {!forms.inventory.length && <p>No transformations carried.{PLAYTEST_TOOLS_ENABLED && <> Use <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button> to grant one on this prototype.</>}</p>}
+          {!forms.inventory.length && <p>No transformations carried.{PLAYTEST_TOOLS_ENABLED && !state.tutorial && <> Use <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button> to grant one on this prototype.</>}</p>}
           {forms.inventory.map((entry) => <div className="form-slot" key={entry.form}>
             <strong>{formSymbols[entry.form]} {formNames[entry.form]}</strong>
             <KeywordTooltip topic="charges"><strong>{entry.charges}/5</strong> charges</KeywordTooltip>
@@ -100,7 +100,7 @@ export function TransformationHUD() {
           <button onClick={(event) => closePanel(event.currentTarget)}>Cancel</button>
         </div>
       </details>}
-      {PLAYTEST_TOOLS_ENABLED && <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button>}
+      {PLAYTEST_TOOLS_ENABLED && !state.tutorial && <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button>}
     </div>
     <div className="passive-summary">
       <KeywordTooltip topic="passive" title={combatPassives[form].name} extra={combatPassives[form].summary}>

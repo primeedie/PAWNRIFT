@@ -18,7 +18,7 @@ type TooltipAPI = {
 }
 const TooltipContext = createContext<TooltipAPI | null>(null)
 
-export function TooltipProvider({ children }: { children: ReactNode }) {
+export function TooltipProvider({ children, sessionKey }: { children: ReactNode;sessionKey?:string|number }) {
   const [active, setActive] = useState<ActiveTooltip>()
   const current = useRef(active)
   const panel = useRef<HTMLDivElement>(null)
@@ -38,6 +38,7 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
     setActive(next)
   }
   openRef.current = (entry) => open(entry)
+  useLayoutEffect(()=>{close()},[sessionKey])
   const leave = () => {
     keep()
     timer.current = setTimeout(() => {

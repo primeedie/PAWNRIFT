@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { glossary, type Keyword } from '../data/glossary'
 import { restoreGameFocus } from './hudInteraction'
+import { TutorialLibrary } from './TutorialLibrary'
 
 const sections: Record<string, Keyword[]> = {
-  Movement: ['movement', 'perch'], Combat: ['damage', 'healing', 'fear'],
+  Movement: ['movement', 'range', 'sight', 'perch'], Combat: ['worldTurn','damage', 'healing','defend','parry'],
   'Cards & resources': ['energy', 'draw', 'discard', 'focus', 'block', 'counter'],
   Transformations: ['transformation', 'attunement', 'charges', 'duration', 'recovery'],
-  Signatures: ['ability', 'exposed', 'foresight'],
+  Signatures: ['ability', 'cooldown', 'foresight'],
+  Statuses:['burn','bleed','concussion','stun','fear','exposed','focus','counter'],
+  Tutorials:[],
 }
 export function HelpDialog({ close }: { close: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -15,11 +18,13 @@ export function HelpDialog({ close }: { close: () => void }) {
   const dismiss = () => { dialog.current?.close(); close(); restoreGameFocus() }
   return <dialog ref={dialog} className="help-dialog" aria-labelledby="help-heading"
     onKeyDown={(event) => event.stopPropagation()} onCancel={(event) => { event.preventDefault(); dismiss() }}>
-    <header><h2 id="help-heading">Mechanics guide</h2><button onClick={dismiss}>Close</button></header>
+    <header><h2 id="help-heading">Help</h2><button onClick={dismiss}>Close</button></header>
+    <button onClick={()=>setSection('Tutorials')}>Tutorials → Choose lesson</button>
     <label>Section<select value={section} onChange={(event) => setSection(event.target.value)}>
       {Object.keys(sections).map((name) => <option key={name}>{name}</option>)}
     </select></label>
-    <dl>{sections[section].map((key) => <div key={key}><dt>{glossary[key].label}</dt><dd>{glossary[key].explanation.split(/(\b\d+\b)/g)
-      .map((part, index) => /^\d+$/.test(part) ? <strong key={index}>{part}</strong> : part)}</dd></div>)}</dl>
+    {section==='Tutorials'?<TutorialLibrary close={dismiss}/>:<div className="help-glossary">{sections[section].map(key=><details key={key}>
+      <summary>{glossary[key].label}</summary><p>{glossary[key].summary}</p><p>{glossary[key].explanation}</p>
+    </details>)}</div>}
   </dialog>
 }

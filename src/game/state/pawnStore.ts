@@ -8,7 +8,10 @@ import { newRunSeed } from '../../utils/newRunSeed'
 import type { CardTarget } from '../logic/cardRules'
 import { sameCell } from '../logic/movement'
 import { completeTransformationFloor, grantTransformation, recordTransformationBossWin, retainAfterDeath, retentionChoices, transformationsForNewRun } from '../logic/transformations'
-import type { Attunement, BossForm } from '../../data/forms'
+import { bossForms, type Attunement, type BossForm } from '../../data/forms'
+import { tutorials, tutorialLesson, type LessonId } from '../../data/tutorials'
+import { lessonCompleted, newTutorial, observeTutorial, tutorialExercise, tutorialRejection, tutorialStep, type PracticeForm, type TutorialSession, type TutorialSignal } from '../logic/tutorial'
+import { useTutorialProgress } from './tutorialProgress'
 import { emptyPassives } from '../logic/passives'
 import { emptySignatures, vaultDestinations } from '../logic/signatures'
 import { applyPlaytest, movementRejection, PLAYTEST_TOOLS_ENABLED, type PlaytestAction, type DiagnosticLayer } from '../logic/playtesting'
@@ -17,6 +20,14 @@ const initialDungeon = generateDungeon(newRunSeed(''))
 
 export type TurnPhase = 'ready' | 'player' | 'enemies'
 type PawnState = GameState & {
+  tutorial: TutorialSession | null
+  enterTutorial: (lesson: LessonId, sequence?: boolean) => boolean
+  exitTutorial: () => boolean
+  requestTutorialExit: (requested:boolean) => void
+  nextTutorialStep: (skip?: boolean) => boolean
+  retryTutorialStep: () => boolean
+  chooseTutorialForm: (form: PracticeForm, attunement: Attunement) => boolean
+  observeTutorialUI: (signal: Exclude<TutorialSignal,{kind:'player'}|{kind:'response'}>) => void
   training: TrainingSession | null
   enterTraining: () => boolean
   leaveTraining: () => boolean
@@ -68,12 +79,73 @@ type PawnState = GameState & {
 // Complete data-only snapshot. Functions stay on the store; all gameplay data is deep copied.
 let savedRun: Partial<PawnState> | undefined
 let trainingId = 0
+let savedTutorial: Partial<PawnState> | undefined, tutorialCheckpoint: Partial<PawnState> | undefined
+const dataSnapshot=(state:PawnState)=>structuredClone(Object.fromEntries(Object.entries(state).filter(([,value])=>typeof value!=='function'))) as Partial<PawnState>
+function learned(session:TutorialSession|null){if(session&&lessonCompleted(session))useTutorialProgress.getState().complete(session.lesson);return session}
 export const usePawnStore = create<PawnState>((set, get) => ({
   ...createGame(initialDungeon),
+  tutorial:null,
+  requestTutorialExit:requested=>set(state=>({tutorial:state.tutorial?{...state.tutorial,exitRequested:requested}:null})),
+  enterTutorial:(lesson,sequence=false)=>{
+    if(!tutorials.some(entry=>entry.id===lesson))return false
+    const state=get()
+    if(!state.tutorial)savedTutorial=dataSnapshot(state)
+    const tutorial=newTutorial(++trainingId,lesson,sequence),fresh=tutorialExercise(tutorial)
+    set({...fresh.game,training:fresh.session,tutorial,from:fresh.game.cell,fromElevation:0,isMoving:false,phase:'ready',runActive:true,
+      actionId:state.actionId+1,revealAll:false,selectedCardId:undefined,selectedAbility:false,abilityDestination:undefined,
+      diagnosticLayers:[],diagnosticsEnabled:false,lastMovementRejection:undefined,lastAction:undefined})
+    tutorialCheckpoint=dataSnapshot(get())
+    return true
+  },
+  exitTutorial:()=>{
+    const state=get()
+    if(!state.tutorial||!savedTutorial)return false
+    const methods=Object.fromEntries(Object.entries(state).filter(([,value])=>typeof value==='function'))
+    const restore=savedTutorial;savedTutorial=undefined;tutorialCheckpoint=undefined
+    set({...methods,...restore,tutorial:null,actionId:state.actionId+1} as PawnState,true)
+    return true
+  },
+  nextTutorialStep:(skip=false)=>{
+    const state=get(),session=state.tutorial
+    if(!session||state.phase!=='ready'||(!session.done&&!skip))return false
+    const lesson=tutorialLesson(session.lesson)
+    const nextIndex=skip?lesson.steps.findIndex((step,index)=>index>session.step&&!!step.fixture):session.step+1
+    if(nextIndex<0||nextIndex>=lesson.steps.length){
+      const next=tutorials[tutorials.findIndex(lesson=>lesson.id===session.lesson)+1]
+      if(session.sequence&&next)return get().enterTutorial(next.id,true)
+      set({tutorial:{...session,finished:true}});return true
+    }
+    const tutorial={...session,step:nextIndex,done:false,message:'',accepted:undefined,paid:undefined,evidence:undefined}
+    const fresh=tutorialStep(tutorial).fixture?tutorialExercise(tutorial):undefined
+    set({...fresh?.game,...(fresh?{training:fresh.session}:{}),tutorial,phase:'ready',from:fresh?.game.cell??state.cell,
+      fromElevation:fresh?.game.elevation??state.elevation,isMoving:false,actionId:state.actionId+1,events:[],lastAction:undefined,
+      selectedCardId:undefined,selectedAbility:false,abilityDestination:undefined})
+    tutorialCheckpoint=dataSnapshot(get());return true
+  },
+  retryTutorialStep:()=>{
+    const state=get()
+    if(!state.tutorial||!tutorialCheckpoint)return false
+    const checkpoint=structuredClone(tutorialCheckpoint),session=checkpoint.tutorial!
+    set({...checkpoint,tutorial:{...session,done:false,finished:false,message:'',accepted:undefined,evidence:undefined,paid:undefined},actionId:state.actionId+1})
+    return true
+  },
+  chooseTutorialForm:(form,attunement)=>{
+    const state=get(),session=state.tutorial
+    if(!session||session.lesson!=='forms'||state.phase!=='ready'||!bossForms.some(candidate=>candidate===form)||!['light','dark'].includes(attunement))return false
+    const tutorial={...session,form,attunement,done:false,message:'',accepted:undefined,paid:undefined,evidence:undefined}
+    const fresh=tutorialExercise(tutorial)
+    set({...fresh.game,training:fresh.session,tutorial,from:fresh.game.cell,fromElevation:0,isMoving:false,phase:'ready',
+      actionId:state.actionId+1,selectedCardId:undefined,selectedAbility:false,abilityDestination:undefined,lastAction:undefined})
+    tutorialCheckpoint=dataSnapshot(get());return true
+  },
+  observeTutorialUI:signal=>{
+    const state=get()
+    if(state.tutorial)set({tutorial:learned(observeTutorial(state.tutorial,state,state,signal))})
+  },
   training: null,
   enterTraining: () => {
     const state = get()
-    if (state.training || state.phase !== 'ready') return false
+    if (state.tutorial || state.training || state.phase !== 'ready') return false
     savedRun = structuredClone(Object.fromEntries(Object.entries(state).filter(([, value]) => typeof value !== 'function'))) as Partial<PawnState>
     const fresh = createTraining(++trainingId)
     set({ ...fresh.game, training: fresh.session, from: fresh.game.cell, fromElevation: 0, isMoving: false, phase: 'ready',
@@ -83,7 +155,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   leaveTraining: () => {
     const state = get()
-    if (!state.training || !savedRun) return false
+    if (state.tutorial || !state.training || !savedRun) return false
     const methods = Object.fromEntries(Object.entries(state).filter(([, value]) => typeof value === 'function'))
     const restore = savedRun; savedRun = undefined
     set({ ...methods, ...restore, training: null, actionId: state.actionId + 1 } as PawnState, true)
@@ -91,7 +163,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   train: (command) => {
     const state = get()
-    if (!state.training || state.phase !== 'ready') return false
+    if (state.tutorial || !state.training || state.phase !== 'ready') return false
     const result = trainingControl(state, state.training, command)
     if (!result) return false
     set({ ...result.game, training: result.session, actionId: state.actionId + 1, from: result.game.cell,
@@ -113,6 +185,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     ? state.diagnosticLayers.filter((entry) => entry !== layer) : [...state.diagnosticLayers, layer] })),
   playtest: (action) => {
     const state = get()
+    if(state.tutorial)return false
     if (!state.runActive || state.phase !== 'ready') return false
     const next = applyPlaytest(state, action)
     if (!next) return false
@@ -170,6 +243,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   debugGrant: (form, attunement) => {
     const state = get()
+    if(state.tutorial)return false
     if (form === 'king' && !state.training) return false
     if (!PLAYTEST_TOOLS_ENABLED || !state.runActive || state.phase !== 'ready' || state.status !== 'playing') return false
     const next = grantTransformation(state.transformations, form, attunement)
@@ -216,6 +290,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   tryMove: (destination) => get().submitAction({ kind: 'move', destination }),
   tryAttack: (targetId) => {
     const target = targetId ?? attackTargets(get())[0]?.id
+    if(!target&&get().tutorial){const state=get();set({tutorial:{...state.tutorial!,message:'No eligible visible target in basic range. Inspection is free; attacks need a clear lane. No turn spent.'}})}
     return target ? get().submitAction({ kind: 'attack', targetId: target }) : false
   },
   submitAction: (action) => {
@@ -224,12 +299,16 @@ export const usePawnStore = create<PawnState>((set, get) => ({
       if (action.kind === 'move' && state.diagnosticsEnabled && state.status === 'playing') set({ lastMovementRejection: !state.runActive ? 'Run suspended' : 'Action resolving' })
       return false
     }
+    if(state.tutorial?.done||state.tutorial?.finished){set({tutorial:{...state.tutorial,message:'Objective complete. Continue, choose a lesson, or Retry to practice again.'}});return false}
+    if(state.tutorial&&action.kind==='transform'&&action.form==='king')return false
     const player = resolvePlayerAction(state, action)
     if (!player) {
+      if(state.tutorial)set({tutorial:{...state.tutorial,message:tutorialRejection(state,action)}})
       if (action.kind === 'move' && state.diagnosticsEnabled && state.status === 'playing') set({ lastMovementRejection: movementRejection(state, action.destination) ?? 'Move rejected' })
       return false
     }
     set({ ...player, selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined,
+      tutorial:state.tutorial?observeTutorial(state.tutorial,state,player,{kind:'player',action}):null,
       lastMovementRejection: undefined,
       from: state.cell, fromElevation: state.elevation, isMoving: !sameCell(player.cell, state.cell), phase: 'player', actionId: state.actionId + 1 })
     return true
@@ -244,7 +323,8 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     }
     if (phase === 'player') {
       const resolved = resolveEnemyPhase(state)
-      set({ ...resolved, training: state.training ? { ...state.training, analysis: recordAnalysis(state.training.analysis, resolved.events, state.actionId) } : null, from: state.cell, isMoving: false,
+      set({ ...resolved,tutorial:state.tutorial?learned(observeTutorial(state.tutorial,state,resolved,{kind:'response'})):null,
+        training: state.training ? { ...state.training, analysis: recordAnalysis(state.training.analysis, resolved.events, state.actionId) } : null, from: state.cell, isMoving: false,
         phase: resolved.status === 'defeat' ? 'ready' : 'enemies',
         actionId: resolved.status === 'defeat' ? state.actionId + 1 : state.actionId })
     }

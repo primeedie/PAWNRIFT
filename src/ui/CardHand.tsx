@@ -9,6 +9,7 @@ import { EnergyIcon } from './EnergyIcon'
 import { KeywordTooltip } from './KeywordTooltip'
 import { CardIllustration } from './CardIllustration'
 import { restoreGameFocus } from './hudInteraction'
+import { tutorialStep } from '../game/logic/tutorial'
 
 function emphasizeValues(text: string) {
   return text.split(/(\b\d+\b)/g).map((part, index) => /^\d+$/.test(part) ? <strong key={index}>{part}</strong> : part)
@@ -26,6 +27,7 @@ export function CardHand() {
   const inspect = (element: HTMLElement, id: string, mode: string) => {
     inspectMode.current = mode
     setInspection({ id, position: cardInspection(element.getBoundingClientRect(), { width: window.innerWidth, height: window.innerHeight }) })
+    state.observeTutorialUI({kind:'card-inspected',id})
   }
   useEffect(() => {
     const close = () => setInspection(undefined)
@@ -79,6 +81,7 @@ export function CardHand() {
             ? `Costs ${card.cost} Energy; you have ${state.energy}. You need ${shortfall} more. A basic move, attack, defend, or wait restores 1 after enemies respond.`
             : `Costs ${card.cost} Energy, paid before the effect. Playing a valid card advances the world once.`
           return <article key={instance.instanceId} className="hand-card" data-category={presentation.category}
+            data-tutorial-focus={!!state.tutorial&&tutorialStep(state.tutorial).card===instance.definitionId}
             data-tooltip-avoid
             data-inspected={inspection?.id === instance.instanceId}
             onPointerEnter={(event) => { if (event.pointerType === 'mouse') inspect(event.currentTarget, instance.instanceId, 'pointer') }}

@@ -14,6 +14,7 @@ import { vaultDestinations } from '../../game/logic/signatures'
 import { elevationAt } from '../../game/logic/perching'
 import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
 import { consumeInspectionBoardClick } from '../../ui/inspectionStore'
+import { TutorialHighlight } from './TutorialHighlight'
 
 export function DungeonBoard() {
   const state = usePawnStore()
@@ -25,6 +26,7 @@ export function DungeonBoard() {
         ? vaultDestinations(state).map((cell) => ({ ...cell, uncertain: !state.visible.has(cellId(cell)) })) : [] : movementPreviews(state) : []
   return (
     <group name="dungeon-board" key={`${dungeon.seed}:${dungeon.style}`}>
+      <TutorialHighlight/>
       {dungeon.tiles.map((tile) => {
         const id = cellId(tile)
         const visibility = debugReveal ? 'visible' : tileVisibility(id, state)

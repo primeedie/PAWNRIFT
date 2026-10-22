@@ -16,7 +16,10 @@ export function useInspection(enabled: boolean) {
       if (ui.characterOpen || ui.enemyId) { ui.closeCharacter(); ui.closeEnemy() }
     }
     const key = (event: KeyboardEvent) => {
-      if (event.key==='Escape' && !document.querySelector('dialog[open]')) { useInspectionStore.getState().dismiss(); restoreGameFocus() }
+      if (event.key==='Escape' && !document.querySelector('dialog[open]')) {
+        const ui=useInspectionStore.getState()
+        if(ui.characterOpen||ui.enemyId||ui.aimingAttack){event.preventDefault();ui.dismiss();restoreGameFocus()}
+      }
     }
     const toggle = (event: Event) => {
       if (event.target instanceof HTMLDetailsElement && event.target.name==='hud-panels' && event.target.open) useInspectionStore.getState().dismiss()

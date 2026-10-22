@@ -23,7 +23,8 @@ export const useAppStore = create<AppState>((set) => ({
   },
   showTitle: () => {
     const state = usePawnStore.getState()
-    if (state.training) state.leaveTraining()
+    if(state.tutorial)state.exitTutorial()
+    if (usePawnStore.getState().training) usePawnStore.getState().leaveTraining()
     usePawnStore.getState().suspendRun()
     set({ screen: 'title' })
   },

@@ -13,8 +13,10 @@ export const useInspectionStore = create<{
   toggleCharacter: () => void; toggleEnemy: (id: string) => void; closeCharacter: () => void; closeEnemy: () => void; dismiss: () => void
 }>((set) => ({
   characterOpen: false, aimingAttack: false, lastPanel: 'character',
-  toggleCharacter: () => set(s => ({ characterOpen: !s.characterOpen, lastPanel: s.characterOpen && s.enemyId ? 'enemy' : 'character' })),
-  toggleEnemy: id => set(s => ({ enemyId: s.enemyId === id ? undefined : id, lastPanel: s.enemyId === id && s.characterOpen ? 'character' : 'enemy' })),
+  toggleCharacter: () => {set(s => ({ characterOpen: !s.characterOpen, lastPanel: s.characterOpen && s.enemyId ? 'enemy' : 'character' }));
+    if(useInspectionStore.getState().characterOpen)usePawnStore.getState().observeTutorialUI({kind:'character-inspected'})},
+  toggleEnemy: id => {set(s => ({ enemyId: s.enemyId === id ? undefined : id, lastPanel: s.enemyId === id && s.characterOpen ? 'character' : 'enemy' }));
+    if(useInspectionStore.getState().enemyId===id)usePawnStore.getState().observeTutorialUI({kind:'enemy-inspected',id})},
   closeCharacter: () => set({ characterOpen: false, lastPanel: 'enemy' }),
   closeEnemy: () => set({ enemyId: undefined, lastPanel: 'character' }),
   dismiss: () => set({ characterOpen: false, enemyId: undefined, aimingAttack: false }),

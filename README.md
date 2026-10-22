@@ -2,6 +2,8 @@
 
 Single-player isometric chess-inspired roguelite prototype with seeded 8×8 dungeons, one-tile fog, synchronized combat, and a fixed 12-card starter deck. Stage 7B.4 adds structurally distinct Hallowed/Void transformations, exclusive Bishop staff/tome equipment, face/edge-led heavy attacks and source-specific temporary Block. Inspection, tiny HP bars, board-first framing, compact cards and Pawn Samurai Mode remain intact. Public Training Grounds provide configurable dummies and real damage analysis; King is playable exclusively there. Transformation lifecycle and fresh normal-run seeds remain intact.
 
+Stage 7C adds optional interactive onboarding using the real gameplay rules. Start from the small first-time prompt, or open **? Help → Tutorials → Choose lesson** during a run or Training. All eight lessons are independently replayable; no tutorial completion is required to play.
+
 **Stack:** TypeScript, React/Vite, Three.js/React Three Fiber, Drei, Zustand, and Vitest. No backend or runtime services.
 
 ## Local setup
@@ -103,6 +105,10 @@ Cloudflare Pages setup (deployment is authorized):
 Vite's base is explicitly `/`. This app uses state-based navigation at the domain root. Cloudflare Pages supplies SPA fallback when no top-level `404.html` exists, so no custom redirect file is needed. See the official [React deployment guide](https://developers.cloudflare.com/pages/framework-guides/deploy-a-react-site/), [SPA behavior](https://developers.cloudflare.com/pages/configuration/serving-pages/), and [Node version settings](https://developers.cloudflare.com/pages/configuration/build-image/).
 
 ## Architecture and verification
+
+Tutorials preserve a separate complete snapshot, including an active Training session and its original run. Use the existing controls to perform each task, then Continue. **Retry exercise** restores its checkpoint; **Skip / choose lesson** bypasses exercises or opens the lesson list without awarding completion. **Exit tutorial** restores the previous session, even during an animation or targeting. Escape first closes inspection/targeting, then requests exit. Prompt dismissal/checkmarks are the only new persisted settings, in a separate versioned local key; no run/progression save is added.
+
+Check Movement, Attacks, World Turns, Cards/Energy, Defense, Forms, Fog/Inspection and Statuses. Card Block, Bastion and Samurai use real response phases. The parry exercise teaches Samurai's automatic parries; there is no separate manual-parry input. Forms offer optional Light/Dark practice for Knight/Bishop/Rook/Queen; King remains in Training only. Diagrams illustrate rules rather than limiting lane length. Browser-rendered layout, touch and input verification were unavailable for this stage.
 
 Open **Playtest Tools → Enter Training Grounds**, then close controls to use the normal board, WASD/arrows, E, Q, Space and cards. Training controls offer six forms/attunements including training-only King, open/line/cluster/blocked/perch/Eye scenarios, up to four configurable wooden dummies, passive/sparring responses and player/target positioning. Eye uses actual fog; other training scenarios expose the arena for full-lane movement. **Combat Analysis** shows resolved damage components, independent Bleed contributions, mitigation/overkill and DPT. Reset comparison restores configured targets; Leave Training restores the paused run. Training is not persisted on refresh.
 
