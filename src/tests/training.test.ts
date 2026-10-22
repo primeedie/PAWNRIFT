@@ -43,7 +43,8 @@ describe('complete training isolation', () => {
     const before = data(), id = usePawnStore.getState().actionId
     expect(store.enterTraining()).toBe(true)
     expect(store.enterTraining()).toBe(false)
-    expect(store.train({ kind: 'form', form: 'queen', attunement: 'dark' })).toBe(true)
+    expect(store.train({ kind: 'form', form: 'king', attunement: 'dark' })).toBe(true)
+    expect(store.submitAction({ kind: 'attack', targetId: 'dummy-1' })).toBe(true); finish()
     expect(store.train({ kind: 'restore', resource: 'focus' })).toBe(true)
     expect(store.train({ kind: 'scenario', scenario: 'eye' })).toBe(true)
     store.submitAction({ kind: 'ability' }); finish()
@@ -196,6 +197,6 @@ describe('event-derived combat analysis', () => {
       expect(result.events.some((event) => event.breakdown)).toBe(true)
     }
     const base = createTraining(1)
-    expect(trainingControl(base.game, base.session, { kind: 'form', form: 'king' as 'pawn', attunement: 'light' })).toBeNull()
+    expect(trainingControl(base.game, base.session, { kind: 'form', form: 'king', attunement: 'light' })!.game.transformations.active?.form).toBe('king')
   })
 })

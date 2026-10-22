@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { OrthographicCamera } from 'three'
+import { OrthographicCamera, Vector3 } from 'three'
 import { boardFraming, clampZoomScale } from '../../utils/boardFraming'
 import { usePawnStore } from '../../game/state/pawnStore'
 
 export function IsometricCamera() {
   const { camera, size, gl, invalidate } = useThree()
   const zoomScale = useRef(1)
+  const initialized = useRef(false), currentTarget = useRef(new Vector3())
   const tiles = usePawnStore((state) => state.dungeon.tiles)
   // Canvas already occupies the measured region between header, controls and hand.
   const framing = boardFraming(size.width, size.height, tiles)
@@ -15,9 +16,13 @@ export function IsometricCamera() {
 
   useLayoutEffect(() => {
     if (!(camera instanceof OrthographicCamera)) return
-    camera.position.set(tx + 12, ty + 12, tz + 12)
-    camera.lookAt(tx, ty, tz)
-    camera.zoom = fittedZoom * zoomScale.current
+    if (!initialized.current) {
+      currentTarget.current.set(tx,ty,tz)
+      camera.position.set(tx + 12, ty + 12, tz + 12)
+      camera.lookAt(tx, ty, tz)
+      camera.zoom = fittedZoom * zoomScale.current
+      initialized.current = true
+    }
     camera.updateProjectionMatrix()
     camera.updateMatrixWorld()
     invalidate()
@@ -38,6 +43,12 @@ export function IsometricCamera() {
   useFrame((_, delta) => {
     if (!(camera instanceof OrthographicCamera)) return
     const target = fittedZoom * zoomScale.current
+    const center = currentTarget.current, ease = 1 - Math.exp(-12 * delta)
+    const offset = Math.abs(center.x-tx)+Math.abs(center.y-ty)+Math.abs(center.z-tz)
+    if (offset > 0.00001) {
+      center.x += (tx-center.x)*ease; center.y += (ty-center.y)*ease; center.z += (tz-center.z)*ease
+      camera.position.set(center.x+12,center.y+12,center.z+12); camera.lookAt(center); camera.updateMatrixWorld(); invalidate()
+    }
     if (Math.abs(camera.zoom - target) < 0.001) {
       if (camera.zoom !== target) {
         camera.zoom = target

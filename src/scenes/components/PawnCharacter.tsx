@@ -68,7 +68,7 @@ export function PawnCharacter() {
         <circleGeometry args={[0.31, 16]} />
         <meshBasicMaterial color="#284f54" transparent opacity={0.23} depthWrite={false} />
       </mesh>
-      <group ref={body}><CharacterModel key={`${transformations.active?.form ?? 'pawn'}:${transformations.active?.attunement ?? 'light'}`} form={(transformations.active?.form === 'king' ? 'pawn' : transformations.active?.form ?? 'pawn') as CharacterForm} variant={transformations.active?.attunement ?? 'light'} reducedMotion={reducedMotion} /></group>
+      <group ref={body}><CharacterModel key={`${transformations.active?.form ?? 'pawn'}:${transformations.active?.attunement ?? 'light'}`} form={(transformations.active?.form ?? 'pawn') as CharacterForm} variant={transformations.active?.attunement ?? 'light'} reducedMotion={reducedMotion} /></group>
       {transformations.active && <Html position={[0, 1.5, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[4, 0]}>
         <span className={`form-world-label attunement-${transformations.active.attunement}`}>
           {formSymbols[transformations.active.form]} {formNames[transformations.active.form]}

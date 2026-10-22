@@ -2,9 +2,11 @@ import { TrainingDummy } from './TrainingDummy'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
-import { Group, MathUtils, MeshLambertMaterial } from 'three'
+import { Group, MathUtils, MeshLambertMaterial, Vector3 } from 'three'
 import { turnTiming } from '../../data/combatBalance'
-import { attackTargets, enemyIntentLabel, foresightIntent, type Enemy } from '../../game/logic/combat'
+import { attackTargets, type Enemy } from '../../game/logic/combat'
+import { enemyName, enemyStatuses } from '../../ui/enemyPresentation'
+import { enemyLabelOffsets } from '../../utils/enemyLabels'
 import { cellId } from '../../game/logic/dungeon'
 import { canSeeContent } from '../../game/logic/visibility'
 import { usePawnStore, type TurnPhase } from '../../game/state/pawnStore'
@@ -17,9 +19,8 @@ import { currentForm } from '../../game/logic/transformations'
 import { gridDistance } from '../../game/logic/enemyAI'
 import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
 
-function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhase; interpolate: boolean }) {
+function Rookling({ enemy, phase, interpolate, label }: { enemy: Enemy; phase: TurnPhase; interpolate: boolean; label: (node: HTMLDivElement | null) => void }) {
   const state = usePawnStore()
-  const foresight = foresightIntent(state, enemy.id)
   const impact = state.events.filter((event) => event.targetId === enemy.id && event.kind === 'hit').at(-1)?.effect
   const impactColor = impact === 'splash' || impact === 'burn' ? '#ad91bc' : impact === 'concussion' ? '#c4aa75'
     : impact === 'pierce' ? '#89aec7' : '#b46864'
@@ -79,21 +80,14 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
         <meshBasicMaterial color={enemy.intent === 'attack' ? '#f2ba76' : '#c9786f'} />
       </mesh>
       </>}
-      <Html position={[0, 1.18, 0]} center zIndexRange={[4, 0]} className="enemy-label" style={{ pointerEvents: 'none' }}>
-        <span>{enemy.kind === 'dummy' ? `Dummy (${enemy.boss ? 'boss' : enemy.elite ? 'elite' : 'normal'})` : 'Rookling'} · {enemy.hp}/{enemy.maxHp}</span>
-        <span className="health-track" role="progressbar" aria-label="Rookling health" aria-valuemin={0} aria-valuemax={enemy.maxHp} aria-valuenow={enemy.hp}>
+      <Html position={[0, 1.22, 0]} center zIndexRange={[4, 0]} style={{ pointerEvents: 'none' }}>
+      <div ref={label} className="enemy-label" aria-label={`${enemyName(enemy)} ${enemy.hp}/${enemy.maxHp}`}>
+        <span>{enemyName(enemy)} <strong>{enemy.hp}/{enemy.maxHp}</strong></span>
+        <span className="health-track" role="progressbar" aria-label={`${enemyName(enemy)} health`} aria-valuemin={0} aria-valuemax={enemy.maxHp} aria-valuenow={enemy.hp}>
           <span style={{ width: `${100 * enemy.hp / enemy.maxHp}%` }} />
         </span>
-        <small data-threat={enemy.intent === 'attack'}>{enemyIntentLabel(enemy)}</small>
-        {foresight && <small>Next: {foresight}</small>}
-        {enemy.burn && <small className="status-burn">Burn 1 x {enemy.burn.turnsLeft}</small>}
-        {!!enemy.bleed?.length && <small className="status-bleed">Bleed {enemy.bleed.map((stack) => `◆${stack.turnsLeft}`).join(' ')}</small>}
-        {enemy.concussion !== undefined && <small className="status-concussion">Concussion {enemy.concussion === 0 ? 'next response' : enemy.concussion}</small>}
-        {enemy.stunned && <small className="status-concussion">STUNNED</small>}
-        {!!enemy.stunImmunity && <small>Stun immunity {enemy.stunImmunity}</small>}
-        {!!enemy.exposedTurns && <small>Exposed +2</small>}
-        {!!enemy.fearTurns && <small>Fear · 1 response</small>}
-        {!!enemy.weakenedDamage && <small>Next strike −{enemy.weakenedDamage}</small>}
+        <span className="enemy-status-icons">{enemyStatuses(enemy).map((status) => <span key={status.label} className={`status-${status.tone ?? 'neutral'}`} aria-label={status.label}>{status.icon}{status.count ?? ''}</span>)}</span>
+      </div>
       </Html>
     </group>
   )
@@ -101,6 +95,7 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
 
 export function DungeonEnemies() {
   const state = usePawnStore()
+  const labels = useRef(new Map<string,HTMLDivElement>()), projected = useRef(new Vector3())
   const targets = state.phase !== 'ready' || state.status !== 'playing' ? [] : state.selectedCardId ? cardOptions(state, state.selectedCardId).targets
     : state.selectedAbility && state.abilityDestination && !abilityReason(state)
       ? vaultTargets(state, state.abilityDestination, true).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id }))
@@ -111,12 +106,22 @@ export function DungeonEnemies() {
           : attackTargets(state).map((enemy) => ({ kind: 'enemy' as const, enemyId: enemy.id }))
   const presented = state.phase === 'player' ? state.enemies.filter((enemy) => canSeeContent(cellId(enemy.cell), state)
     && (enemy.hp > 0 || state.events.some((event) => event.kind === 'defeat' && event.actor === enemy.id && event.seen))) : visibleEnemies(state)
+  useFrame(({ camera,size }) => {
+    const positions = presented.map((enemy) => {
+      const [x,,z] = gridToWorld(enemy.cell.column,enemy.cell.row)
+      const p = projected.current.set(x,1.22,z).project(camera)
+      return { id: enemy.id,x:(p.x+1)*size.width/2,y:(1-p.y)*size.height/2 }
+    })
+    for (const [id,offset] of enemyLabelOffsets(positions,size.height)) {
+      const node=labels.current.get(id); if (node) node.style.transform=`translateY(${offset}px)`
+    }
+  })
   return <group name="dungeon-enemies">
     {presented.map((enemy) => (
       <group key={enemy.id}>
         {targets.some((target) => target.kind === 'enemy' && target.enemyId === enemy.id)
           && <group position={gridToWorld(enemy.cell.column, enemy.cell.row)}><LegalTileHighlight attack /></group>}
-        <Rookling enemy={enemy} phase={state.phase} interpolate={canSeeContent(cellId(enemy.from), state)} />
+        <Rookling enemy={enemy} phase={state.phase} interpolate={canSeeContent(cellId(enemy.from), state)} label={(node) => { if (node) labels.current.set(enemy.id,node); else labels.current.delete(enemy.id) }} />
         {enemy.intent === 'attack' && enemy.attackTarget && canSeeContent(cellId(enemy.attackTarget), state) && (
           <mesh position={gridToWorld(enemy.attackTarget.column, enemy.attackTarget.row).map((v, i) => i === 1 ? 0.025 : v) as [number, number, number]}
             rotation={[-Math.PI / 2, 0, Math.PI / 4]}>

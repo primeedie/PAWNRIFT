@@ -170,6 +170,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   debugGrant: (form, attunement) => {
     const state = get()
+    if (form === 'king' && !state.training) return false
     if (!PLAYTEST_TOOLS_ENABLED || !state.runActive || state.phase !== 'ready' || state.status !== 'playing') return false
     const next = grantTransformation(state.transformations, form, attunement)
     if (!next) return false

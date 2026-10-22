@@ -22,7 +22,7 @@ export function animationCue(state: GameState, phase: 'ready' | 'player' | 'enem
   return state.events.some((event) => event.kind === 'hit' && event.actor === 'pawn') ? 'attack' : 'idle'
 }
 export function presentationDuration(state: GameState) {
-  const form: CharacterForm = state.transformations.active?.form === 'king' ? 'pawn' : state.transformations.active?.form ?? 'pawn'
+  const form: CharacterForm = state.transformations.active?.form ?? 'pawn'
   const timing = characterTiming[form]
   if (state.lastAction === 'transform' || state.lastAction === 'revert') return 340
   if (state.events.some((event) => event.effect === 'sharpener')) return 620
@@ -52,6 +52,7 @@ export function characterPose(form: CharacterForm, cue: AnimationCue, progress: 
     } else if (form === 'knight') { pose.rightArm = -0.55 * wave; pose.lean = -0.08 * wave }
     else if (form === 'bishop') { pose.leftArm = -0.8 * wave; pose.pulse = wave }
     else if (form === 'rook') { pose.rightArm = -(t < 0.40 ? t / 0.40 : Math.max(0, (0.85 - t) / 0.45)) * 1.25; pose.lean = wave * 0.08 }
+    else if (form === 'king') { pose.rightArm = -0.95 * wave; pose.leftArm = -0.25 * wave; pose.twist = Math.sin(t * Math.PI * 2) * 0.22; pose.lean = wave * 0.05 }
     else { pose.leftArm = -0.65 * wave; pose.rightArm = -0.8 * Math.sin(Math.PI * Math.min(1, t * 1.3)); pose.twist = wave * 0.18 }
   }
   if (cue === 'signature') {
@@ -61,6 +62,7 @@ export function characterPose(form: CharacterForm, cue: AnimationCue, progress: 
     if (form === 'bishop') { pose.leftArm = -1.1 * wave; pose.rightArm = -0.2 * wave }
     if (form === 'rook') { pose.guard = 1; pose.leftArm = -0.55; pose.rightArm = -0.6 }
     if (form === 'queen') { pose.leftArm = -0.5 * wave; pose.rightArm = -0.5 * wave; pose.twist = wave * 0.18 }
+    if (form === 'king') { pose.rightArm = -0.65 * wave; pose.leftArm = -0.85 * wave; pose.guard = 1 }
   }
   if (cue === 'defend' || cue === 'parry') { pose.guard = 1; pose.draw = form === 'pawn' ? 0.45 : 0; pose.rightArm = -0.65; pose.leftArm = -0.4; pose.lean = wave * 0.04 }
   if (cue === 'hit') { pose.lean = wave * 0.15; pose.twist = -wave * 0.06 }

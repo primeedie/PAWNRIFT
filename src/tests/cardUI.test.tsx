@@ -8,6 +8,10 @@ import { keywordEvents, outsideTooltip, tooltipKeyboard } from '../ui/tooltipEve
 import { tooltipPosition } from '../ui/tooltipLayout'
 import { usePawnStore } from '../game/state/pawnStore'
 import { CardIllustration } from '../ui/CardIllustration'
+import { CombatHUD } from '../ui/CombatHUD'
+import TransformationTools from '../ui/TransformationTools'
+import TrainingTools from '../ui/TrainingTools'
+import { createTraining } from '../game/logic/training'
 
 vi.mock('../game/state/pawnStore', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../game/state/pawnStore')>()
@@ -85,6 +89,15 @@ describe('beginner card presentation', () => {
     expect(html).toContain('Costs')
     expect(html).toContain('you have 0')
     expect(html).not.toMatch(/class="keyword[^>]*disabled/)
+  })
+  it('keeps the King choice exclusively in training and hides unseen inspection HP/statuses',()=>{
+    const original=usePawnStore.getState(), arena=createTraining(99)
+    expect(renderToStaticMarkup(<TransformationTools />)).not.toContain('value="king"')
+    usePawnStore.setState({...arena.game,training:arena.session,enemies:[{...arena.game.enemies[0],hp:777}],visible:new Set()})
+    expect(renderToStaticMarkup(<TrainingTools />)).toContain('value="king"')
+    const hud=renderToStaticMarkup(<CombatHUD />)
+    expect(hud).toContain('No foes currently in sight.');expect(hud).not.toContain('777')
+    usePawnStore.setState(original,true)
   })
 })
 

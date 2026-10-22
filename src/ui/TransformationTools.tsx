@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { testForms, formNames, type Attunement, type BossForm } from '../data/forms'
+import { bossForms, formNames, type Attunement, type BossForm } from '../data/forms'
 import { usePawnStore } from '../game/state/pawnStore'
 import { activationReason, currentForm } from '../game/logic/transformations'
 import { closeHudPanels } from './hudInteraction'
@@ -21,9 +21,9 @@ export default function TransformationTools() {
   }
   const override = (action: Parameters<typeof state.playtest>[0]) => setMessage(state.playtest(action) ? 'Test override applied. No world turn spent.' : 'Unavailable: check active form, slot, or safe landing.')
   return <fieldset className="transformation-dev-tools"><legend>Transformation testing</legend>
-    <p>Forms share the Pawn model; movement and signatures change. Explicit overrides mark this as a test session.</p>
+    <p>Explicit overrides mark this as a test session. King is available in Training Grounds only.</p>
     <label>Form<select value={form} onChange={(event) => setForm(event.target.value as BossForm)}>
-      {testForms.map((id) => <option key={id} value={id}>{formNames[id]}</option>)}
+      {bossForms.map((id) => <option key={id} value={id}>{formNames[id]}</option>)}
     </select></label>
     <label>Attunement<select value={attunement} onChange={(event) => setAttunement(event.target.value as Attunement)}>
       <option value="light">Light</option><option value="dark">Dark</option>

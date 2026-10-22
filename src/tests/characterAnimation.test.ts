@@ -8,7 +8,7 @@ import { resolveTurn } from '../game/logic/combat'
 import { boardFraming } from '../utils/boardFraming'
 import { gridToWorld } from '../utils/grid'
 
-const forms = ['pawn', 'knight', 'bishop', 'rook', 'queen'] as const
+const forms = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'] as const
 const cues: AnimationCue[] = ['idle', 'move', 'attack', 'signature', 'defend', 'parry', 'counter', 'hit', 'transform', 'revert', 'death']
 describe('presentation is deterministic and independent of combat', () => {
   it('samples every form/action without mutating rules, producing invalid transforms or stale accessories', () => {
@@ -63,8 +63,8 @@ describe('fixed-camera character clearance', () => {
       for (const tile of tiles.filter((tile) => !tile.blocksMovement || tile.perchHeight)) {
         const [tx, , tz] = gridToWorld(tile.column, tile.row), base = tile.perchHeight ?? 0
         for (const form of forms) for (const dx of [-1, 1]) for (const dz of [-1, 1]) {
-          const body = new Vector3(tx + dx * 0.34, base + characterDesigns[form].height, tz + dz * 0.34).project(camera)
-          const equipment = new Vector3(tx + dx * 0.75, base + 0.95, tz + dz * 0.75).project(camera)
+          const body = new Vector3(tx + dx * 0.38, base + characterDesigns[form].height, tz + dz * 0.38).project(camera)
+          const equipment = new Vector3(tx + dx * 1.15, base + 1.25, tz + dz * 1.15).project(camera)
           for (const point of [body, equipment]) { expect(Math.abs(point.x)).toBeLessThan(1); expect(Math.abs(point.y)).toBeLessThan(1) }
         }
       }

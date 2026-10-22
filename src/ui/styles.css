@@ -110,39 +110,57 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .combat-actions button:disabled { color: var(--ui-disabled); border-style: dashed; cursor: default; }
 .combat-actions kbd { display: grid; place-items: center; min-width: 25px; height: 25px; padding: 0 5px; font-family: inherit; font-weight: 700; font-size: 0.6rem; color: #456376; background: #f2f7f7; border: 2px solid #25313a; border-radius: 5px; box-shadow: inset 0 -4px #acd0df, 0 2px #17222c; }
 .combat-feedback { font-size: 0.65rem; color: #d3bda6; min-height: 1.5em; max-width: 42rem; margin: 7px 0 0; }
-.enemy-label { pointer-events: none; display: grid; justify-items: center; gap: 2px; white-space: nowrap; padding: 4px 6px; background: #1b2534d9; border-radius: 4px; color: #e1e3d6; font-size: 0.55rem; }
+.enemy-label { pointer-events: none; display: grid; justify-items: center; gap: 2px; white-space: nowrap; padding: 0; color: #f1e9dd; font: 0.6rem/1.15 system-ui,sans-serif; text-shadow: 0 1px 3px #07101e,0 0 3px #07101e; }
 .enemy-label meter { width: 64px; height: 5px; }
 .health-track { display: block; width: 112px; height: 6px; overflow: hidden; border-radius: 2px; background: #303441; }
 .health-track > span { display: block; height: 100%; background: var(--ui-attack); transition: width 140ms ease; }
 .player-health { display: grid; gap: 5px; }
-.enemy-label .health-track { width: 64px; height: 4px; }
+.enemy-label .health-track { width: 64px; height: 3px; box-shadow: 0 1px 2px #07101e; }
+.enemy-status-icons { display: flex; gap: 3px; font-size: 0.65rem; }
+.enemy-status-icons:empty { display: none; }
+.enemy-status-icons .status-threat { color: var(--ui-energy); font-weight: bold; }
+.enemy-inspection { pointer-events: auto; color: var(--ui-text); font-size: 0.7rem; }
+.enemy-inspection summary { cursor: pointer; padding: 6px; }
+.enemy-inspection .hud-panel { background: var(--ui-background); border: 1px solid var(--ui-secondary); border-radius: 5px; padding: 14px; font-size: 0.8125rem; }
+.enemy-inspection .hud-panel section { border-top: 1px solid #65727b; padding-top: 12px; margin-top: 12px; }
+.enemy-inspection .hud-panel p { text-align: left; }
 .combat-number { display: block; white-space: nowrap; font-size: 0.9rem; font-weight: 700; color: var(--ui-attack); text-shadow: 0 2px 3px #101724; animation: combat-rise 850ms ease-out forwards; }
 .combat-number.heal { color: #a5c6a3; }
 .combat-number.blocked { color: #d2d7ca; font-size: 0.65rem; }
 @keyframes combat-rise { 0% { opacity: 0; transform: translateY(5px); } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
 .scene-screen { --hand-height: 330px; grid-template-rows: auto minmax(0, 1fr) auto var(--hand-height); }
-.card-hand { --card-width: clamp(156px, 11vw, 168px); position: absolute; inset: auto 0 12px; z-index: 25; min-width: 0; pointer-events: none; background: transparent; border: 0; padding: 0; }
-.hand-meta { display: flex; flex-direction: column; align-items: center; gap: 5px; width: fit-content; max-width: calc(100% - 24px); margin: 0 auto; font-size: 0.75rem; color: var(--ui-secondary); pointer-events: auto; }
+.card-hand { --card-width: clamp(100px, 7.7vw, 112px); position: absolute; inset: auto 0 8px; z-index: 35; min-width: 0; pointer-events: none; background: transparent; border: 0; padding: 0; }
+.hand-meta { position: relative; z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 5px; width: fit-content; max-width: calc(100% - 24px); margin: 0 auto; font-size: 0.68rem; color: var(--ui-secondary); pointer-events: auto; }
 .hand-meta strong { color: var(--ui-energy); }
 .hand-resources { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 6px 10px; border-radius: 6px; background: #19232ef0; box-shadow: 0 2px 9px #080e1a40; }
 .hand-resources > span { white-space: nowrap; }
-.hand-cards { display: flex; gap: 10px; width: max-content; max-width: calc(100% - 24px); margin: 0 auto; padding: 20px 10px 10px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #687785 transparent; pointer-events: auto; }
-.hand-card { --card-accent: var(--ui-attack); position: relative; flex: 0 0 var(--card-width); width: var(--card-width); aspect-ratio: 3 / 4; display: grid; grid-template-rows: auto 32px auto auto auto; gap: 4px; min-width: 0; padding: 8px; text-align: left; color: var(--ui-text); background: var(--ui-panel); border: 1px solid #697682; border-top: 3px solid var(--card-accent); border-radius: 8px; box-shadow: 0 5px 12px #080e1a66; transform-origin: center bottom; transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
+.hand-cards { display: flex; gap: 8px; width: max-content; max-width: calc(100% - 24px); margin: 0 auto; padding: 9px 8px 6px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #687785 transparent; pointer-events: auto; }
+.hand-card { --card-accent: var(--ui-attack); position: relative; flex: 0 0 var(--card-width); width: var(--card-width); height: 150px; min-width: 0; color: var(--ui-text); }
+.card-face { position: absolute; inset: 0; display: grid; grid-template-rows: auto 22px auto 1fr auto; align-content: start; gap: 3px; padding: 6px; text-align: left; background: var(--ui-panel); border: 1px solid #697682; border-top: 3px solid var(--card-accent); border-radius: 6px; box-shadow: 0 4px 10px #080e1a66; transform-origin: bottom center; transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.hand-card[data-inspected="true"] .card-face { position: fixed; inset: auto; z-index: 80; box-shadow: 0 10px 28px #080e1aaa; }
+.hand-card[data-inspected="true"] { z-index: 80; }
 .hand-card[data-category="defense"] { --card-accent: var(--ui-defense); }
 .hand-card[data-category="mobility"] { --card-accent: var(--ui-mobility); }
 .hand-card[data-category="utility"] { --card-accent: var(--ui-utility); }
-.hand-card[data-playable="true"] { border-color: var(--card-accent); background: linear-gradient(135deg, #30303c, #222c38); }
-.hand-card[data-selected="true"] { border-color: var(--ui-energy); box-shadow: 0 5px 16px #080e1a88, inset 0 0 0 1px var(--ui-energy); transform: translateY(-8px); z-index: 2; }
-.hand-card:focus-within { transform: translateY(-10px) scale(1.025); border-color: var(--card-accent); box-shadow: 0 8px 20px #080e1a88; z-index: 3; }
+.hand-card[data-playable="true"] .card-face { border-color: var(--card-accent); background: linear-gradient(135deg, #30303c, #222c38); }
+.hand-card[data-selected="true"] .card-face { border-color: var(--ui-energy); box-shadow: 0 5px 16px #080e1a88, inset 0 0 0 1px var(--ui-energy); transform: translateY(-5px); }
+.hand-card:focus-within .card-face { border-color: var(--card-accent); }
 .hand-card[data-locked="true"] .card-select { color: var(--ui-disabled); cursor: default; }
-.card-select { display: flex; align-items: flex-start; min-height: 29px; min-width: 0; padding: 0 34px 0 0; text-align: left; color: inherit; border: none; background: none; }
-.card-name { font-size: 0.875rem; line-height: 1.4; overflow-wrap: normal; }
-.card-category { color: var(--card-accent); font-size: 0.7rem; line-height: 1.4; }
+.card-select { display: flex; align-items: flex-start; min-height: 25px; min-width: 0; padding: 0 21px 0 0; text-align: left; color: inherit; border: none; background: none; }
+.card-name { font-size: 0.6875rem; line-height: 1.2; overflow-wrap: normal; }
+.card-category { color: var(--card-accent); font-size: 0.625rem; line-height: 1.3; }
 .card-category > span { display: inline-block; width: 14px; text-align: center; }
-.keyword.card-cost { display: flex; align-items: center; gap: 2px; position: absolute; top: 8px; right: 7px; min-height: 28px; padding: 2px 4px; border: 1px solid #887582; border-radius: 5px; color: var(--ui-energy); background: #161d2b; text-decoration: none; font-size: 0.85rem; }
+.keyword.card-cost { display: flex; align-items: center; gap: 1px; position: absolute; top: 5px; right: 4px; min-height: 20px; padding: 1px 2px; border: 1px solid #887582; border-radius: 4px; color: var(--ui-energy); background: #161d2b; text-decoration: none; font-size: 0.6875rem; }
+.card-cost .energy-icon { width: 9px; height: 13px; }
 .keyword.card-cost.unaffordable { color: #e7a5ac; border-style: dashed; }
 .energy-icon { display: inline-block; width: 15px; height: 18px; vertical-align: middle; flex-shrink: 0; }
 .card-description { font: 0.875rem/1.4 system-ui, sans-serif; margin: 0; text-align: left; text-align-last: auto; word-spacing: normal; overflow-wrap: normal; hyphens: none; }
+.card-face .card-description { display: none; font-size: 0.55rem; line-height: 1.3; }
+.card-summary { margin: 0; font: 0.72rem/1.25 system-ui,sans-serif; text-align: left; }
+.hand-card[data-inspected="true"] .card-description { display: block; }
+.hand-card[data-inspected="true"] .card-summary { display: none; }
+.card-face .card-unavailable { display: none; font-size: 0.5rem; }
+.hand-card[data-inspected="true"] .card-unavailable { display: block; }
 .card-unavailable { font: 0.75rem/1.35 system-ui, sans-serif; color: var(--ui-attack); }
 .keyword { display: inline; padding: 0; border: 0; background: none; color: var(--ui-utility); font: inherit; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 .keyword:hover { color: #f1dcc2; }
@@ -161,7 +179,7 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .keyword-tooltip dl > div + div { margin-top: 14px; }
 .keyword-tooltip dd { margin: 3px 0 0; }
 .keyword-tooltip .tooltip-note { border-top: 1px solid #687181; padding-top: 9px; color: var(--ui-energy); }
-.card-targeting { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; max-width: 100%; font: 0.875rem/1.4 system-ui, sans-serif; text-align: center; border-radius: 5px; }
+.card-targeting { position: absolute; bottom: calc(100% + 6px); display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; width: max-content; max-width: min(80vw,600px); font: 0.875rem/1.4 system-ui, sans-serif; text-align: center; border-radius: 5px; }
 .card-targeting button { background: #343340; border: 1px solid #9c7c82; border-radius: 3px; padding: 3px 7px; color: #e6dccc; font-size: inherit; }
 .enemy-label small { color: #bac9c6; font-size: 0.52rem; }
 .enemy-label small[data-threat="true"] { color: #e5ba7c; }
@@ -243,22 +261,21 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .hud-panel p { line-height: 1.6; }
 .keyword-tooltip { width: min(280px, calc(100vw - 24px)); max-height: min(55svh, 430px); }
 .keyword-tooltip.tooltip-guide { width: min(350px, calc(100vw - 24px)); max-height: 65svh; }
-@media (min-width: 900px) {
-  .scene-screen:has(details[name="hud-panels"][open]) .scene-canvas { right: 340px; }
-}
+/* Inspection panels overlay a paused playfield; opening one never changes camera fit. */
 .scene-screen:has(.form-picker[open]) .dungeon-dev-tools { visibility: hidden; }
 .scene-header, .scene-footer { z-index: 30; }
 .dungeon-dev-tools { z-index: 40; }
+.dungeon-dev-tools:not([open]) { width: max-content; max-width: calc(100vw - 40px); }
 
-.card-illustration { display: block; width: 32px; height: 32px; margin: auto; color: var(--card-accent); }
+.card-illustration { display: block; width: 22px; height: 22px; margin: auto; color: var(--card-accent); }
 .card-art-frame { fill: #14202c; stroke: currentColor; stroke-width: 1; opacity: 0.45; }
 .card-description strong, .card-description .keyword { font-weight: 700; }
 .hand-cards:focus-visible { outline: 2px solid var(--ui-mobility); outline-offset: -2px; border-radius: 8px; }
 .card-select:focus-visible { outline-offset: 3px; border-radius: 2px; }
-.hand-card[data-selected="true"]:focus-within, .hand-card[data-selected="true"]:hover { border-color: var(--ui-energy); }
+.hand-card[data-selected="true"]:focus-within .card-face, .hand-card[data-selected="true"]:hover .card-face { border-color: var(--ui-energy); }
 .card-targeting:not(:empty) { background: #19232ef5; padding: 6px 10px; }
 @media (hover: hover) and (pointer: fine) {
-  .hand-card:hover { transform: translateY(-10px) scale(1.025); background: #333440; box-shadow: 0 8px 20px #080e1a88; z-index: 3; }
+  .hand-card:hover .card-face { background: #333440; }
 }
 /* On wide desktops the controls flank the hand; narrower windows keep a separate row. */
 @media (min-width: 1000px) {
@@ -268,19 +285,29 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
   .scene-footer .combat-feedback { max-width: 300px; }
   .scene-footer .scene-controls { gap: 8px; }
   .card-hand .hand-cards, .card-hand .hand-meta { max-width: calc(100% - 650px); }
+  .card-targeting { position: fixed; left: 24px; bottom: calc(var(--hand-height) + 8px); width: 276px; max-width: 276px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hand-card { transition: none; transform: none !important; }
+  .card-face { transition: none; }
 }
 
 /* Stage 7A.3: one measured playfield row; no second subtraction of HUD height. */
-.scene-screen { --board-full-bleed: 0; --hand-height: 270px; }
+.scene-screen { --board-full-bleed: 0; --hand-height: 200px; }
 .scene-viewport { position: relative; inset: auto; grid-row: 2; }
 .scene-header { grid-row: 1; align-items: flex-start; padding-top: 16px; }
 .scene-header > div:first-child { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 20px; flex: 1; min-width: 0; }
 .scene-header h1 { font-size: clamp(1.1rem, 1.7vw, 1.5rem); }
 .scene-header .level-label { grid-column: 1; }
 .scene-header .transformation-hud { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; max-width: none; }
+/* Desktop HUD lives at the sides; its full rectangle no longer wastes the empty top center. */
+@media (min-width: 1200px) and (min-height: 650px) {
+  .scene-screen { grid-template-rows: minmax(0,1fr) var(--hand-height); }
+  .scene-viewport { grid-row: 1; }
+  .scene-header { position: absolute; inset: 0 0 auto; pointer-events: none; }
+  .scene-header > div:first-child { display: block; flex: 0 1 320px; max-width: 320px; }
+  .scene-header .transformation-hud { margin-top: 8px; }
+  .scene-canvas { left: clamp(80px,8vw,128px); }
+}
 .scene-screen:focus { outline: none; }
 .playtest-contents { display: grid; gap: 10px; padding-top: 10px; }
 .playtest-contents > details { border-top: 1px solid #65727b; padding-top: 8px; }

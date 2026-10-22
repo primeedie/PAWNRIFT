@@ -17,7 +17,7 @@ function foe(id = 'target', cell = c(4, 3)): Enemy {
 function game(form: ChessForm = 'pawn', attunement: Attunement = 'light'): GameState {
   const dungeon: Dungeon = { seed: 'passive-fixture', style: 'courtyard', spawn: c(3, 3), exit: c(7, 7), reservations: [],
     tiles: [...all].map((id) => ({ ...cellFromId(id), blocksMovement: false, blocksSight: false, rotation: 0 })) }
-  return { ...createGame(dungeon), hp: 1000, maxHp: 1000, enemies: [foe()],
+  return { ...createGame(dungeon), ...(form === 'king' ? { mode: 'training' as const } : {}), hp: 1000, maxHp: 1000, enemies: [foe()],
     transformations: form === 'pawn' ? emptyTransformations()
       : activateTransformation(grantTransformation(emptyTransformations(), form, attunement)!, form, attunement)! }
 }
@@ -294,16 +294,17 @@ describe('public tools and passive lifecycle boundaries', () => {
     store.debugDefeat()
     expect(usePawnStore.getState().passives).toEqual(emptyPassives())
   })
-  it('grants King on public test tools, carries Smite across its first floor, resets on ending, and guards hidden status inspection', () => {
+  it('restricts King to isolated training, resets Smite on ending, and guards hidden status inspection', () => {
     const store = usePawnStore.getState()
-    expect(store.debugGrant('king', 'dark')).toBe(true)
-    expect(store.submitAction({ kind: 'transform', form: 'king', attunement: 'dark' })).toBe(true)
-    let current = usePawnStore.getState(); current.advancePlayback(current.actionId, 'player'); current = usePawnStore.getState(); current.advancePlayback(current.actionId, 'enemies')
+    expect(store.debugGrant('king', 'dark')).toBe(false)
+    expect(store.enterTraining()).toBe(true)
+    expect(store.train({ kind: 'form', form: 'king', attunement: 'dark' })).toBe(true)
     usePawnStore.setState({ passives: { ...emptyPassives(), smite: 8, kingBasics: 2 } })
-    expect(store.transitionFloor(undefined, true)).toBe(true)
+    expect(store.transitionFloor(undefined, true)).toBe(false)
     expect(usePawnStore.getState().passives).toMatchObject({ smite: 8, kingBasics: 2 })
-    expect(store.transitionFloor(undefined, true)).toBe(true)
+    expect(store.train({ kind: 'form', form: 'pawn', attunement: 'light' })).toBe(true)
     expect(usePawnStore.getState().passives.smite).toBe(0)
+    store.leaveTraining()
     const state = game(), action = { kind: 'status', effect: 'bleed', targetId: 'target' } as const
     expect(applyPlaytest(state, action)!.enemies[0].bleed).toHaveLength(1)
     expect(applyPlaytest({ ...state, visible: new Set([cellId(state.cell)]) }, action)).toBeNull()

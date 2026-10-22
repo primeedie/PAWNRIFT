@@ -1,4 +1,4 @@
-import { bossForms, type Attunement } from '../../data/forms'
+import { testForms, type Attunement } from '../../data/forms'
 import { cardBalance } from '../../data/cards'
 import { createGame, type Enemy, type GameState } from './combat'
 import { cellFromId, cellId, type Dungeon } from './dungeon'
@@ -9,7 +9,7 @@ import { emptySignatures, signatureFog } from './signatures'
 import { emptyPassives } from './passives'
 import { emptyAnalysis, type Analysis } from './combatAnalysis'
 
-export type TrainingForm = 'pawn' | typeof bossForms[number]
+export type TrainingForm = 'pawn' | typeof testForms[number]
 export type DummySpec = { id: string; cell: Cell; hp: number; defense: number; block: number;
   rank: 'normal' | 'elite' | 'boss'; behavior: 'passive' | 'sparring'; knockback: boolean }
 export type TrainingScenario = 'open' | 'line' | 'cluster' | 'separated' | 'blocked' | 'perch' | 'eye'
@@ -73,12 +73,12 @@ export function trainingControl(game: GameState, session: TrainingSession, comma
   if (game.mode !== 'training') return null
   let next = { ...game, events: [] as GameState['events'] }, metadata = session
   if (command.kind === 'form') {
-    if (command.form !== 'pawn' && !bossForms.some((form) => form === command.form)) return null
+    if (command.form !== 'pawn' && !testForms.some((form) => form === command.form)) return null
     if (!game.dungeon.tiles.some((tile) => sameCell(tile, game.cell) && !tile.blocksMovement)) return null
     const transformations = command.form === 'pawn' ? emptyTransformations()
       : activateTransformation(grantTransformation(grantTransformation(emptyTransformations(), command.form, 'light')!, command.form, 'dark')!, command.form, command.attunement)!
     if (transformations.inventory[0]) transformations.inventory[0].charges = 5 // explicit isolated training override
-    next = { ...next, transformations, passives: { ...game.passives, smite: 0, kingBasics: 0 } }
+    next = { ...next, transformations, passives: { ...game.passives, smite: 0, kingBasics: 0, smiteTurn: undefined, smiteSpent: 0 } }
   } else if (command.kind === 'scenario' || command.kind === 'reset') {
     const fresh = createTraining(session.id, command.kind === 'scenario' ? command.scenario : session.scenario,
       command.kind === 'reset' ? session.dummies : undefined)

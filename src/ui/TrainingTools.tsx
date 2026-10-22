@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { bossForms, formNames, type Attunement } from '../data/forms'
+import { testForms, formNames, type Attunement } from '../data/forms'
 import { usePawnStore } from '../game/state/pawnStore'
 import { defaultDummy, trainingDummyPositions, trainingScenarios, type DummySpec, type TrainingCommand, type TrainingForm } from '../game/logic/training'
 import { damagePerTurn } from '../game/logic/combatAnalysis'
@@ -12,7 +12,7 @@ function DummySettings({ spec, apply, locked }: { spec: DummySpec; apply: (comma
   const enemy = state.enemies.find((enemy) => enemy.id === spec.id && state.visible.has(cellId(enemy.cell)))
   const number = (key: 'hp' | 'defense' | 'block', value: string) => setDraft({ ...draft, [key]: Number(value) })
   return <details><summary>{spec.id} settings</summary><fieldset disabled={locked}>
-    <label>Class<select value={draft.rank} onChange={(event) => setDraft({ ...draft, rank: event.target.value as DummySpec['rank'] })}>
+    <label>Class<select value={draft.rank} onChange={(event) => setDraft({ ...draft, rank: event.target.value as DummySpec['rank'], knockback: event.target.value !== 'boss' })}>
       <option value="normal">Normal</option><option value="elite">Elite</option><option value="boss">Boss resistance</option>
     </select></label>
     <label>HP<input type="number" min={1} max={100000} value={draft.hp} onChange={(event) => number('hp', event.target.value)} /></label>
@@ -64,7 +64,7 @@ export default function TrainingTools() {
     <button onClick={closeHudPanels}>Close controls</button><button onClick={() => { closeHudPanels(); state.leaveTraining() }}>Leave Training</button>
     <p>Isolated local session. Run resources, charges, turns and RNG remain paused. Close controls to move or attack.</p>
     <details id="transformation-testing"><summary>Form and attunement</summary><fieldset disabled={locked}>
-      <label>Form<select value={form} onChange={(event) => setForm(event.target.value as TrainingForm)}>{(['pawn', ...bossForms] as const).map((id) => <option key={id} value={id}>{formNames[id]}</option>)}</select></label>
+      <label>Form<select value={form} onChange={(event) => setForm(event.target.value as TrainingForm)}>{(['pawn', ...testForms] as const).map((id) => <option key={id} value={id}>{formNames[id]}</option>)}</select></label>
       <label>Attunement<select value={attunement} onChange={(event) => setAttunement(event.target.value as Attunement)}><option value="light">Light</option><option value="dark">Dark</option></select></label>
       <button onClick={() => { apply({ kind: 'form', form, attunement }); closeHudPanels() }}>Equip training form (free)</button>
       <button onClick={() => apply({ kind: 'restore', resource: 'charges' })}>Reset training charges / recovery</button>

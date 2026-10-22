@@ -48,8 +48,8 @@ export function boardVisualPoints(tiles?: readonly DungeonTile[]): Point[] {
       const height = tile.perchHeight ?? 0
       // Allow Pawn/enemy movement anywhere traversable without changing the framing.
       // Lower envelope includes the sheathed katana at every facing and idle/step sway.
-      box(x, z, 0.75, 0.75, 0.12 + height, 0.6 + height)
-      box(x, z, 0.34, 0.34, -0.02 + height, 1.4 + height)
+      box(x, z, 1.15, 1.15, 0.12 + height, 1.25 + height)
+      box(x, z, 0.38, 0.38, -0.02 + height, 1.58 + height)
     }
   }
   return points
@@ -64,8 +64,11 @@ export function boardFraming(width: number, height: number, tiles?: readonly Dun
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
   const target: Point = [cx / Math.sqrt(2) - cy / Math.sqrt(6), 2 * cy / Math.sqrt(6), -cx / Math.sqrt(2) - cy / Math.sqrt(6)]
   // Pixel margins also leave room for Html enemy health/intent labels at board edges.
-  const padX = Math.min(28, width * 0.04), padY = Math.min(38, height * 0.07)
-  const fit = Math.min(Math.max(1, width - 2 * padX) / (maxX - minX), Math.max(1, height - 2 * padY) / (maxY - minY))
+  const padY = Math.min(18, height * 0.04)
+  // Aim at ~75% terrain width when height allows; complete character/prop bounds take priority.
+  const terrainRight = tiles?.map(tile=>(tile.column-tile.row)/Math.sqrt(2))
+  const terrainWidth = terrainRight?.length ? Math.max(...terrainRight)-Math.min(...terrainRight)+1.972/Math.sqrt(2) : 8*Math.sqrt(2)
+  const fit = Math.min(Math.max(1,width-24)/(maxX-minX), Math.max(1,width*0.78)/terrainWidth, Math.max(1, height - 2 * padY) / (maxY - minY))
   const previous = legacyBoardZoom(width, Math.max(1, height - hudHeight))
   return { zoom: fit, target, points, previousZoom: previous }
 }

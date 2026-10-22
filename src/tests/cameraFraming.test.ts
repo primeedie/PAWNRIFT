@@ -3,8 +3,33 @@ import { OrthographicCamera, Vector3 } from 'three'
 import { cellFromId, generateDungeon, layoutStyles } from '../game/logic/dungeon'
 import { boardFraming, MIN_ZOOM_SCALE, MAX_ZOOM_SCALE } from '../utils/boardFraming'
 import { gridToWorld } from '../utils/grid'
+import { trainingArena } from '../game/logic/training'
 
 describe('responsive floor framing', () => {
+  it('targets 65–80% terrain width when height allows, using the same safe fit for training and dungeons',()=>{
+    for(const tiles of [trainingArena().tiles,generateDungeon('board-first').tiles]) {
+      const framing=boardFraming(1366,1500,tiles)
+      const percent=(8-0.014)*Math.sqrt(2)*framing.zoom/1366
+      expect(percent).toBeGreaterThanOrEqual(0.65);expect(percent).toBeLessThanOrEqual(0.80)
+    }
+    const tiles=trainingArena().tiles
+    expect(boardFraming(1366,768-100-195,tiles).zoom / boardFraming(1366,768-100-305,tiles).zoom).toBeGreaterThan(1.2)
+  })
+  it('keeps terrain clear of the corner HUD in the expanded desktop canvas',()=>{
+    for(const [width,height] of [[1366,768],[1440,900],[1920,1080],[2560,1440]]) {
+      const left=Math.min(128,Math.max(80,width*0.08)),canvasWidth=width-left,canvasHeight=height-210
+      const tiles=trainingArena().tiles,f=boardFraming(canvasWidth,canvasHeight,tiles)
+      const camera=new OrthographicCamera(-canvasWidth/2,canvasWidth/2,canvasHeight/2,-canvasHeight/2,0.1,100)
+      const [x,y,z]=f.target;camera.position.set(x+12,y+12,z+12);camera.lookAt(x,y,z);camera.zoom=f.zoom;camera.updateProjectionMatrix();camera.updateMatrixWorld()
+      for(const tile of tiles)for(const dx of [-0.493,0.493])for(const dz of [-0.493,0.493]) {
+        const [tx,,tz]=gridToWorld(tile.column,tile.row),p=new Vector3(tx+dx,0,tz+dz).project(camera)
+        const px=left+(p.x+1)*canvasWidth/2,py=(1-p.y)*canvasHeight/2
+        expect(px<376&&py<250).toBe(false)
+        expect(px>width-320&&py<70).toBe(false)
+        expect(py).toBeLessThan(height-210)
+      }
+    }
+  })
   const views = [
     { width: 1920, height: 1080, hud: 200 }, { width: 1366, height: 768, hud: 200 },
     { width: 1280, height: 720, hud: 200 }, { width: 1024, height: 540, hud: 0 },
@@ -41,7 +66,9 @@ describe('responsive floor framing', () => {
     const dungeon = generateDungeon('dungeon-in-a-box')
     for (const view of views.slice(0, 3)) {
       const result = boardFraming(view.width, view.height, dungeon.tiles, view.hud)
-      expect(result.zoom / result.previousZoom).toBeGreaterThan(1.28)
+      // The former 28% target is superseded by the larger authored equipment envelope.
+      expect(result.zoom).toBeGreaterThan(result.previousZoom)
+      expect(result.zoom).toBe(boardFraming(view.width,view.height,dungeon.tiles,0).zoom)
     }
   })
   it('handles irregular/missing platforms and keeps world/grid coordinates unchanged', () => {

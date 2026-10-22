@@ -16,3 +16,10 @@ export const cardPresentation = {
   crimson: { category: 'attack', tokens: ['Deal 7 ', { keyword: 'damage', text: 'Damage' }, ' to one adjacent enemy.'] },
   mend: { category: 'utility', tokens: [{ keyword: 'healing', text: 'Heal' }, ' yourself for 4 HP, up to full.'] },
 } as const satisfies Record<CardId, { category: CardCategory; tokens: readonly CardTextToken[] }>
+
+// Minimized copy includes every effect; the expanded face retains the full rules/keyword text.
+export const cardSummaries: Record<CardId, string> = {
+  cut: '4 damage; one adjacent foe.', ward: '3 Block this response.',
+  riposte: '1 Block; counter first hit for 4.', slip: 'Step 1; gain 1 Block.',
+  focus: '+1 Focus (max 3); next strike.', crimson: '7 damage; one adjacent foe.', mend: 'Heal 4 HP (up to full).',
+}

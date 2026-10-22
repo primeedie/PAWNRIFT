@@ -128,6 +128,7 @@ export function attackTargets(state: GameState) {
 // Future forms can supply a different movement predicate; any accepted destination still costs one turn.
 export function resolvePlayerAction(state: GameState, action: PlayerAction, movement?: MovementRule): GameState | null {
   if (state.status !== 'playing' || state.hp <= 0) return null
+  if (state.mode !== 'training' && ((currentForm(state.transformations) === 'king' && action.kind !== 'revert') || (action.kind === 'transform' && action.form === 'king'))) return null
   if (action.kind === 'ability') return resolveSignature(state, action)
   let cell = state.cell, facing = state.facing
   const enemies = state.enemies.map(cloneEnemy)
@@ -149,7 +150,7 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
       : form === 'rook' && basic ? 'concussion' : form === 'queen' && basic ? 'severance' : form === 'king' ? 'smite' : undefined
     emitDamage(enemy, [damage + focus + smite, ...(bonus ? [bonus] : [])],
       (event) => emit({ ...event, seen: true }), { effect, followup: form === 'pawn' && (basic || bonus > 0),
-        impactDelayMs: basic ? characterTiming[form === 'king' ? 'pawn' : form].impact : 0,
+        impactDelayMs: basic ? characterTiming[form].impact : 0,
         penetration: form === 'knight' && basic ? passiveBalance.penetration : 0,
         inputs: [{ source: basic ? form + ' basic' : action.kind === 'card' ? cards[state.deck.hand.find((card) => card.instanceId === action.cardInstanceId)!.definitionId].name : 'Skill',
           category: basic ? 'basic' : 'card', base: damage - (basic && light && form !== 'pawn' ? formBalance.lightDamage : 0),

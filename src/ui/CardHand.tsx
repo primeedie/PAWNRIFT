@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'react'
 import { cards } from '../data/cards'
-import { cardCategories, cardPresentation } from '../data/cardPresentation'
+import { cardCategories, cardPresentation, cardSummaries } from '../data/cardPresentation'
+import { cardInspection } from './cardInspection'
 import { type CardTextToken } from '../data/glossary'
 import { cardOptions } from '../game/logic/cardRules'
 import { usePawnStore } from '../game/state/pawnStore'
@@ -19,14 +21,36 @@ export function CardDescription({ tokens }: { tokens: readonly CardTextToken[] }
 
 export function CardHand() {
   const state = usePawnStore()
+  const [inspection, setInspection] = useState<{ id: string; position: ReturnType<typeof cardInspection> }>()
+  const inspectMode = useRef('pointer'), root = useRef<HTMLElement>(null)
+  const inspect = (element: HTMLElement, id: string, mode: string) => {
+    inspectMode.current = mode
+    setInspection({ id, position: cardInspection(element.getBoundingClientRect(), { width: window.innerWidth, height: window.innerHeight }) })
+  }
+  useEffect(() => {
+    const close = () => setInspection(undefined)
+    const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node) && !(event.target instanceof Element && event.target.closest('.keyword-tooltip'))) close() }
+    window.addEventListener('resize', close); window.addEventListener('pointerdown', outside)
+    return () => { window.removeEventListener('resize', close); window.removeEventListener('pointerdown', outside) }
+  }, [])
+  useEffect(() => {
+    if (!inspection) return
+    const outside = (event: Event) => {
+      if (event.type==='pointermove' && inspectMode.current!=='pointer') return
+      if (!(event.target instanceof Element && event.target.closest('.hand-card,.keyword-tooltip'))) setInspection(undefined)
+    }
+    window.addEventListener('pointermove',outside);window.addEventListener('focusin',outside)
+    return () => {window.removeEventListener('pointermove',outside);window.removeEventListener('focusin',outside)}
+  },[inspection?.id])
+  useEffect(() => setInspection(undefined), [state.dungeon, state.training?.id, state.phase])
   const selected = state.deck.hand.find((card) => card.instanceId === state.selectedCardId)
   const options = selected ? cardOptions(state, selected.instanceId) : undefined
   const locked = !state.runActive || state.phase !== 'ready' || state.status !== 'playing'
   // Floor resets/menu remounts discard presentation-only tooltips without touching game state.
   return <>
-    <section className="card-hand" aria-label="Card hand" onKeyDown={(event) => {
+    <section ref={root} className="card-hand" aria-label="Card hand" onKeyDown={(event) => {
       event.stopPropagation()
-      if (event.key === 'Escape') { state.selectCard(undefined); restoreGameFocus() }
+      if (event.key === 'Escape') { setInspection(undefined); state.selectCard(undefined); restoreGameFocus() }
     }}>
       <div className="hand-meta" data-tooltip-avoid>
         <div className="hand-resources">
@@ -44,7 +68,7 @@ export function CardHand() {
           </>}
         </div>
       </div>
-      <div className="hand-cards" role="group" aria-label="Playing cards. Scroll horizontally for more cards." tabIndex={0}>
+      <div className="hand-cards" role="group" aria-label="Playing cards. Scroll horizontally for more cards." tabIndex={0} onScroll={() => setInspection(undefined)}>
         {state.deck.hand.map((instance) => {
           const card = cards[instance.definitionId]
           const presentation = cardPresentation[instance.definitionId]
@@ -56,8 +80,15 @@ export function CardHand() {
             : `Costs ${card.cost} Energy, paid before the effect. Playing a valid card advances the world once.`
           return <article key={instance.instanceId} className="hand-card" data-category={presentation.category}
             data-tooltip-avoid
+            data-inspected={inspection?.id === instance.instanceId}
+            onPointerEnter={(event) => { if (event.pointerType === 'mouse') inspect(event.currentTarget, instance.instanceId, 'pointer') }}
+            onPointerLeave={(event) => { if (inspectMode.current === 'pointer' && !(event.relatedTarget instanceof Element && event.relatedTarget.closest('.keyword-tooltip'))) setInspection(undefined) }}
+            onPointerDown={(event) => { if (event.pointerType === 'touch') inspect(event.currentTarget, instance.instanceId, 'touch') }}
+            onFocusCapture={(event) => { if (event.target.matches(':focus-visible')) inspect(event.currentTarget, instance.instanceId, 'focus') }}
+            onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget) && !(event.relatedTarget instanceof Element && event.relatedTarget.closest('.keyword-tooltip'))) setInspection(undefined) }}
             data-playable={!locked && !reason} data-selected={state.selectedCardId === instance.instanceId}
             data-locked={locked} onClick={() => { if (!locked) state.selectCard(instance.instanceId) }}>
+            <div className="card-face" data-tooltip-avoid style={inspection?.id === instance.instanceId ? inspection.position : undefined}>
             <button type="button" className="card-select" disabled={locked} aria-pressed={state.selectedCardId === instance.instanceId}
               aria-label={`Inspect ${card.name}. ${category.label}. ${card.cost} Energy. ${card.description}${reason ? ` ${reason}.` : ''}`}
               onClick={(event) => { event.stopPropagation(); state.selectCard(instance.instanceId) }}>
@@ -68,8 +99,10 @@ export function CardHand() {
             </KeywordTooltip>
             <CardIllustration card={instance.definitionId} />
             <span className="card-category"><span aria-hidden="true">{category.symbol}</span> {category.label}</span>
+            <p className="card-summary">{emphasizeValues(cardSummaries[instance.definitionId])}</p>
             <CardDescription tokens={presentation.tokens} />
             {shortfall > 0 && <span className="card-unavailable">Need {shortfall} more Energy</span>}
+            </div>
           </article>
         })}
       </div>

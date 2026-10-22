@@ -64,6 +64,7 @@ export function royalDecreeTargets(state: GameState, origin: Cell = state.cell) 
 export function abilityReason(state: GameState) {
   if (state.status !== 'playing' || state.hp <= 0) return 'Run ended.'
   const form = currentForm(state.transformations)
+  if (form === 'king' && state.mode !== 'training') return 'King is available in Training Grounds only.'
   if (form === 'bishop') {
     if (state.signatures.eyeUsed) return 'Used this floor.'
     if (!chooseAstralRegion(state.dungeon, state.explored, state.turn)) return 'The entire map is explored.'
@@ -138,7 +139,7 @@ export function resolveRoyalDecree(state: GameState) {
     const inner = Math.max(Math.abs(enemy.cell.column - decree.origin.column), Math.abs(enemy.cell.row - decree.origin.row)) <= 1
     const amount = decree.light ? inner ? passiveBalance.decreeLightInner : passiveBalance.decreeLightOuter
       : inner ? passiveBalance.decreeDarkInner : passiveBalance.decreeDarkOuter
-    emitDamage(enemy, [amount + splitBonus(budget, targets.length, index) + state.focus], emit, { effect: 'smite', inputs: [{ source: 'Royal Decree', category: 'signature', base: amount, passive: splitBonus(budget, targets.length, index), focus: state.focus }] })
+    emitDamage(enemy, [amount + splitBonus(budget, targets.length, index) + state.focus], emit, { effect: 'smite', inputs: [{ source: 'Royal Decree', category: 'signature', attunementName: state.transformations.active?.attunement, base: amount, passive: splitBonus(budget, targets.length, index), focus: state.focus }] })
     state.focus = 0
     if (!decree.light) pushEnemy(state, enemy, decree.origin)
   })

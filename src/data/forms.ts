@@ -1,5 +1,5 @@
 export const bossForms = ['knight', 'bishop', 'rook', 'queen'] as const
-// King is exposed only through explicit prototype test grants, not boss rewards.
+// King is selectable only in isolated Training Grounds; ordinary tools use bossForms.
 export const testForms = [...bossForms, 'king'] as const
 export type BossForm = typeof testForms[number]
 export type ChessForm = 'pawn' | BossForm
