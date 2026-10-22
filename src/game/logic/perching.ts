@@ -18,7 +18,7 @@ export function canKnightLand(cell: Cell, board: MovementBoard) {
   return !!perch && !board.occupied.some((entry) => sameCell(entry, cell)) && safeDismounts(cell, board).length > 0
 }
 export function playerBoard(state: GameState): MovementBoard {
-  return { size: 8, available: state.dungeon.tiles, blocked: state.dungeon.tiles.filter((tile) => tile.blocksMovement),
+  return { size: 8, visible: state.visible, available: state.dungeon.tiles, blocked: state.dungeon.tiles.filter((tile) => tile.blocksMovement),
     occupied: [...state.occupied, ...state.enemies.filter((enemy) => enemy.hp > 0).map((enemy) => enemy.cell)], perches: perchTiles(state.dungeon) }
 }
 export function pawnLanding(state: GameState): Cell | undefined {

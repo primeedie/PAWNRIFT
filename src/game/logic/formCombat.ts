@@ -30,7 +30,7 @@ export function formAttackTargets(state: GameState) {
 }
 export function knownPreviewState(state: GameState): GameState {
   return { ...state, dungeon: { ...state.dungeon, tiles: state.dungeon.tiles.map((tile) => state.explored.has(cellId(tile)) ? tile
-    : { ...tile, blocksMovement: false, blocksSight: false, prop: undefined, perchHeight: undefined }) },
+    : { ...tile, blocksMovement: false, blocksSight: false, prop: undefined, decoration: undefined, perchHeight: undefined }) },
     occupied: state.occupied.filter((cell) => canSeeContent(cellId(cell), state)),
     enemies: state.enemies.filter((enemy) => canSeeContent(cellId(enemy.cell), state)) }
 }
@@ -39,7 +39,7 @@ export function knownPreviewState(state: GameState): GameState {
 // not promises: their appearance must never depend on an unseen wall or enemy.
 export function movementPreviews(state: GameState) {
   const cells = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, id) => ({ column: id % BOARD_SIZE, row: Math.floor(id / BOARD_SIZE) }))
-  const knownBoard = { size: BOARD_SIZE, available: cells,
+  const knownBoard = { size: BOARD_SIZE, visible: state.visible, available: cells,
     blocked: state.dungeon.tiles.filter((tile) => state.explored.has(cellId(tile)) && tile.blocksMovement),
     occupied: [...state.occupied.filter((cell) => canSeeContent(cellId(cell), state)),
       ...state.enemies.filter((enemy) => enemy.hp > 0 && canSeeContent(cellId(enemy.cell), state)).map((enemy) => enemy.cell)],

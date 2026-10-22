@@ -109,10 +109,10 @@ describe('chess movement and fog-safe previews', () => {
     expect(chessDestinations('knight', from, board)).toHaveLength(12)
     for (const form of ['bishop', 'rook', 'queen'] as const) {
       expect(formMovement(form)(from, cell(form === 'bishop' ? 6 : 3, 6), board)).toBe(true)
-      expect(formMovement(form)(from, cell(form === 'bishop' ? 7 : 3, 7), board)).toBe(false)
+      expect(formMovement(form)(from, cell(form === 'bishop' ? 7 : 3, 7), board)).toBe(true)
       expect(formMovement(form)(from, from, board)).toBe(false)
     }
-    expect(formMovement('bishop')(from, cell(3, 4), board)).toBe(false)
+    expect(formMovement('bishop')(from, cell(3, 4), board)).toBe(true)
     expect(formMovement('rook')(from, cell(4, 4), board)).toBe(false)
     expect(formMovement('queen')(from, cell(6, 6), board)).toBe(true)
     expect(formMovement('pawn')(from, cell(4, 4), board)).toBe(false)
@@ -150,7 +150,7 @@ describe('form combat, attunements and synchronized turns', () => {
   it('every form movement resolves as exactly one turn, and Slip keeps its ordinary one-tile rule', () => {
     for (const form of ['pawn', ...bossForms] as const) {
       const base = game(form === 'pawn' ? 'knight' : form)
-      const state = { ...base, enemies: [], transformations: form === 'pawn' ? emptyTransformations() : base.transformations }
+      const state = { ...base, visible: new Set(Array.from({ length: 64 }, (_, id) => id)), enemies: [], transformations: form === 'pawn' ? emptyTransformations() : base.transformations }
       const destination = form === 'pawn' ? cell(3, 4) : form === 'knight' ? cell(4, 5)
         : form === 'rook' ? cell(3, 6) : cell(6, 6)
       const moved = resolveTurn(state, { kind: 'move', destination })!

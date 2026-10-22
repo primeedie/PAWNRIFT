@@ -78,14 +78,15 @@ describe('seeded dungeon invariants: 1,000 seeds for each layout style', () => {
     expect(open).toEqual(repairConnectivity(new Set([0, 7, 56, 63])))
   })
 
-  it('produces real branch/dead-end structures, optional maze loops, and open courtyards', () => {
+  it('retains branches, optional dead ends, loops, and open combat spaces', () => {
+    let deadEnds = 0
     const mazeCycles = new Set<boolean>()
     for (let seed = 0; seed < 100; seed++) {
       const branch = generateDungeon(`topology-${seed}`, 'branching')
       const open = new Set(branch.tiles.filter((tile) => !tile.blocksMovement).map(cellId))
       const degrees = [...open].map((id) => neighborIds(id).filter((next) => open.has(next)).length)
-      expect(degrees.reduce((sum, degree) => sum + degree, 0) / 2).toBe(open.size - 1)
-      expect(degrees.filter((degree) => degree === 1).length).toBeGreaterThan(2)
+      expect(degrees.reduce((sum, degree) => sum + degree, 0) / 2).toBeGreaterThanOrEqual(open.size)
+      deadEnds += degrees.filter((degree) => degree === 1).length
       expect(degrees.some((degree) => degree >= 3)).toBe(true)
       const maze = generateDungeon(`topology-${seed}`, 'maze')
       const mazeOpen = new Set(maze.tiles.filter((tile) => !tile.blocksMovement).map(cellId))
@@ -99,7 +100,8 @@ describe('seeded dungeon invariants: 1,000 seeds for each layout style', () => {
       })
       expect(squares.length).toBeGreaterThanOrEqual(4)
     }
-    expect(mazeCycles).toEqual(new Set([true, false]))
+    expect(mazeCycles.has(true)).toBe(true)
+    expect(deadEnds).toBeGreaterThan(0)
   })
 
   it('rejects corrupted layouts and unreachable exits', () => {

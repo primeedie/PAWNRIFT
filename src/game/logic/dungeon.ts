@@ -4,11 +4,15 @@ import type { PropKind } from '../../data/demoBoard'
 import type { Cell } from './movement'
 
 export const layoutStyles = ['maze', 'courtyard', 'corridors', 'branching'] as const
+// Initial density tuning, not quotas: preserve connectivity and obstacle spacing first.
+export const dungeonTuning = { minBlockingDensity: 0.10, maxBlockingDensity: 0.15, decorationChance: 0.28 } as const
 export type LayoutStyle = typeof layoutStyles[number]
 export type DungeonTile = Cell & {
   blocksMovement: boolean
   blocksSight: boolean
   prop?: PropKind
+  // Small corner scenery leaves the tile center clear and never participates in collision/sight.
+  decoration?: { kind: 'tree' | 'rock' | 'crystal'; corner: number }
   // Explicitly designated flat low block top; rounded rocks/trees/walls are not perches.
   perchHeight?: number
   rotation: number
@@ -176,6 +180,25 @@ function buildDungeon(seed: string, requestedStyle?: LayoutStyle): Dungeon {
     return y * 8 + x
   }))
   open = repairConnectivity(open)
+  // Retain a few useful, separated blockers from the already connected layout. Opening
+  // the rest creates combat space/diagonals without severing any established Pawn route.
+  // Perimeter geometry is structural and excluded from the candidate-floor density.
+  const interior = Array.from({ length: 64 }, (_, id) => id).filter((id) => {
+    const { column, row } = cellFromId(id)
+    return column > 0 && column < 7 && row > 0 && row < 7
+  })
+  const target = Math.round(interior.length * (dungeonTuning.minBlockingDensity
+    + random() * (dungeonTuning.maxBlockingDensity - dungeonTuning.minBlockingDensity)))
+  const retained: number[] = []
+  for (const id of shuffled(interior.filter((id) => !open.has(id)))) {
+    const cell = cellFromId(id)
+    if (retained.length < target && retained.every((other) => {
+      const a = cellFromId(other)
+      return Math.max(Math.abs(a.column - cell.column), Math.abs(a.row - cell.row)) > 1
+    })) retained.push(id)
+  }
+  for (const id of interior) if (!retained.includes(id)) open.add(id)
+  open = repairConnectivity(open)
   const farthest = (start: number) => [...distancesFrom(open, start)].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0]
   // Farthest endpoints are usually leaves. Select a junction with two existing exits instead.
   const originDistances = distancesFrom(open, choose([...open]))
@@ -189,11 +212,14 @@ function buildDungeon(seed: string, requestedStyle?: LayoutStyle): Dungeon {
   const reserved = [alternate, enemy, ...candidates.filter((id) => id !== alternate && id !== enemy).slice(0, 2)]
   const kinds = ['alternate-exit', 'enemy', 'trap', 'treasure'] as const
   const protectedCells = new Set([spawnId, exitId, ...reserved])
-  const obstacles: PropKind[] = ['wall', 'wall', 'wall', 'block', 'rock', 'tree']
+  const obstacles: PropKind[] = ['wall', 'block', 'rock', 'tree']
   const tiles: DungeonTile[] = Array.from({ length: 64 }, (_, id) => {
     const blocked = !open.has(id)
-    const prop = blocked ? choose(obstacles) : !protectedCells.has(id) && random() < 0.07 ? 'crystal' : undefined
+    const prop = blocked ? choose(obstacles) : undefined
+    const decoration = !blocked && !protectedCells.has(id) && random() < dungeonTuning.decorationChance
+      ? { kind: choose<'tree' | 'rock' | 'crystal'>(['tree', 'rock', 'crystal']), corner: integer(4) } : undefined
     return { ...cellFromId(id), blocksMovement: blocked, blocksSight: prop === 'wall', prop,
+      ...(decoration ? { decoration } : {}),
       ...(prop === 'block' ? { perchHeight: 0.475 } : {}), rotation: integer(4) * Math.PI / 2 }
   })
   const dungeon: Dungeon = {
@@ -230,6 +256,7 @@ export function repairDungeon(input: Dungeon): Dungeon {
     const prop = blocksMovement ? blockingProp(original?.prop) ? original!.prop : 'wall'
       : used.has(id) ? undefined : original?.prop === 'crystal' ? 'crystal' : undefined
     return { ...cellFromId(id), blocksMovement, blocksSight: prop === 'wall', prop, rotation: original?.rotation ?? 0,
+      ...(!blocksMovement && !used.has(id) && original?.decoration ? { decoration: original.decoration } : {}),
       ...(prop === 'block' ? { perchHeight: 0.475 } : {}) }
   })
   return { ...input, tiles, spawn, exit, reservations }

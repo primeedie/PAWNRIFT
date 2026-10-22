@@ -233,6 +233,7 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .mini-cell.parity-1 { background: #25333e; }
 .mini-cell[data-kind="center"] { color: var(--ui-text); font-size: 1.6rem; }
 .mini-cell[data-kind="walk"], .mini-cell[data-kind="slide"] { color: var(--ui-mobility); }
+.movement-mini-board[data-form="bishop"] .mini-cell[data-kind="walk"] { color: var(--ui-energy); }
 .mini-cell[data-kind="leap"] { color: var(--ui-energy); font-weight: bold; }
 .movement-guide figcaption { margin-top: 7px; line-height: 1.5; color: var(--ui-secondary); }
 .transformation-hud .info-trigger { padding: 3px; min-width: 24px; min-height: 24px; }

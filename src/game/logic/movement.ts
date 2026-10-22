@@ -4,6 +4,7 @@ export type MovementBoard = {
   size: number
   blocked: readonly Cell[]
   occupied: readonly Cell[]
+  visible?: ReadonlySet<number>
   available?: readonly Cell[]
   perches?: readonly (Cell & { height: number })[]
 }

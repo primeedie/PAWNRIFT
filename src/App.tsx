@@ -42,7 +42,7 @@ export function App() {
           <CombatHUD />
           <button className="secondary-button" onClick={showTitle}>Return to menu</button>
         </div>
-        <div className="scene-controls" role="img" aria-label="Move with WASD or arrows. Knight walks normally; Shift selects four L-jumps. Click highlighted destinations for all jumps/slides. Faint outlines are unscouted attempts. Scroll to zoom.">
+        <div className="scene-controls" role="img" aria-label="Move with WASD or arrows. Knight walks normally; Shift selects four L-jumps. Bishop walks normally; Shift selects diagonals. Slides require a clear currently visible lane. Click highlighted destinations for all jumps/slides. Faint outlines are unscouted attempts. Scroll to zoom.">
           <div className="key-cluster" aria-hidden="true">
             <kbd className="key-up">W</kbd><kbd className="key-left">A</kbd><kbd className="key-down">S</kbd><kbd className="key-right">D</kbd>
           </div>

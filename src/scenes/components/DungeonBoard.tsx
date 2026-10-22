@@ -42,6 +42,10 @@ export function DungeonBoard() {
             <FoggedTerrain visibility={visibility}>
               <TerrainTile column={tile.column} row={tile.row} />
               {tile.prop && <group rotation={[0, tile.rotation, 0]}><GeometricProp kind={tile.prop} /></group>}
+              {tile.decoration && <group position={[tile.decoration.corner % 2 ? 0.32 : -0.32, 0, tile.decoration.corner < 2 ? -0.32 : 0.32]}
+                scale={tile.decoration.kind === 'tree' ? 0.32 : 0.42} rotation={[0, tile.rotation, 0]}>
+                <GeometricProp kind={tile.decoration.kind} />
+              </group>}
               {sameCell(tile, dungeon.exit) && <ExitMarker />}
             </FoggedTerrain>
             {preview && <group position={[0, state.explored.has(id) ? elevationAt(dungeon, tile) : 0, 0]}><LegalTileHighlight uncertain={preview.uncertain}

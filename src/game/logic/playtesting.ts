@@ -72,6 +72,14 @@ export function applyPlaytest(state: GameState, action: PlaytestAction): GameSta
 
 export function movementRejection(state: GameState, to: Cell): string | undefined {
   if (!validCell(to)) return 'Out of bounds'
+  const form = currentForm(state.transformations)
+  const dx = to.column - state.cell.column, dy = to.row - state.cell.row
+  const straight = (dx === 0) !== (dy === 0), diagonal = Math.abs(dx) === Math.abs(dy) && dx !== 0
+  const slide = form === 'bishop' ? diagonal : form === 'rook' ? straight : form === 'queen' && (straight || diagonal)
+  if (slide) for (let step = 1; step <= Math.max(Math.abs(dx), Math.abs(dy)); step++) {
+    if (!state.visible.has(cellId({ column: state.cell.column + Math.sign(dx) * step, row: state.cell.row + Math.sign(dy) * step })))
+      return 'Lane extends beyond current sight'
+  }
   const tile = state.dungeon.tiles.find((tile) => sameCell(tile, to))
   if (!tile) return 'Missing tile'
   // No hidden entity location is exposed, even with terrain diagnostics enabled.
