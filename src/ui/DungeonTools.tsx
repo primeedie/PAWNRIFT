@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { layoutStyles, type LayoutStyle } from '../game/logic/dungeon'
 import { usePawnStore } from '../game/state/pawnStore'
 import { newRunSeed } from '../utils/newRunSeed'
-const TransformationTools = lazy(() => import('./TransformationTools'))
+import TransformationTools from './TransformationTools'
 
 export default function DungeonTools() {
   const { dungeon, revealAll, loadDungeon, toggleReveal } = usePawnStore()
@@ -10,9 +10,10 @@ export default function DungeonTools() {
   const [style, setStyle] = useState<LayoutStyle | ''>('')
   useEffect(() => setSeed(dungeon.seed), [dungeon.seed])
   return (
-    <details className="dungeon-dev-tools" name="hud-panels" data-tooltip-avoid onKeyDown={(event) => event.stopPropagation()}>
+    <details id="dungeon-tools" className="dungeon-dev-tools" name="hud-panels" data-tooltip-avoid onKeyDown={(event) => event.stopPropagation()}>
       <summary>Dungeon tools</summary>
       <form onSubmit={(event) => { event.preventDefault(); loadDungeon(seed, style || undefined) }}>
+        <TransformationTools />
         <label>Seed<input value={seed} maxLength={200} onChange={(event) => setSeed(event.target.value)} /></label>
         <label>Layout<select value={style} onChange={(event) => setStyle(event.target.value as LayoutStyle | '')}>
           <option value="">From seed</option>
@@ -24,7 +25,6 @@ export default function DungeonTools() {
           setSeed(next); loadDungeon(next, style || undefined)
         }}>New dungeon</button>
         <label className="dev-checkbox"><input type="checkbox" checked={revealAll} onChange={toggleReveal} />Reveal complete map</label>
-        <Suspense fallback={null}><TransformationTools /></Suspense>
         <p>Active: {dungeon.seed} · {dungeon.style}</p>
         <p>Generating a dungeon resets this run.</p>
       </form>

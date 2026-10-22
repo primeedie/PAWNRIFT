@@ -7,6 +7,8 @@ import { activateTransformation, emptyTransformations, grantTransformation } fro
 import { usePawnStore } from '../game/state/pawnStore'
 import { TransformationHUD } from '../ui/TransformationHUD'
 import { GameOver } from '../ui/GameOver'
+import DungeonTools from '../ui/DungeonTools'
+import TransformationTools from '../ui/TransformationTools'
 
 vi.mock('../game/state/pawnStore', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../game/state/pawnStore')>()
@@ -24,6 +26,27 @@ describe('transformation interaction and lifecycle integration', () => {
       runActive: true, hasStartedRun: true, deathRetentionDone: false, floorNumber: 1, selectedCardId: undefined, selectedAbility: false })
   })
   afterEach(() => vi.unstubAllEnvs())
+  it('exposes testing directly from an empty Forms HUD and puts grants before seed controls in production', () => {
+    vi.stubEnv('DEV', false)
+    usePawnStore.setState({ transformations: emptyTransformations() })
+    const state = usePawnStore.getState()
+    const hud = renderToStaticMarkup(<TransformationHUD />)
+    expect(hud).toContain('aria-controls="dungeon-tools"')
+    expect(hud).toContain('>Test forms</button>')
+    const tools = renderToStaticMarkup(<DungeonTools />)
+    expect(tools).toContain('id="dungeon-tools"')
+    expect(tools.indexOf('Transformation testing')).toBeLessThan(tools.indexOf('Seed<input'))
+    expect(tools).toContain('Grant / unlock attunement')
+    expect(tools).toContain('Grant this form first, then activate it.')
+    expect(usePawnStore.getState()).toBe(state)
+  })
+  it('explains recovery in the testing panel instead of silently rejecting activation', () => {
+    usePawnStore.setState({ transformations: { ...usePawnStore.getState().transformations, recovery: 1 } })
+    const html = renderToStaticMarkup(<TransformationTools />)
+    expect(html).toContain('Recovery in progress.')
+    expect(html).toContain('Simulate completed floor until Recovery is 0')
+    expect(html).toMatch(/disabled=""[^>]*>Test activation/)
+  })
   it('inspecting the HUD preserves charges, time, Energy and enemy state', () => {
     const state = usePawnStore.getState()
     const html = renderToStaticMarkup(<TransformationHUD />)

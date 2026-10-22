@@ -223,9 +223,9 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 /* Exclusive side panels reserve their own space above the hand and footer. */
 .hud-panel { position: fixed; left: auto; right: 20px; top: calc(var(--hud-header-height, 160px) + 8px); bottom: calc(var(--hand-height) + var(--hud-footer-height, 110px) + 8px); width: min(300px, calc(100vw - 40px)); max-height: none; overflow: auto; z-index: 21; }
 .dungeon-dev-tools { position: fixed; top: calc(var(--hud-header-height, 160px) + 8px); right: 20px; width: min(300px, calc(100vw - 40px)); max-height: calc(100svh - var(--hud-header-height, 160px) - var(--hand-height) - var(--hud-footer-height, 110px) - 16px); z-index: 21; }
-.dungeon-dev-tools[open] { bottom: calc(var(--hand-height) + var(--hud-footer-height, 110px) + 8px); display: flex; flex-direction: column; overflow: hidden; }
-.dungeon-dev-tools summary { flex-shrink: 0; }
-.dungeon-dev-tools form { overflow: auto; min-height: 0; padding: 2px 3px 8px 0; overscroll-behavior: contain; }
+.dungeon-dev-tools[open] { bottom: calc(var(--hand-height) + var(--hud-footer-height, 110px) + 8px); display: block; overflow-y: auto; }
+.dungeon-dev-tools summary { position: sticky; top: 0; z-index: 1; padding-block: 4px; background: #202b36; }
+.dungeon-dev-tools form { overflow: visible; min-height: 0; padding: 2px 3px 8px 0; }
 .movement-guide { margin: 14px 0; }
 .movement-mini-board { display: grid; grid-template-columns: repeat(5, 1fr); width: 175px; border: 1px solid var(--ui-secondary); gap: 1px; background: #19232e; }
 .mini-cell { display: grid; place-items: center; height: 34px; font-size: 1rem; }

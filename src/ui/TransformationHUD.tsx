@@ -25,6 +25,15 @@ export function TransformationHUD() {
   const status = form === 'bishop' ? state.signatures.eyeUsed ? 'Used this floor' : 'Available'
     : state.signatures.cooldowns[form] ? `${state.signatures.cooldowns[form]} turns` : 'Ready'
   const closePanel = (button: HTMLButtonElement) => { const details = button.closest('details'); if (details) details.open = false }
+  const openTesting = () => {
+    document.querySelectorAll<HTMLDetailsElement>('details[name="hud-panels"]').forEach((panel) => { panel.open = false })
+    const tools = document.querySelector<HTMLDetailsElement>('#dungeon-tools')
+    if (tools) {
+      tools.open = true
+      tools.scrollTop = 0
+      tools.querySelector('summary')?.focus()
+    }
+  }
   return <section className="transformation-hud" aria-label="Transformations" data-tooltip-avoid onKeyDown={(event) => {
     event.stopPropagation()
     if (event.key === 'Escape') {
@@ -44,7 +53,7 @@ export function TransformationHUD() {
         <summary>Forms <strong>{forms.inventory.length}/2</strong></summary>
         <div className="form-picker-panel hud-panel" data-tooltip-avoid>
           <strong>Carried transformations</strong> <KeywordTooltip topic="transformation" className="info-trigger">ⓘ</KeywordTooltip>
-          {!forms.inventory.length && <p>No transformations carried.</p>}
+          {!forms.inventory.length && <p>No transformations carried. Use <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button> to grant one on this prototype.</p>}
           {forms.inventory.map((entry) => <div className="form-slot" key={entry.form}>
             <strong>{formSymbols[entry.form]} {formNames[entry.form]}</strong>
             <KeywordTooltip topic="charges"><strong>{entry.charges}/5</strong> charges</KeywordTooltip>
@@ -79,6 +88,7 @@ export function TransformationHUD() {
           <button onClick={(event) => closePanel(event.currentTarget)}>Cancel</button>
         </div>
       </details>}
+      <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button>
     </div>
     <div className="form-ability">
       <span aria-hidden="true" className="ability-icon">{ability.icon}</span><strong>{ability.name}</strong>

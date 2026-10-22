@@ -55,7 +55,7 @@ Stage 6 settles the starting deck, hand, and resource timing below. **Open:** de
 
 ### Stage 6.1 card presentation and help
 
-The upper-right Dungeon tools are available in production: seed input, layout selection, generation from that seed, and a fresh-dungeon button. Regeneration resets the temporary encounter through the existing atomic reset. The user subsequently authorized all current testing tools publicly, including terrain reveal and transformation tests. Terrain reveal never changes exploration memory or exposes hidden enemies.
+The upper-right Dungeon tools are available in production: seed input, layout selection, generation from that seed, and a fresh-dungeon button. The always-visible **Test forms** shortcut opens this exclusive panel directly to transformation grants before seed controls; its contents scroll with a sticky heading. Grant/activation feedback explains carried-item, busy, slot and recovery restrictions. Form bodies currently share the Pawn placeholder; rules/signatures change immediately. Regeneration resets the temporary encounter through the existing atomic reset. The user subsequently authorized all current testing tools publicly, including terrain reveal and transformation tests. Terrain reveal never changes exploration memory or exposes hidden enemies.
 
 The floating-hand update supersedes the earlier card justification preference: compact card descriptions use left-aligned natural wrapping, a readable proportional body font, and bold numerical effects/keywords. Longer explanatory prose may be justified; headings, labels and Energy indicators retain deliberate alignment.
 
