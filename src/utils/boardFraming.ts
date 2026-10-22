@@ -67,7 +67,7 @@ export function boardFraming(width: number, height: number, tiles?: readonly Dun
   const padX = Math.min(28, width * 0.04), padY = Math.min(38, height * 0.07)
   const fit = Math.min(Math.max(1, width - 2 * padX) / (maxX - minX), Math.max(1, height - 2 * padY) / (maxY - minY))
   const previous = legacyBoardZoom(width, Math.max(1, height - hudHeight))
-  return { zoom: Math.min(previous * 1.28, fit), target, points, previousZoom: previous }
+  return { zoom: fit, target, points, previousZoom: previous }
 }
 
 export function fitBoardZoom(width: number, height: number) {

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from 'three'
 import { boardFraming, clampZoomScale } from '../../utils/boardFraming'
@@ -8,26 +8,8 @@ export function IsometricCamera() {
   const { camera, size, gl, invalidate } = useThree()
   const zoomScale = useRef(1)
   const tiles = usePawnStore((state) => state.dungeon.tiles)
-  const [hudHeight, setHudHeight] = useState(0)
-  useLayoutEffect(() => {
-    const screen = gl.domElement.closest<HTMLElement>('.scene-screen')
-    if (!screen || getComputedStyle(screen).getPropertyValue('--board-full-bleed').trim() !== '1') {
-      setHudHeight(0)
-      return
-    }
-    const header = screen.querySelector<HTMLElement>('.scene-header')!
-    const footer = screen.querySelector<HTMLElement>('.scene-footer')!
-    const footerStyle = getComputedStyle(footer)
-    // Compare against the previous row-based viewport. Corner controls may now stack
-    // without taking the same vertical space away from the central board.
-    const compactFooter = Math.max(
-      footer.querySelector<HTMLElement>('.combat-hud')?.offsetHeight ?? 0,
-      footer.querySelector<HTMLElement>('.secondary-button')?.offsetHeight ?? 0,
-      footer.querySelector<HTMLElement>('.scene-controls')?.offsetHeight ?? 0,
-    ) + parseFloat(footerStyle.paddingTop) + parseFloat(footerStyle.paddingBottom)
-    setHudHeight(header.offsetHeight + compactFooter)
-  }, [gl, size.width, size.height])
-  const framing = boardFraming(size.width, size.height, tiles, hudHeight)
+  // Canvas already occupies the measured region between header, controls and hand.
+  const framing = boardFraming(size.width, size.height, tiles)
   const fittedZoom = framing.zoom
   const [tx, ty, tz] = framing.target
 

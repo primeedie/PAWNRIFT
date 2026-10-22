@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { type Cell } from '../logic/movement'
-import { generateDungeon, type LayoutStyle } from '../logic/dungeon'
+import { floorSeed, generateDungeon, type LayoutStyle } from '../logic/dungeon'
 import { attackTargets, createGame, resolvePlayerAction, resolveEnemyPhase, type GameState, type PlayerAction } from '../logic/combat'
 import { newRunSeed } from '../../utils/newRunSeed'
 import type { CardTarget } from '../logic/cardRules'
@@ -8,6 +8,7 @@ import { sameCell } from '../logic/movement'
 import { completeTransformationFloor, grantTransformation, recordTransformationBossWin, retainAfterDeath, retentionChoices, transformationsForNewRun } from '../logic/transformations'
 import type { Attunement, BossForm } from '../../data/forms'
 import { emptySignatures, vaultDestinations } from '../logic/signatures'
+import { applyPlaytest, movementRejection, PLAYTEST_TOOLS_ENABLED, type PlaytestAction, type DiagnosticLayer } from '../logic/playtesting'
 
 const initialDungeon = generateDungeon(newRunSeed(''))
 
@@ -22,6 +23,16 @@ type PawnState = GameState & {
   runActive: boolean
   hasStartedRun: boolean
   floorNumber: number
+  masterSeed: string
+  playtestMode: boolean
+  diagnosticLayers: DiagnosticLayer[]
+  diagnosticsEnabled: boolean
+  setDiagnostics: (enabled: boolean) => void
+  lastMovementRejection?: string
+  recordInputBlocked: () => void
+  playtest: (action: PlaytestAction) => boolean
+  regenerateFloor: (seed?: string, style?: LayoutStyle) => boolean
+  toggleDiagnostic: (layer: DiagnosticLayer) => void
   deathRetentionDone: boolean
   selectedAbility: boolean
   abilityDestination?: Cell
@@ -29,7 +40,7 @@ type PawnState = GameState & {
   selectAbility: () => void
   tryAbility: (targetId?: string) => boolean
   chooseRetention: (form: BossForm) => boolean
-  transitionFloor: (seed: string, testing?: boolean) => boolean
+  transitionFloor: (seed?: string, testing?: boolean) => boolean
   debugGrant: (form: BossForm, attunement: Attunement) => boolean
   debugBossWin: (form: BossForm, attunement: Attunement) => void
   debugDefeat: () => void
@@ -57,6 +68,31 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   revealAll: false,
   runActive: false,
   hasStartedRun: false, floorNumber: 1, deathRetentionDone: false, selectedAbility: false,
+  masterSeed: initialDungeon.seed, playtestMode: false, diagnosticLayers: [], diagnosticsEnabled: false,
+  setDiagnostics: (enabled) => set({ diagnosticsEnabled: enabled }),
+  recordInputBlocked: () => { if (get().diagnosticsEnabled && get().status === 'playing') set({ lastMovementRejection: 'Input blocked by active UI' }) },
+  toggleDiagnostic: (layer) => set((state) => ({ playtestMode: true, diagnosticLayers: state.diagnosticLayers.includes(layer)
+    ? state.diagnosticLayers.filter((entry) => entry !== layer) : [...state.diagnosticLayers, layer] })),
+  playtest: (action) => {
+    const state = get()
+    if (!state.runActive || state.phase !== 'ready') return false
+    const next = applyPlaytest(state, action)
+    if (!next) return false
+    set({ ...next, playtestMode: true, from: next.cell, fromElevation: next.elevation, isMoving: false,
+      selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, actionId: state.actionId + 1 })
+    return true
+  },
+  regenerateFloor: (seed, style) => {
+    const state = get()
+    if (!state.runActive || state.phase !== 'ready' || state.hp <= 0) return false
+    const dungeon = generateDungeon(seed ?? state.dungeon.seed, style ?? (seed === undefined ? state.dungeon.style : undefined))
+    set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck, energy: state.energy, maxEnergy: state.maxEnergy,
+      focus: state.focus, turn: state.turn, transformations: state.transformations,
+      signatures: { ...emptySignatures(), cooldowns: { ...state.signatures.cooldowns }, eyeUsed: state.signatures.eyeUsed },
+      from: dungeon.spawn, fromElevation: 0, isMoving: false, phase: 'ready', actionId: state.actionId + 1, playtestMode: true,
+      selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, revealAll: false, lastAction: undefined, lastMovementRejection: undefined })
+    return true
+  },
   selectAbility: () => {
     const state = get()
     if (state.runActive && state.phase === 'ready' && state.status === 'playing')
@@ -79,12 +115,13 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   transitionFloor: (seed, testing = false) => {
     const state = get()
-    if (state.phase !== 'ready' || state.hp <= 0 || (!state.runActive)
+    if ((testing && !PLAYTEST_TOOLS_ENABLED) || state.phase !== 'ready' || state.hp <= 0 || (!state.runActive)
       || (state.status !== 'victory' && !testing)) return false
-    const dungeon = generateDungeon(seed)
+    const dungeon = generateDungeon(seed ?? floorSeed(state.masterSeed, state.floorNumber + 1))
     set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck,
       energy: state.energy, maxEnergy: state.maxEnergy, focus: state.focus, turn: state.turn,
       transformations: completeTransformationFloor(state.transformations), floorNumber: state.floorNumber + 1,
+      playtestMode: state.playtestMode || testing,
       signatures: { ...emptySignatures(), cooldowns: { ...state.signatures.cooldowns } },
       from: dungeon.spawn, fromElevation: 0, isMoving: false, phase: 'ready', actionId: state.actionId + 1,
       selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, revealAll: false, lastAction: undefined })
@@ -92,19 +129,19 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   debugGrant: (form, attunement) => {
     const state = get()
-    if (!state.runActive || state.phase !== 'ready' || state.status !== 'playing') return false
+    if (!PLAYTEST_TOOLS_ENABLED || !state.runActive || state.phase !== 'ready' || state.status !== 'playing') return false
     const next = grantTransformation(state.transformations, form, attunement)
     if (!next) return false
-    set({ transformations: next }); return true
+    set({ transformations: next, playtestMode: true }); return true
   },
   debugBossWin: (form, attunement) => {
     const state = get()
-    if (state.runActive && state.phase === 'ready' && state.status === 'playing')
-      set({ transformations: recordTransformationBossWin(state.transformations, form, attunement) })
+    if (PLAYTEST_TOOLS_ENABLED && state.runActive && state.phase === 'ready' && state.status === 'playing')
+      set({ transformations: recordTransformationBossWin(state.transformations, form, attunement), playtestMode: true })
   },
   debugDefeat: () => {
-    if (get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat',
-      selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, deathRetentionDone: false, actionId: state.actionId + 1 }))
+    if (PLAYTEST_TOOLS_ENABLED && get().runActive && get().status === 'playing' && get().phase === 'ready') set((state) => ({ hp: 0, status: 'defeat',
+      selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, deathRetentionDone: false, playtestMode: true, actionId: state.actionId + 1 }))
   },
   selectedCardId: undefined,
   selectCard: (instanceId) => {
@@ -128,10 +165,11 @@ export const usePawnStore = create<PawnState>((set, get) => ({
       ? retainAfterDeath(state.transformations)! : transformationsForNewRun(state.transformations)
     const dungeon = generateDungeon(seed, style)
     set({ ...createGame(dungeon), from: dungeon.spawn, fromElevation: 0, isMoving: false, phase: 'ready',
-      transformations: transformationsForNewRun(retained), floorNumber: 1, hasStartedRun: true, deathRetentionDone: false, selectedAbility: false, abilityDestination: undefined,
+      transformations: transformationsForNewRun(retained), floorNumber: 1, masterSeed: seed, hasStartedRun: true, deathRetentionDone: false, selectedAbility: false, abilityDestination: undefined,
+      playtestMode: state.playtestMode && retained.inventory.length > 0, diagnosticLayers: [], diagnosticsEnabled: false, lastMovementRejection: undefined,
       actionId: get().actionId + 1, revealAll: false, runActive: true, selectedCardId: undefined, lastAction: undefined })
   },
-  toggleReveal: () => set((state) => ({ revealAll: !state.revealAll })),
+  toggleReveal: () => set((state) => ({ revealAll: !state.revealAll, playtestMode: true })),
   tryMove: (destination) => get().submitAction({ kind: 'move', destination }),
   tryAttack: (targetId) => {
     const target = targetId ?? attackTargets(get())[0]?.id
@@ -139,10 +177,17 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   },
   submitAction: (action) => {
     const state = get()
-    if (!state.runActive || state.phase !== 'ready') return false
+    if (!state.runActive || state.phase !== 'ready') {
+      if (action.kind === 'move' && state.diagnosticsEnabled && state.status === 'playing') set({ lastMovementRejection: !state.runActive ? 'Run suspended' : 'Action resolving' })
+      return false
+    }
     const player = resolvePlayerAction(state, action)
-    if (!player) return false
+    if (!player) {
+      if (action.kind === 'move' && state.diagnosticsEnabled && state.status === 'playing') set({ lastMovementRejection: movementRejection(state, action.destination) ?? 'Move rejected' })
+      return false
+    }
     set({ ...player, selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined,
+      lastMovementRejection: undefined,
       from: state.cell, fromElevation: state.elevation, isMoving: !sameCell(player.cell, state.cell), phase: 'player', actionId: state.actionId + 1 })
     return true
   },

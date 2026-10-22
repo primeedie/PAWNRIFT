@@ -5,6 +5,7 @@ import { PawnCharacter } from './components/PawnCharacter'
 import { DungeonEnemies } from './components/DungeonEnemies'
 import { CombatFeedback } from './components/CombatFeedback'
 import { BOARD_TARGET, CAMERA_POSITION } from '../utils/boardFraming'
+import { DiagnosticOverlay } from './components/DiagnosticOverlay'
 
 export default function FoundationScene() {
   return (
@@ -23,6 +24,7 @@ export default function FoundationScene() {
         <directionalLight position={[-3, 8, 5]} color="#eee7dc" intensity={0.95} />
         <IsometricCamera />
         <DungeonBoard />
+        <DiagnosticOverlay />
         <PawnCharacter />
         <DungeonEnemies />
         <CombatFeedback />

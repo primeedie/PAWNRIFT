@@ -14,6 +14,7 @@ import { LegalTileHighlight } from './LegalTileHighlight'
 import { visibleEnemies } from '../../game/logic/combatIndicators'
 import { currentForm } from '../../game/logic/transformations'
 import { gridDistance } from '../../game/logic/enemyAI'
+import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
 
 function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhase; interpolate: boolean }) {
   const state = usePawnStore()
@@ -46,6 +47,8 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
     <group ref={root} name={enemy.id} onClick={(event) => {
       event.stopPropagation()
       const state = usePawnStore.getState()
+      if (gameplayBlocked()) { state.recordInputBlocked(); return }
+      restoreGameFocus()
       if (state.selectedCardId) state.playSelectedCard({ kind: 'enemy', enemyId: enemy.id })
       else if (state.selectedAbility) state.tryAbility(currentForm(state.transformations) === 'knight' ? enemy.id : undefined)
       else state.tryAttack(enemy.id)

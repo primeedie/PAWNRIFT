@@ -21,6 +21,7 @@ export type Dungeon = {
   spawn: Cell
   exit: Cell
   reservations: Reservation[]
+  generation?: { attempt: number; sourceSeed: string; repaired: boolean; fallback: boolean; issues: string[] }
 }
 
 export const cellId = (cell: Cell) => cell.row * BOARD_SIZE + cell.column
@@ -52,7 +53,7 @@ export function distancesFrom(open: ReadonlySet<number>, start: number) {
 export function repairConnectivity(input: ReadonlySet<number>): Set<number> {
   const open = new Set([...input].filter((id) => Number.isInteger(id) && id >= 0 && id < 64))
   if (!open.size) open.add(27)
-  for (;;) {
+  for (let attempt = 0; attempt < 64; attempt++) {
     const connected = distancesFrom(open, open.values().next().value!)
     const disconnected = [...open].find((id) => !connected.has(id))
     if (disconnected === undefined) return open
@@ -66,24 +67,35 @@ export function repairConnectivity(input: ReadonlySet<number>): Set<number> {
     while (column !== target.column) { column += Math.sign(target.column - column); open.add(row * 8 + column) }
     while (row !== target.row) { row += Math.sign(target.row - row); open.add(row * 8 + column) }
   }
+  return new Set(Array.from({ length: 64 }, (_, id) => id))
 }
 
-export function validateDungeon(dungeon: Dungeon): boolean {
+export const validCell = (cell: Cell) => Number.isInteger(cell.column) && Number.isInteger(cell.row)
+  && cell.column >= 0 && cell.column < 8 && cell.row >= 0 && cell.row < 8
+export const blockingProp = (prop?: PropKind) => prop !== undefined && prop !== 'crystal'
+
+export function dungeonIssues(dungeon: Dungeon): string[] {
   const { tiles, spawn, exit, reservations } = dungeon
-  const validCell = (cell: Cell) => Number.isInteger(cell.column) && Number.isInteger(cell.row)
-    && cell.column >= 0 && cell.column < 8 && cell.row >= 0 && cell.row < 8
-  if (tiles.length !== 64 || !tiles.every(validCell) || new Set(tiles.map(cellId)).size !== 64) return false
-  if (!validCell(spawn) || !validCell(exit) || cellId(spawn) === cellId(exit)) return false
+  const issues: string[] = []
+  if (tiles.length !== 64 || !tiles.every(validCell) || new Set(tiles.map(cellId)).size !== 64) issues.push('Missing, duplicate or out-of-bounds tiles')
+  if (!validCell(spawn) || !validCell(exit) || cellId(spawn) === cellId(exit)) issues.push('Invalid spawn or progression destination')
   const open = new Set(tiles.filter((tile) => !tile.blocksMovement).map(cellId))
   const reachable = distancesFrom(open, cellId(spawn))
   const reservedIds = reservations.map(cellId)
-  return open.has(cellId(spawn)) && reachable.has(cellId(exit)) && reachable.size === open.size
-    && reservations.every((cell) => validCell(cell) && reachable.has(cellId(cell)))
-    && !reservedIds.includes(cellId(spawn)) && !reservedIds.includes(cellId(exit))
-    && new Set(reservedIds).size === reservedIds.length
+  if (!validCell(spawn) || !open.has(cellId(spawn))) issues.push('Spawn is not walkable')
+  if (neighborIds(cellId(spawn)).filter((id) => open.has(id)).length < 2) issues.push('Fewer than two safe spawn exits')
+  if (!reachable.has(cellId(exit))) issues.push('Objective unreachable')
+  if (reachable.size !== open.size) issues.push('Disconnected playable terrain')
+  if (!reservations.every((cell) => validCell(cell) && reachable.has(cellId(cell)))
+    || reservedIds.includes(cellId(spawn)) || reservedIds.includes(cellId(exit))
+    || new Set(reservedIds).size !== reservedIds.length) issues.push('Invalid reserved placement')
+  if (tiles.some((tile) => blockingProp(tile.prop) !== tile.blocksMovement || tile.blocksSight !== (tile.prop === 'wall')
+    || (tile.perchHeight !== undefined && (tile.prop !== 'block' || tile.perchHeight <= 0 || tile.perchHeight > 0.5)))) issues.push('Logical/rendered obstacle mismatch')
+  return issues
 }
+export const validateDungeon = (dungeon: Dungeon) => dungeonIssues(dungeon).length === 0
 
-export function generateDungeon(seed: string, requestedStyle?: LayoutStyle): Dungeon {
+function buildDungeon(seed: string, requestedStyle?: LayoutStyle): Dungeon {
   const random = seededRandom(seed)
   const integer = (limit: number) => Math.floor(random() * limit)
   const choose = <T,>(items: T[]) => items[integer(items.length)]
@@ -165,12 +177,16 @@ export function generateDungeon(seed: string, requestedStyle?: LayoutStyle): Dun
   }))
   open = repairConnectivity(open)
   const farthest = (start: number) => [...distancesFrom(open, start)].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0]
-  const spawnId = farthest(choose([...open]))
+  // Farthest endpoints are usually leaves. Select a junction with two existing exits instead.
+  const originDistances = distancesFrom(open, choose([...open]))
+  const spawnId = [...open].filter((id) => neighborIds(id).filter((next) => open.has(next)).length >= 2)
+    .sort((a, b) => originDistances.get(b)! - originDistances.get(a)! || a - b)[0]
   const exitId = farthest(spawnId)
   const candidates = shuffled([...open].filter((id) => id !== spawnId && id !== exitId))
   const fromSpawn = distancesFrom(open, spawnId)
   const alternate = [...candidates].sort((a, b) => fromSpawn.get(b)! - fromSpawn.get(a)!)[0]
-  const reserved = [alternate, ...candidates.filter((id) => id !== alternate).slice(0, 3)]
+  const enemy = candidates.find((id) => id !== alternate && fromSpawn.get(id)! >= 3)!
+  const reserved = [alternate, enemy, ...candidates.filter((id) => id !== alternate && id !== enemy).slice(0, 2)]
   const kinds = ['alternate-exit', 'enemy', 'trap', 'treasure'] as const
   const protectedCells = new Set([spawnId, exitId, ...reserved])
   const obstacles: PropKind[] = ['wall', 'wall', 'wall', 'block', 'rock', 'tree']
@@ -184,7 +200,62 @@ export function generateDungeon(seed: string, requestedStyle?: LayoutStyle): Dun
     seed, style, tiles, spawn: cellFromId(spawnId), exit: cellFromId(exitId),
     reservations: reserved.map((id, index) => ({ ...cellFromId(id), kind: kinds[index] })),
   }
-  // Repair happens before props/reservations; reject corrupted output rather than ship an invalid floor.
-  if (!validateDungeon(dungeon)) throw new Error(`Dungeon validation failed for seed ${seed}`)
   return dungeon
 }
+
+// Deterministic, bounded recovery is also usable by diagnostics/regression scenarios.
+export function repairDungeon(input: Dungeon): Dungeon {
+  const spawn = validCell(input.spawn) ? input.spawn : cellFromId(27)
+  const open = repairConnectivity(new Set(input.tiles.filter((tile) => validCell(tile) && !tile.blocksMovement).map(cellId)))
+  open.add(cellId(spawn))
+  if (validCell(input.exit) && cellId(input.exit) !== cellId(spawn)) open.add(cellId(input.exit))
+  for (const id of neighborIds(cellId(spawn))) {
+    if (neighborIds(cellId(spawn)).filter((next) => open.has(next)).length >= 2) break
+    open.add(id)
+  }
+  const connected = repairConnectivity(open)
+  const reachable = distancesFrom(connected, cellId(spawn))
+  const exit = validCell(input.exit) && connected.has(cellId(input.exit)) && cellId(input.exit) !== cellId(spawn) ? input.exit
+    : cellFromId([...reachable].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0])
+  const used = new Set([cellId(spawn), cellId(exit)])
+  const reservations = input.reservations.flatMap((cell) => {
+    const id = validCell(cell) && connected.has(cellId(cell)) && !used.has(cellId(cell)) ? cellId(cell)
+      : [...connected].find((next) => !used.has(next))
+    if (id === undefined) return []
+    used.add(id); return [{ ...cellFromId(id), kind: cell.kind }]
+  })
+  const tiles = Array.from({ length: 64 }, (_, id): DungeonTile => {
+    const original = input.tiles.find((tile) => validCell(tile) && cellId(tile) === id)
+    const blocksMovement = !connected.has(id)
+    const prop = blocksMovement ? blockingProp(original?.prop) ? original!.prop : 'wall'
+      : used.has(id) ? undefined : original?.prop === 'crystal' ? 'crystal' : undefined
+    return { ...cellFromId(id), blocksMovement, blocksSight: prop === 'wall', prop, rotation: original?.rotation ?? 0,
+      ...(prop === 'block' ? { perchHeight: 0.475 } : {}) }
+  })
+  return { ...input, tiles, spawn, exit, reservations }
+}
+
+export function fallbackDungeon(seed: string, style: LayoutStyle = 'courtyard'): Dungeon {
+  return { seed, style, spawn: cellFromId(18), exit: cellFromId(54),
+    reservations: [20, 36, 42, 50].map((id, i) => ({ ...cellFromId(id), kind: (['alternate-exit', 'enemy', 'trap', 'treasure'] as const)[i] })),
+    tiles: Array.from({ length: 64 }, (_, id) => { const cell = cellFromId(id), blocked = cell.column === 0 || cell.row === 0 || cell.column === 7 || cell.row === 7
+      return { ...cell, blocksMovement: blocked, blocksSight: blocked, prop: blocked ? 'wall' : undefined, rotation: 0 }
+    }) }
+}
+
+export function generateDungeon(seed: string, requestedStyle?: LayoutStyle): Dungeon {
+  const failures: string[] = []
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const sourceSeed = attempt ? `${seed}:layout-attempt:${attempt}` : seed
+    try {
+      const candidate = { ...buildDungeon(sourceSeed, requestedStyle), seed }
+      const issues = dungeonIssues(candidate)
+      const repaired = issues.length > 0 ? repairDungeon(candidate) : candidate
+      if (validateDungeon(repaired)) return { ...repaired, generation: { attempt, sourceSeed, repaired: issues.length > 0, fallback: false, issues: [...failures, ...issues] } }
+      failures.push(...issues, ...dungeonIssues(repaired))
+    } catch (error) { failures.push(error instanceof Error ? error.message : 'Generation failed') }
+  }
+  return { ...fallbackDungeon(seed, requestedStyle), generation: { attempt: 3, sourceSeed: `${seed}:fallback`, repaired: false, fallback: true, issues: failures } }
+}
+
+export const floorSeed = (masterSeed: string, floor: number) => floor <= 1 ? masterSeed : `${masterSeed}:floor:${floor}:layout`

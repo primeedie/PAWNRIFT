@@ -121,13 +121,13 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .combat-number.blocked { color: #d2d7ca; font-size: 0.65rem; }
 @keyframes combat-rise { 0% { opacity: 0; transform: translateY(5px); } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
 .scene-screen { --hand-height: 330px; grid-template-rows: auto minmax(0, 1fr) auto var(--hand-height); }
-.card-hand { --card-width: clamp(144px, 10vw, 156px); position: absolute; inset: auto 0 12px; z-index: 25; min-width: 0; pointer-events: none; background: transparent; border: 0; padding: 0; }
+.card-hand { --card-width: clamp(156px, 11vw, 168px); position: absolute; inset: auto 0 12px; z-index: 25; min-width: 0; pointer-events: none; background: transparent; border: 0; padding: 0; }
 .hand-meta { display: flex; flex-direction: column; align-items: center; gap: 5px; width: fit-content; max-width: calc(100% - 24px); margin: 0 auto; font-size: 0.75rem; color: var(--ui-secondary); pointer-events: auto; }
 .hand-meta strong { color: var(--ui-energy); }
 .hand-resources { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 6px 10px; border-radius: 6px; background: #19232ef0; box-shadow: 0 2px 9px #080e1a40; }
 .hand-resources > span { white-space: nowrap; }
 .hand-cards { display: flex; gap: 10px; width: max-content; max-width: calc(100% - 24px); margin: 0 auto; padding: 20px 10px 10px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #687785 transparent; pointer-events: auto; }
-.hand-card { --card-accent: var(--ui-attack); position: relative; flex: 0 0 var(--card-width); width: var(--card-width); aspect-ratio: 9 / 16; display: grid; grid-template-rows: auto 40px auto 1fr auto; gap: 6px; min-width: 0; padding: 10px; text-align: left; color: var(--ui-text); background: var(--ui-panel); border: 1px solid #697682; border-top: 3px solid var(--card-accent); border-radius: 8px; box-shadow: 0 5px 12px #080e1a66; transform-origin: center bottom; transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
+.hand-card { --card-accent: var(--ui-attack); position: relative; flex: 0 0 var(--card-width); width: var(--card-width); aspect-ratio: 3 / 4; display: grid; grid-template-rows: auto 32px auto auto auto; gap: 4px; min-width: 0; padding: 8px; text-align: left; color: var(--ui-text); background: var(--ui-panel); border: 1px solid #697682; border-top: 3px solid var(--card-accent); border-radius: 8px; box-shadow: 0 5px 12px #080e1a66; transform-origin: center bottom; transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
 .hand-card[data-category="defense"] { --card-accent: var(--ui-defense); }
 .hand-card[data-category="mobility"] { --card-accent: var(--ui-mobility); }
 .hand-card[data-category="utility"] { --card-accent: var(--ui-utility); }
@@ -249,7 +249,7 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 .scene-header, .scene-footer { z-index: 30; }
 .dungeon-dev-tools { z-index: 40; }
 
-.card-illustration { display: block; width: 40px; height: 40px; margin: auto; color: var(--card-accent); }
+.card-illustration { display: block; width: 32px; height: 32px; margin: auto; color: var(--card-accent); }
 .card-art-frame { fill: #14202c; stroke: currentColor; stroke-width: 1; opacity: 0.45; }
 .card-description strong, .card-description .keyword { font-weight: 700; }
 .hand-cards:focus-visible { outline: 2px solid var(--ui-mobility); outline-offset: -2px; border-radius: 8px; }
@@ -271,3 +271,38 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
 @media (prefers-reduced-motion: reduce) {
   .hand-card { transition: none; transform: none !important; }
 }
+
+/* Stage 7A.3: one measured playfield row; no second subtraction of HUD height. */
+.scene-screen { --board-full-bleed: 0; --hand-height: 270px; }
+.scene-viewport { position: relative; inset: auto; grid-row: 2; }
+.scene-header { grid-row: 1; align-items: flex-start; padding-top: 16px; }
+.scene-header > div:first-child { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 20px; flex: 1; min-width: 0; }
+.scene-header h1 { font-size: clamp(1.1rem, 1.7vw, 1.5rem); }
+.scene-header .level-label { grid-column: 1; }
+.scene-header .transformation-hud { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; max-width: none; }
+.scene-screen:focus { outline: none; }
+.playtest-contents { display: grid; gap: 10px; padding-top: 10px; }
+.playtest-contents > details { border-top: 1px solid #65727b; padding-top: 8px; }
+.playtest-contents details summary { position: static; background: none; }
+.playtest-contents button, .playtest-contents select, .playtest-contents input { font: inherit; color: var(--ui-text); background: var(--ui-panel); border: 1px solid #718088; border-radius: 3px; padding: 7px; min-width: 0; max-width: 100%; }
+.playtest-contents button:disabled { color: var(--ui-disabled); border-style: dashed; cursor: default; }
+.playtest-contents dl { margin: 10px 0; }
+.diagnostic-values dt { font-weight: bold; color: var(--ui-secondary); margin-top: 8px; }
+.diagnostic-values dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.map-diagnostics label { display: flex; gap: 8px; align-items: center; }
+.help-dialog { width: min(570px, calc(100vw - 32px)); max-height: calc(100svh - 40px); overflow-y: auto; padding: 20px; color: var(--ui-text); background: var(--ui-background); border: 1px solid var(--ui-secondary); border-radius: 8px; }
+.help-dialog::backdrop { background: #090f1cbb; }
+.help-dialog header { position: sticky; top: -20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--ui-background); padding: 8px 0; }
+.help-dialog h2 { font-size: 1.1rem; margin: 0; }
+.help-dialog label { display: grid; gap: 8px; margin: 16px 0; }
+.help-dialog button, .help-dialog select { font: inherit; padding: 8px; background: var(--ui-panel); border: 1px solid var(--ui-secondary); color: var(--ui-text); border-radius: 4px; }
+.help-dialog dt { color: var(--ui-energy); font-weight: bold; margin: 18px 0 6px; }
+.help-dialog dd { margin: 0; font: 1rem/1.65 system-ui, sans-serif; text-align: justify; text-align-last: left; hyphens: auto; }
+.hud-panel p { text-align: justify; text-align-last: left; }
+@media (max-width: 750px) {
+  .scene-header > div:first-child { display: block; }
+  .scene-header .transformation-hud { margin-top: 8px; }
+}
+
+.dungeon-dev-tools { font-size: 0.8125rem; }
+.hud-panel p, .playtest-contents p { font: 0.875rem/1.55 system-ui, sans-serif; }

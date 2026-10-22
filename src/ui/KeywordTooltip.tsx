@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { glossary, type Keyword } from '../data/glossary'
 import { tooltipPosition } from './tooltipLayout'
 import { createHoverScheduler, keywordEvents, outsideTooltip, tooltipKeyboard } from './tooltipEvents'
+import { HelpDialog } from './HelpDialog'
+import { closeHudPanels } from './hudInteraction'
 
 type Topic = Keyword | 'guide'
 type ActiveTooltip = { topic: Topic; trigger: HTMLButtonElement; id: string; extra?: string; pinned: boolean }
@@ -69,7 +71,7 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
     }
   }, [active])
   useEffect(() => {
-    if (!active) return
+    if (!active || active.topic === 'guide') return
     const outside = (event: PointerEvent) => {
       if (!outsideTooltip(event.target, active.trigger, panel.current)) return
       event.preventDefault()
@@ -94,14 +96,12 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
   }, [active])
   return <TooltipContext.Provider value={{ active, open, leave, keep, hover: (entry) => { clearTimeout(timer.current); scheduler.current?.queue(entry) } }}>
     {children}
-    {active && createPortal(<div ref={panel} id={active.id} role="tooltip" tabIndex={0}
-      className={`keyword-tooltip ${active.topic === 'guide' ? 'tooltip-guide' : ''}`} style={position} onPointerEnter={keep} onPointerLeave={leave}
+    {active && (active.topic === 'guide' ? createPortal(<HelpDialog close={close} />, document.body) : createPortal(<div ref={panel} id={active.id} role="tooltip" tabIndex={0}
+      className="keyword-tooltip" style={position} onPointerEnter={keep} onPointerLeave={leave}
       onFocus={keep} onBlur={leave} onClick={(event) => event.stopPropagation()}>
-      {active.topic === 'guide' ? <><strong>Mechanics guide</strong><dl>{Object.entries(glossary).map(([key, entry]) =>
-        <div key={key}><dt>{entry.label}</dt><dd>{entry.explanation}</dd></div>)}</dl></>
-        : <><strong>{glossary[active.topic].label}</strong><p>{active.extra ?? glossary[active.topic].summary}</p></>}
+      <strong>{glossary[active.topic].label}</strong><p>{active.extra ?? glossary[active.topic].summary}</p>
       <small>Escape or click outside to close</small>
-    </div>, document.body)}
+    </div>, document.body))}
   </TooltipContext.Provider>
 }
 
@@ -114,7 +114,8 @@ export function KeywordTooltip({ topic, children, extra, className = '' }: {
   return <button type="button" className={`keyword ${className}`} data-keyword={topic}
     aria-label={topic === 'guide' ? 'Open card guide' : `Explain ${glossary[topic].label}${extra ? `. ${extra}` : ''}`}
     aria-describedby={api?.active?.id === id ? id : undefined}
-    {...keywordEvents(show, () => api?.leave(), (trigger) => api?.hover({ topic, trigger, id, extra }))}>
+    {...(topic === 'guide' ? { onClick: (event: React.MouseEvent<HTMLButtonElement>) => { event.stopPropagation(); closeHudPanels(); show(event.currentTarget, true) } }
+      : keywordEvents(show, () => api?.leave(), (trigger) => api?.hover({ topic, trigger, id, extra })))}>
     {children ?? (topic === 'guide' ? '? Help' : glossary[topic].label)}
   </button>
 }

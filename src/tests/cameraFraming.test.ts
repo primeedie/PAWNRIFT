@@ -37,11 +37,11 @@ describe('responsive floor framing', () => {
       }
     }
   }, 20000)
-  it('targets a 28% closer desktop view while capping at the full-content fit', () => {
+  it('fills the available world rectangle instead of applying the old conservative zoom cap', () => {
     const dungeon = generateDungeon('dungeon-in-a-box')
     for (const view of views.slice(0, 3)) {
       const result = boardFraming(view.width, view.height, dungeon.tiles, view.hud)
-      expect(result.zoom / result.previousZoom).toBeCloseTo(1.28)
+      expect(result.zoom / result.previousZoom).toBeGreaterThan(1.28)
     }
   })
   it('handles irregular/missing platforms and keeps world/grid coordinates unchanged', () => {
@@ -55,28 +55,22 @@ describe('responsive floor framing', () => {
     expect(boardFraming(800, 500, sparse).zoom).toBeGreaterThan(0)
     expect(cellFromId(63)).toEqual({ column: 7, row: 7 })
   })
-  it('keeps projected content away from the desktop HUD corner regions', () => {
-    for (const style of layoutStyles) for (let seed = 0; seed < 10; seed++) {
-      const tiles = generateDungeon(`hud-${seed}`, style).tiles
-      for (const view of views.slice(0, 3)) {
-        const f = boardFraming(view.width, view.height, tiles, view.hud)
-        const camera = new OrthographicCamera(-view.width / 2, view.width / 2, view.height / 2, -view.height / 2, 0.1, 100)
-        const [x, y, z] = f.target
-        camera.position.set(x + 12, y + 12, z + 12); camera.lookAt(x, y, z)
-        camera.zoom = f.zoom; camera.updateProjectionMatrix(); camera.updateMatrixWorld()
-        const regions = [
-          [20, 16, 300, 100], [view.width - 290, 16, view.width - 20, 100],
-          [20, view.height - 160, 395, view.height - 16],
-          [view.width - 390, view.height - 90, view.width - 20, view.height - 16],
-        ]
-        for (let i = 0; i < f.points.length; i += 8) {
-          const pixels = f.points.slice(i, i + 8).map((point) => {
-            const p = new Vector3(...point).project(camera)
-            return [(p.x + 1) * view.width / 2, (1 - p.y) * view.height / 2]
-          })
-          const left = Math.min(...pixels.map((p) => p[0])), right = Math.max(...pixels.map((p) => p[0]))
-          const top = Math.min(...pixels.map((p) => p[1])), bottom = Math.max(...pixels.map((p) => p[1]))
-          for (const [rx1, ry1, rx2, ry2] of regions) expect(right < rx1 || left > rx2 || bottom < ry1 || top > ry2).toBe(true)
+  it('keeps the complete world within the measured header/hand/sidebar clearance at desktop sizes and browser zooms', () => {
+    for (const [screenWidth, screenHeight] of [[1366,768],[1440,900],[1920,1080],[2560,1440]]) for (const browserScale of [0.8, 1, 1.25]) {
+      const width = screenWidth / browserScale, height = screenHeight / browserScale
+      const header = 100, hand = 260, canvasHeight = height - header - hand
+      for (const sidebar of [0, 340]) {
+        const canvasWidth = width - sidebar
+        const f = boardFraming(canvasWidth, canvasHeight, generateDungeon('usable-world').tiles)
+        const camera = new OrthographicCamera(-canvasWidth/2,canvasWidth/2,canvasHeight/2,-canvasHeight/2,0.1,100)
+        const [x,y,z] = f.target
+        camera.position.set(x+12,y+12,z+12); camera.lookAt(x,y,z); camera.zoom=f.zoom
+        camera.updateProjectionMatrix();camera.updateMatrixWorld()
+        for (const point of f.points) {
+          const p = new Vector3(...point).project(camera)
+          const px=(p.x+1)*canvasWidth/2, py=header+(1-p.y)*canvasHeight/2
+          expect(px).toBeGreaterThan(0);expect(px).toBeLessThan(width-sidebar)
+          expect(py).toBeGreaterThan(header);expect(py).toBeLessThan(height-hand)
         }
       }
     }

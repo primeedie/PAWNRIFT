@@ -47,7 +47,7 @@ export function CombatHUD() {
         <button disabled={locked || attackTargets(state).length === 0} onClick={() => state.tryAttack()} title="Attack an adjacent enemy (E)"><kbd>E</kbd><span>– Attack</span></button>
         <button disabled={locked} onClick={() => state.submitAction({ kind: 'defend' })} title="Guard and counter this turn (Q)"><kbd>Q</kbd><span>– Defend</span></button>
         <button disabled={locked} onClick={() => state.submitAction({ kind: 'wait' })} title="Wait one turn (Space or period)"><kbd>Space</kbd><span>– Wait</span></button>
-        {state.status === 'victory' && <button onClick={() => state.loadDungeon(state.dungeon.seed, state.dungeon.style)}>Restart floor</button>}
+        {state.status === 'victory' && <button onClick={() => state.regenerateFloor()}>Restart floor</button>}
       </div>
       <p className="combat-feedback" role="status" aria-live="polite" key={`${state.actionId}:${state.phase}`}>
         {state.status === 'defeat' ? 'Defeated' : state.status === 'victory' ? 'Floor cleared' : feedback}

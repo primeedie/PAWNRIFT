@@ -8,6 +8,8 @@ import { usePawnStore } from '../game/state/pawnStore'
 import { KeywordTooltip } from './KeywordTooltip'
 import { MovementGuide } from './MovementGuide'
 import { combatBalance } from '../data/combatBalance'
+import { closeHudPanels } from './hudInteraction'
+import { PLAYTEST_TOOLS_ENABLED } from '../game/logic/playtesting'
 
 export function TransformationHUD() {
   const state = usePawnStore(), forms = state.transformations, form = currentForm(forms)
@@ -30,15 +32,20 @@ export function TransformationHUD() {
     const tools = document.querySelector<HTMLDetailsElement>('#dungeon-tools')
     if (tools) {
       tools.open = true
+      const section = tools.querySelector<HTMLDetailsElement>('#transformation-testing')
+      if (section) section.open = true
       tools.scrollTop = 0
       tools.querySelector('summary')?.focus()
     }
   }
   return <section className="transformation-hud" aria-label="Transformations" data-tooltip-avoid onKeyDown={(event) => {
-    event.stopPropagation()
+    if (event.currentTarget.querySelector('details[open]')) {
+      event.stopPropagation()
+      if (/^(w|a|s|d|arrowup|arrowdown|arrowleft|arrowright)$/i.test(event.key)) state.recordInputBlocked()
+    }
     if (event.key === 'Escape') {
       event.currentTarget.querySelectorAll('details[open]').forEach((element) => { (element as HTMLDetailsElement).open = false })
-      setCandidate(undefined); state.selectCard(undefined)
+      setCandidate(undefined); state.selectCard(undefined); closeHudPanels()
     }
   }}>
     <div className="form-summary">
@@ -53,7 +60,7 @@ export function TransformationHUD() {
         <summary>Forms <strong>{forms.inventory.length}/2</strong></summary>
         <div className="form-picker-panel hud-panel" data-tooltip-avoid>
           <strong>Carried transformations</strong> <KeywordTooltip topic="transformation" className="info-trigger">ⓘ</KeywordTooltip>
-          {!forms.inventory.length && <p>No transformations carried. Use <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button> to grant one on this prototype.</p>}
+          {!forms.inventory.length && <p>No transformations carried.{PLAYTEST_TOOLS_ENABLED && <> Use <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button> to grant one on this prototype.</>}</p>}
           {forms.inventory.map((entry) => <div className="form-slot" key={entry.form}>
             <strong>{formSymbols[entry.form]} {formNames[entry.form]}</strong>
             <KeywordTooltip topic="charges"><strong>{entry.charges}/5</strong> charges</KeywordTooltip>
@@ -88,13 +95,13 @@ export function TransformationHUD() {
           <button onClick={(event) => closePanel(event.currentTarget)}>Cancel</button>
         </div>
       </details>}
-      <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button>
+      {PLAYTEST_TOOLS_ENABLED && <button type="button" onClick={openTesting} aria-controls="dungeon-tools">Test forms</button>}
     </div>
     <div className="form-ability">
       <span aria-hidden="true" className="ability-icon">{ability.icon}</span><strong>{ability.name}</strong>
       <strong className="ability-status">{status}</strong>
       <KeywordTooltip topic="ability" extra={signatureHelp} className="info-trigger">ⓘ</KeywordTooltip>
-      <button disabled={locked || !!unavailable} onClick={state.selectAbility}>{state.selectedAbility ? 'Targeting' : 'Use'}</button>
+      <button disabled={locked || !!unavailable} onClick={() => { closeHudPanels(); state.selectAbility() }}>{state.selectedAbility ? 'Targeting' : 'Use'}</button>
       {state.selectedAbility && <>
         {form === 'knight' ? <span>{state.abilityDestination ? 'Choose a highlighted foe' : 'Choose an L-landing'}</span>
           : <button disabled={locked} onClick={() => state.tryAbility()}>Confirm use</button>}

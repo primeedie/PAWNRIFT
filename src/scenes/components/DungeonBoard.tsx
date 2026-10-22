@@ -12,6 +12,7 @@ import { cardOptions } from '../../game/logic/cardRules'
 import { movementPreviews } from '../../game/logic/formCombat'
 import { vaultDestinations } from '../../game/logic/signatures'
 import { elevationAt } from '../../game/logic/perching'
+import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
 
 export function DungeonBoard() {
   const state = usePawnStore()
@@ -32,6 +33,8 @@ export function DungeonBoard() {
           <group key={id} position={gridToWorld(tile.column, tile.row)} onClick={(event) => {
             if (!canInteract) return
             event.stopPropagation()
+            if (gameplayBlocked()) { state.recordInputBlocked(); return }
+            restoreGameFocus()
             if (state.selectedCardId) state.playSelectedCard({ kind: 'tile', cell: tile })
             else if (state.selectedAbility) state.selectAbilityDestination(tile)
             else tryMove(tile)

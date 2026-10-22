@@ -1,4 +1,5 @@
 import { useLayoutEffect, type RefObject } from 'react'
+import { restoreAfterPanelClose, restoreGameFocus } from './hudInteraction'
 
 export function useHudLayout(screen: RefObject<HTMLElement | null>, enabled: boolean) {
   useLayoutEffect(() => {
@@ -14,6 +15,11 @@ export function useHudLayout(screen: RefObject<HTMLElement | null>, enabled: boo
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(header); observer.observe(footer); observer.observe(hand)
-    return () => observer.disconnect()
+    const toggle = (event: Event) => {
+      if (event.target instanceof HTMLDetailsElement && event.target.name === 'hud-panels')
+        restoreAfterPanelClose(event.target, document.activeElement, restoreGameFocus)
+    }
+    root.addEventListener('toggle', toggle, true)
+    return () => { observer.disconnect(); root.removeEventListener('toggle', toggle, true) }
   }, [screen, enabled])
 }

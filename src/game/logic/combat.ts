@@ -77,7 +77,7 @@ export type GameState = FogState & {
 export function createGame(dungeon: Dungeon): GameState {
   const open = new Set(dungeon.tiles.filter((tile) => !tile.blocksMovement).map(cellId))
   const reachable = distancesFrom(open, cellId(dungeon.spawn))
-  const candidates = dungeon.tiles.filter((tile) => reachable.has(cellId(tile)) && !tile.prop
+  const candidates = dungeon.tiles.filter((tile) => (reachable.get(cellId(tile)) ?? 0) >= 2 && !tile.prop
     && !sameCell(tile, dungeon.spawn) && !sameCell(tile, dungeon.exit))
   const reservation = dungeon.reservations.find((cell) => cell.kind === 'enemy')
   const spawn = candidates.find((cell) => reservation && sameCell(cell, reservation))

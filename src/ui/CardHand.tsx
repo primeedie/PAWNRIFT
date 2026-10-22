@@ -6,6 +6,7 @@ import { usePawnStore } from '../game/state/pawnStore'
 import { EnergyIcon } from './EnergyIcon'
 import { KeywordTooltip } from './KeywordTooltip'
 import { CardIllustration } from './CardIllustration'
+import { restoreGameFocus } from './hudInteraction'
 
 function emphasizeValues(text: string) {
   return text.split(/(\b\d+\b)/g).map((part, index) => /^\d+$/.test(part) ? <strong key={index}>{part}</strong> : part)
@@ -25,7 +26,7 @@ export function CardHand() {
   return <>
     <section className="card-hand" aria-label="Card hand" onKeyDown={(event) => {
       event.stopPropagation()
-      if (event.key === 'Escape') state.selectCard(undefined)
+      if (event.key === 'Escape') { state.selectCard(undefined); restoreGameFocus() }
     }}>
       <div className="hand-meta" data-tooltip-avoid>
         <div className="hand-resources">
@@ -39,7 +40,7 @@ export function CardHand() {
           {selected && <>
             <span>{options?.reason ?? (options?.targets[0]?.kind === 'self' ? cards[selected.definitionId].name : 'Choose a highlighted target')}</span>
             {options?.targets[0]?.kind === 'self' && <button disabled={locked} onClick={() => state.playSelectedCard({ kind: 'self' })}>Play</button>}
-            <button onClick={() => state.selectCard(undefined)} title="Cancel targeting (Escape)">Cancel</button>
+            <button onClick={() => { state.selectCard(undefined); restoreGameFocus() }} title="Cancel targeting (Escape)">Cancel</button>
           </>}
         </div>
       </div>

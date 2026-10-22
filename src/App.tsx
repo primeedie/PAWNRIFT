@@ -9,6 +9,7 @@ import { CardHand } from './ui/CardHand'
 import { TransformationHUD } from './ui/TransformationHUD'
 import { TooltipProvider } from './ui/KeywordTooltip'
 import { useHudLayout } from './ui/useHudLayout'
+import { PLAYTEST_TOOLS_ENABLED } from './game/logic/playtesting'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
 const DungeonTools = lazy(() => import('./ui/DungeonTools'))
@@ -25,7 +26,7 @@ export function App() {
   if (screen === 'title') return <TitleScreen />
 
   return (
-    <TooltipProvider><main ref={root} className="scene-screen">
+    <TooltipProvider><main ref={root} className="scene-screen" tabIndex={-1}>
       <header className="scene-header">
         <div><h1>PAWNRIFT</h1><p className="level-label">LEVEL {floor}</p><TransformationHUD /></div>
         <CombatStatus />
@@ -34,7 +35,7 @@ export function App() {
         <Suspense fallback={<p className="scene-loading" role="status">Opening the box…</p>}>
           <FoundationScene />
         </Suspense>
-        <Suspense fallback={null}><DungeonTools /></Suspense>
+        {PLAYTEST_TOOLS_ENABLED && <Suspense fallback={null}><DungeonTools /></Suspense>}
       </div>
       <footer className="scene-footer" data-tooltip-avoid>
         <div className="game-actions">
