@@ -1,6 +1,6 @@
 import { useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Group, Vector3 } from 'three'
+import { Group, Quaternion, Vector3 } from 'three'
 import type { Attunement } from '../../data/forms'
 import type { CharacterForm } from '../../data/characterDesigns'
 import { usePawnStore } from '../../game/state/pawnStore'
@@ -12,9 +12,9 @@ import { geometry, effects, palettes } from './CharacterParts'
 
 // Bounded presentation of already-resolved events. No timers, RNG, callbacks to
 // the resolver, or independent damage. World endpoints do not rotate with the rig.
-export function WeaponStrike({form,variant,rightHand,castOrigin,reducedMotion}:{form:CharacterForm;variant:Attunement;rightHand:RefObject<Group|null>;castOrigin:RefObject<Group|null>;reducedMotion:boolean}) {
+export function WeaponStrike({form,variant,rightHand,castOrigin,wingOrigin,reducedMotion}:{form:CharacterForm;variant:Attunement;rightHand:RefObject<Group|null>;castOrigin:RefObject<Group|null>;wingOrigin?:RefObject<Group|null>;reducedMotion:boolean}) {
   const state=usePawnStore(),bolt=useRef<Group>(null),impact=useRef<Group>(null),trail=useRef<Group>(null)
-  const scratch=useRef({key:'',elapsed:0,captured:false,origin:new Vector3(),target:new Vector3(),point:new Vector3(),direction:new Vector3(),up:new Vector3(0,1,0)})
+  const scratch=useRef({key:'',elapsed:0,captured:false,origin:new Vector3(),target:new Vector3(),point:new Vector3(),direction:new Vector3(),up:new Vector3(0,1,0),rotation:new Quaternion(),parent:new Quaternion()})
   useFrame((_,delta)=>{
     if(!bolt.current||!impact.current||!trail.current) return
     bolt.current.visible=impact.current.visible=trail.current.visible=false
@@ -52,10 +52,13 @@ export function WeaponStrike({form,variant,rightHand,castOrigin,reducedMotion}:{
       impact.current.scale.setScalar(0.7+(s.elapsed-impactMs)/110*0.5)
       impact.current.visible=true
     }
-    if(form==='queen'&&variant==='light'&&s.elapsed>impactMs-45&&s.elapsed<impactMs+75&&rightHand.current){
-      rightHand.current.updateWorldMatrix(true,false)
-      s.point.set(0,0.18,0);rightHand.current.localToWorld(s.point);parent.worldToLocal(s.point)
-      trail.current.position.copy(s.point);trail.current.visible=true
+    if((form==='queen'||form==='rook'||form==='king')&&s.elapsed>impactMs-65&&s.elapsed<impactMs+110){
+      const socket=form==='queen'&&variant==='dark'?wingOrigin?.current:rightHand.current
+      if(socket){socket.updateWorldMatrix(true,false)
+        s.point.set(0,form==='queen'?(variant==='dark'?0:0.26):form==='rook'?0.50:0.62,0);socket.localToWorld(s.point);parent.worldToLocal(s.point)
+        trail.current.position.copy(s.point);socket.getWorldQuaternion(s.rotation);parent.getWorldQuaternion(s.parent).invert()
+        trail.current.quaternion.copy(s.parent.multiply(s.rotation));trail.current.visible=true
+      }
     }
   },-0.4)
   return <group name="resolved-weapon-contact" dispose={null}>
@@ -65,6 +68,6 @@ export function WeaponStrike({form,variant,rightHand,castOrigin,reducedMotion}:{
     <group ref={impact} visible={false} name="weapon-impact">
       <mesh geometry={form==='queen'&&variant==='dark'?geometry.octahedron:geometry.ring} material={effects[variant]} rotation={[-Math.PI/2,0,0]} scale={form==='queen'&&variant==='dark'?0.16:form==='rook'||form==='king'?1.5:0.85}/>
     </group>
-    <group ref={trail} visible={false} name="claw-cutting-trail"><mesh geometry={geometry.arc} material={effects[variant]} rotation={[0,0,-0.3]}/></group>
+    <group ref={trail} visible={false} name="weapon-edge-trail"><mesh geometry={geometry.arc} material={effects[variant]} rotation={[0,0,-0.3]}/></group>
   </group>
 }

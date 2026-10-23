@@ -1,6 +1,16 @@
 # PAWNRIFT implementation status
 
-Current scope: Stage 8. No Stage 9 work.
+Current scope: Stage 8.1 presentation overhaul on Stage 8. No Stage 9 work.
+
+## Stage 8.1 presentation
+
+- Shared custom shaped torso/limb/hood/boot/cloth surfaces retain articulated shoulders/elbows/wrists, hips/knees and weapon sockets. Pawn uses uncorrupted charcoal/ivory ronin clothing, mask and left-hip katana. Knight/Bishop/Rook/King gain shaped armor/headwear/garments and material depth; Hallowed/Void construction stays distinct.
+- Dark Queen replaces hand knuckles with an asymmetrical folding blade mantle, two connected fixed-length links per shoulder and blade-edge attack/signature motion; Light Queen retains dual claws. No combat range/damage/status change. King remains Training-only.
+- Selective 1.35px inverted hulls, differentiated Standard materials, warm key/cool rim/fill and one soft contact-shadow map. Fogged terrain excludes hull shaders from color cloning and passes its fade to them; hidden entities remain hidden.
+- Longer weapon-specific cinematic clips, heavy contact dwell, socket-led trails and directional recoil. Pawn visibly draws/seats before the presentation Sharpener follow-up. Resolved damage/metadata and world phases remain authoritative.
+- Separate public Training model viewer has orbit/zoom, form/attunement, playback/pause/scrub, reduced motion, lighting/outline comparison and runtime viewer counters. No viewer action touches run/training rules or saves.
+- Blender was unavailable. Geometry is editable code-authored mesh profiles, not exported GLB/skinned assets. No browser is connected, so rendered quality, clipping, GPU shader output and FPS remain pending manual inspection. These changes are not a claim of finished character artwork. See `ART_DIRECTION.md`.
+- Stage 8.1 verification: **382 tests across 29 files pass**, including nine new shaped-mesh/material/equipment/wing/contact/presentation tests. TypeScript and production build pass; existing bundle-size and test-only Three CommonJS warnings remain nonfatal. All Stage 8 deterministic progression/treasure/save/practice regressions pass.
 
 ## Implemented
 

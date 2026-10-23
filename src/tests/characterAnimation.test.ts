@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { OrthographicCamera, Vector3 } from 'three'
-import { characterDesigns, characterTiming } from '../data/characterDesigns'
+import { characterDesigns, characterTiming, roninFollowupMs } from '../data/characterDesigns'
 import { passiveBalance } from '../data/passives'
 import { animationCue, characterPose, presentationDuration, type AnimationCue } from '../utils/characterAnimation'
 import { createTraining, trainingArena } from '../game/logic/training'
@@ -25,8 +25,8 @@ describe('presentation is deterministic and independent of combat', () => {
     expect(characterPose('pawn', 'idle', 0).draw).toBe(0)
   })
   it('resheathes before the Sharpener impact and keeps model timings inside one player presentation', () => {
-    expect(characterTiming.pawn.basic).toBe(passiveBalance.iaiMs)
-    expect(characterPose('pawn', 'attack', passiveBalance.followupMs / characterTiming.pawn.basic).draw).toBe(0)
+    expect(characterTiming.pawn.basic).toBeGreaterThanOrEqual(700)
+    expect(characterPose('pawn', 'attack', roninFollowupMs / characterTiming.pawn.basic).draw).toBe(0)
     const game = createTraining(1).game, first = resolveTurn(game, { kind: 'attack', targetId: 'dummy-1' })!
     const second = resolveTurn(first, { kind: 'attack', targetId: 'dummy-1' })!
     expect(second.turn).toBe(2)

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ArtControls } from './ArtControls'
 import { testForms, formNames, type Attunement } from '../data/forms'
 import { usePawnStore } from '../game/state/pawnStore'
 import { defaultDummy, trainingDummyPositions, trainingScenarios, type DummySpec, type TrainingCommand, type TrainingForm } from '../game/logic/training'
@@ -99,6 +100,6 @@ export default function TrainingTools() {
       <button onClick={() => apply({ kind: 'reset' })}>Reset training comparison</button>
     </fieldset></details>
     <details><summary>Automatic parry events</summary><p>Samurai Mode: {state.signatures.samuraiCharges}/3 · cooldown {state.signatures.cooldowns.pawn}</p><ol className="analysis-log">{training.analysis.history.filter(event=>event.parryKind==='samurai').slice(-9).map(event=><li key={event.id}>Auto-parry · {event.attackKind} · {event.parriesLeft}/3 remaining</li>)}</ol></details>
-    <CombatAnalysis /><p role="status">{message}</p>
+    <ArtControls viewer/><CombatAnalysis /><p role="status">{message}</p>
   </div></details>
 }

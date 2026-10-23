@@ -16,14 +16,17 @@ import { TutorialPanel } from './ui/TutorialPanel'
 import { tutorialStep } from './game/logic/tutorial'
 import { RunHUD, FloorInteractions, BiomeIntroduction } from './ui/RunHUD'
 import { TreasureReward } from './ui/TreasureReward'
+import { useArtSettings } from './ui/artSettingsStore'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
 const TrainingTools = lazy(() => import('./ui/TrainingTools'))
 const DungeonTools = lazy(() => import('./ui/DungeonTools'))
+const ModelViewer = lazy(() => import('./ui/ModelViewer'))
 
 export function App() {
   useTurnPlayback()
   const screen = useAppStore((state) => state.screen)
+  const viewerOpen=useArtSettings(state=>state.viewerOpen)
   useInspection(screen === 'scene')
   const showTitle = useAppStore((state) => state.showTitle)
   const defeated = usePawnStore((state) => state.status === 'defeat' || state.hp <= 0)
@@ -86,6 +89,7 @@ export function App() {
       <InspectionPanels />
       <BiomeIntroduction/>
       <TreasureReward/>
+      {viewerOpen&&<Suspense fallback={null}><ModelViewer/></Suspense>}
       {tutorial&&<TutorialPanel/>}
       {defeated && !tutorial && <GameOver />}
     </main></TooltipProvider>

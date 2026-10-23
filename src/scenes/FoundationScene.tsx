@@ -7,12 +7,14 @@ import { CombatFeedback } from './components/CombatFeedback'
 import { BOARD_TARGET, CAMERA_POSITION } from '../utils/boardFraming'
 import { DiagnosticOverlay } from './components/DiagnosticOverlay'
 import { useInspectionStore } from '../ui/inspectionStore'
+import { DioramaLighting } from './components/DioramaLighting'
 
 export default function FoundationScene() {
   return (
     <div className="scene-canvas" role="group" aria-label="PAWNRIFT dungeon. Move with WASD or arrow keys. Click an enemy to inspect. E attacks; Choose target aims a mouse attack. Q defends, Space waits.">
       <Canvas
         gl={{ alpha: true }}
+        shadows="soft"
         orthographic
         camera={{ position: CAMERA_POSITION, near: 0.1, far: 100 }}
         onCreated={({ camera }) => camera.lookAt(...BOARD_TARGET)}
@@ -21,9 +23,7 @@ export default function FoundationScene() {
         dpr={[1, 2]}
         fallback={<p className="scene-loading" role="status">This preview needs a browser with WebGL support.</p>}
       >
-        <ambientLight intensity={0.8} />
-        <hemisphereLight args={['#e2e5db', '#667583', 0.55]} />
-        <directionalLight position={[-3, 8, 5]} color="#eee7dc" intensity={0.95} />
+        <DioramaLighting/>
         <IsometricCamera />
         <DungeonBoard />
         <DiagnosticOverlay />

@@ -6,6 +6,8 @@ Stage 7C adds optional interactive onboarding using the real gameplay rules. Sta
 
 **Stack:** TypeScript, React/Vite, Three.js/React Three Fiber, Drei, Zustand, and Vitest. No backend or runtime services.
 
+Stage 8.1 adds shaped articulated character surfaces, selective thin ink, material/key/rim/shadow depth, a charcoal/ivory ronin Pawn and back-mounted Dark Queen blade wings. Combat values/ranges and Stage 8 progression remain intact. **Playtest Tools → Enter Training Grounds → Art comparison → Open character model viewer** provides separate orbit/zoom, playback/pause/scrubbing and ink/light comparison. King remains Training-only. See [Art direction](docs/ART_DIRECTION.md) for the editable mesh workflow and visual QA limitations.
+
 ## Local setup
 
 Use Node 24 (`.node-version`) and npm. A modern WebGL2-capable browser is required.

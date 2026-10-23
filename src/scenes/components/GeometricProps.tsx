@@ -1,5 +1,6 @@
 import { BoxGeometry, ConeGeometry, DodecahedronGeometry, MeshLambertMaterial } from 'three'
 import type { PropKind } from '../../data/demoBoard'
+import { InkedMesh } from './InkedMesh'
 
 const cube = new BoxGeometry(1, 1, 1)
 const rock = new DodecahedronGeometry(1, 0)
@@ -25,13 +26,13 @@ export function Tree() {
 }
 
 export function Rock() {
-  return <mesh geometry={rock} material={materials.stone} position={[0, 0.17, 0]} scale={[0.32, 0.24, 0.27]} rotation={[0.2, 0.5, 0.1]} />
+  return <group position={[0,0.17,0]} scale={[0.32,0.24,0.27]} rotation={[0.2,0.5,0.1]}><InkedMesh geometry={rock} material={materials.stone}/></group>
 }
 
 export function Wall() {
   return (
     <group>
-      <mesh geometry={cube} material={materials.stone} position={[0, 0.48, 0]} scale={[0.87, 0.96, 0.26]} />
+      <group position={[0,0.48,0]} scale={[0.87,0.96,0.26]}><InkedMesh geometry={cube} material={materials.stone}/></group>
       <mesh geometry={cube} material={materials.moss} position={[0, 0.98, 0]} scale={[0.89, 0.06, 0.29]} />
     </group>
   )
@@ -40,7 +41,7 @@ export function Wall() {
 export function Block() {
   return (
     <group>
-      <mesh geometry={cube} material={materials.stone} position={[0, 0.22, 0]} scale={[0.55, 0.44, 0.55]} />
+      <group position={[0,0.22,0]} scale={[0.55,0.44,0.55]}><InkedMesh geometry={cube} material={materials.stone}/></group>
       <mesh geometry={cube} material={materials.moss} position={[0, 0.45, 0]} scale={[0.57, 0.05, 0.57]} />
     </group>
   )

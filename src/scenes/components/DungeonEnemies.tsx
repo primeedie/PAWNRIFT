@@ -18,7 +18,7 @@ import { visibleEnemies } from '../../game/logic/combatIndicators'
 import { currentForm } from '../../game/logic/transformations'
 import { gridDistance } from '../../game/logic/enemyAI'
 import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
-import { impactPresentationDelay } from '../../utils/combatPresentation'
+import { impactPresentationDelay, targetReaction } from '../../utils/combatPresentation'
 
 function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhase; interpolate: boolean }) {
   const state = usePawnStore()
@@ -49,6 +49,11 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
       return event.targetId===enemy.id&&(event.kind==='hit'||event.kind==='counter')&&event.seen
         &&flash.current.elapsed>=delay&&flash.current.elapsed<delay+100
     })
+    const hit=phase!=='ready'?state.events.find(event=>event.targetId===enemy.id&&event.kind==='hit'&&event.seen):undefined
+    const reaction=hit?targetReaction(flash.current.elapsed,impactPresentationDelay(hit,state.events,currentForm(state.transformations))):0
+    const [px,,pz]=gridToWorld(state.cell.column,state.cell.row),dx=b[0]-px,dz=b[2]-pz,length=Math.hypot(dx,dz)||1
+    root.current.rotation.set(dz/length*reaction*0.09,0,-dx/length*reaction*0.09)
+    root.current.position.x+=dx/length*reaction*0.035;root.current.position.z+=dz/length*reaction*0.035
     material.current?.color.set(flashing ? impactColor : enemy.kind === 'dummy' ? '#97745d' : '#626d78')
   })
   return (

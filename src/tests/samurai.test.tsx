@@ -129,14 +129,14 @@ function parts(node:ReactNode):{shape?:string;size?:readonly number[];name?:stri
   return Children.toArray(node).flatMap(child=>isValidElement<{children?:ReactNode;shape?:string;size?:readonly number[];name?:string}>(child)?[child.props,...parts(child.props.children)]:[])
 }
 describe('attunement equipment and presentation',()=>{
-  it('authors separate lance/spear and claw/knuckle meshes without shared long claws or a spear fairing',()=>{
+  it('authors separate lance/spear and keeps Light claws while Dark Queen has no hand weapon',()=>{
     const lance=parts(Weapon({form:'knight',variant:'light'})),spear=parts(Weapon({form:'knight',variant:'dark'}))
     expect(lance.some(p=>p.shape==='cone'&&p.size?.[0]===0.15)).toBe(true)
     expect(spear.some(p=>p.shape==='leaf')).toBe(true);expect(spear.some(p=>p.shape==='cone'&&(p.size?.[0]??0)>0.05)).toBe(false)
     const claws=parts(Weapon({form:'queen',variant:'light'})),knuckles=parts(Weapon({form:'queen',variant:'dark'}))
     expect(claws.filter(p=>p.shape==='claw')).toHaveLength(6)
     expect(knuckles.some(p=>p.shape==='claw')).toBe(false)
-    expect(knuckles.some(p=>p.size?.[0]===0.26)).toBe(true)
+    expect(knuckles).toEqual([])
     expect(renderToStaticMarkup(<AttackGuide form="bishop"/>)).toContain('straight 2, diagonal 1')
   })
   it('uses distinct attunement stances/strokes while keeping all grips reachable and limb lengths fixed',()=>{

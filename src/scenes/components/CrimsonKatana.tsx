@@ -2,6 +2,7 @@ import { useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { CharacterPose } from '../../utils/characterAnimation'
 import { katanaMount, katanaRest, katanaScale, sheathPosition } from '../../utils/characterRig'
+import { InkHull, InkedMesh } from './InkedMesh'
 import { BoxGeometry, DoubleSide, ExtrudeGeometry, Group, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Quaternion, RingGeometry, Shape, Vector3 } from 'three'
 
 const katanaBox = new BoxGeometry(1, 1, 1)
@@ -49,10 +50,12 @@ function bladeBand(start: number, end: number) {
 const spine = bladeBand(0, 0.28)
 const blade = bladeBand(0.28, 0.84)
 const edge = bladeBand(0.84, 1)
+const silhouette=bladeBand(0,1)
 
 export function CrimsonBlade() {
   return (
       <group name="crimson-blade" dispose={null}>
+        <InkHull geometry={silhouette}/>
         <mesh geometry={spine} material={katanaMaterials.spine} />
         <mesh geometry={blade} material={katanaMaterials.blade} />
         <mesh geometry={edge} material={katanaMaterials.edge} />
@@ -98,7 +101,7 @@ sheathGeometry.translate(0, 0, -0.0375)
 export function KatanaSheath() {
   return (
     <group name="katana-sheath">
-      <mesh geometry={sheathGeometry} material={katanaMaterials.sheath} />
+      <InkedMesh geometry={sheathGeometry} material={katanaMaterials.sheath}/>
       <mesh position={[0.002, 0.17, 0]} geometry={katanaBox} scale={[0.144, 0.055, 0.086]} material={katanaMaterials.mouth} />
       <mesh position={[0.004, 0.22, 0]} geometry={katanaBox} scale={[0.137, 0.025, 0.08]} material={katanaMaterials.crimsonFitting} />
       <mesh position={[0.058, 1.025, 0]} rotation={[0, 0, -0.35]} geometry={katanaBox} scale={[0.083, 0.085, 0.084]} material={katanaMaterials.tip} />

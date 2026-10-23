@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Color, Group, Mesh, MeshLambertMaterial, MeshBasicMaterial } from 'three'
+import { Color, Group, Mesh, MeshLambertMaterial, MeshBasicMaterial, MeshStandardMaterial, type Material } from 'three'
 import type { Visibility } from '../../game/logic/visibility'
 
-type FogMaterial = MeshLambertMaterial | MeshBasicMaterial
+type FogMaterial = MeshLambertMaterial | MeshBasicMaterial | MeshStandardMaterial
 type FadingMaterial = { material: FogMaterial; base: Color }
 const mist = new Color('#354153')
 
@@ -19,7 +19,8 @@ export function FoggedTerrain({ visibility, children }: { visibility: Visibility
     root.current!.traverse((object) => {
       if (!(object instanceof Mesh)) return
       const original = object.material
-      const copy = (source: FogMaterial) => {
+      const copy = (source: Material) => {
+        if(!(source instanceof MeshLambertMaterial||source instanceof MeshBasicMaterial||source instanceof MeshStandardMaterial))return source
         const material = source.clone()
         materials.current.push({ material, base: source.color.clone() })
         return material
@@ -39,6 +40,7 @@ export function FoggedTerrain({ visibility, children }: { visibility: Visibility
     const target = visibility === 'visible' ? 1 : visibility === 'remembered' ? 0.38 : 0
     amount.current += (target - amount.current) * (1 - Math.exp(-10 * delta))
     const value = amount.current
+    root.current!.userData.fogAmount=value
     root.current!.visible = value > 0.002
     for (const { material, base } of materials.current) {
       const transparent = value < 0.379

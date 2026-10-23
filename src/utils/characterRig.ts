@@ -70,9 +70,9 @@ export function handPose(form:CharacterForm,p:CharacterPose,side:-1|1,variant:At
     position=[side*0.24-side*p.swing*0.20,0.67+p.swing*0.04,0.18+Math.max(0,p.swing)*0.22]
     rotation=aimGrip(position,[1.25,side*(0.3-p.swing*0.8),side*-0.22],p,Math.max(0,p.swing))
     if(variant==='dark'){
-      const punch=Math.max(0,p.swing)*(side===1?1:0.45)
-      position=[side*(0.22-punch*0.06),0.71-punch*0.025,0.14+punch*0.27]
-      rotation=aimGrip(position,[1.0,side*0.16,side*-0.12],p,punch)
+      // Empty hands conduct the back-mounted mantle; no invisible knuckle punches.
+      position=[side*(0.22+Math.max(0,p.swing)*0.06),0.62+p.cast*0.12,0.12+Math.max(0,p.swing)*0.08]
+      rotation=[0.35,side*0.25,side*-0.18]
     }
     return {position,rotation}
   }

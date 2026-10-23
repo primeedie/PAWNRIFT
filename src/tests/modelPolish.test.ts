@@ -1,6 +1,6 @@
 import { describe,expect,it } from 'vitest'
 import { Euler,Group,Vector3 } from 'three'
-import { characterDesigns,characterTiming } from '../data/characterDesigns'
+import { characterDesigns,characterTiming,roninFollowupMs } from '../data/characterDesigns'
 import { passiveBalance } from '../data/passives'
 import { characterPose } from '../utils/characterAnimation'
 import { armLengths,createArmSolver,handPose,katanaMount,katanaRest,katanaScale,sheathPosition } from '../utils/characterRig'
@@ -106,7 +106,7 @@ describe('articulated weapon presentation',()=>{
     expect(relative.clone().cross(axis).length()).toBeLessThan(1e-6)
     expect(0.65).toBeGreaterThan((1.05-0.14)*katanaScale)
     expect(characterPose('pawn','attack',0.32).bladeTurn).toBe(1)
-    expect(characterPose('pawn','attack',passiveBalance.followupMs/characterTiming.pawn.basic).draw).toBe(0)
+    expect(characterPose('pawn','attack',roninFollowupMs/characterTiming.pawn.basic).draw).toBe(0)
     expect(characterPose('pawn','attack',1).draw).toBe(0)
   })
   it('provides distinct weapon-driven poses at configured impact, returning grips to their stance',()=>{

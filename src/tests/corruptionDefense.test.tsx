@@ -139,8 +139,8 @@ describe('Hallowed/Void equipment and geometry',()=>{
   it.each(['knight','bishop','rook','queen','king'] as const)('%s uses structurally different headwear, armor and stance',form=>{
     const light=parts(CorruptionArmor({form,variant:'light'})),dark=parts(CorruptionArmor({form,variant:'dark'}))
     expect(light.map(p=>[p.shape,p.size,p.at])).not.toEqual(dark.map(p=>[p.shape,p.size,p.at]))
-    expect(dark.some(p=>p.shape==='tornCloth')).toBe(true)
-    expect(Head({form,variant:'light',mane:createRef<Group>()}).type).not.toBe(Head({form,variant:'dark',mane:createRef<Group>()}).type)
+    expect(dark.some(p=>p.shape==='raggedCloth')).toBe(true)
+    expect(parts(Head({form,variant:'light',mane:createRef<Group>()}))).not.toEqual(parts(Head({form,variant:'dark',mane:createRef<Group>()})))
     expect(characterPose(form,'idle',0,false,'light')).not.toEqual(characterPose(form,'idle',0,false,'dark'))
   })
   it('keeps Pawn uncorrupted and uses real void sword cutouts instead of recoloring a filled blade',()=>{

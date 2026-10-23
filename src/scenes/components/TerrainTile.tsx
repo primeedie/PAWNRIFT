@@ -16,7 +16,7 @@ export function TerrainTile({ column, row,biome }: { column: number; row: number
   return (
     <group name={`tile-${column}-${row}`} dispose={null}>
       <mesh geometry={cube} material={theme?.side??teal} position={[0, -0.405, 0]} scale={[0.985, 0.63, 0.985]} />
-      <mesh geometry={cube} material={(theme?.top??grass)[checkerIndex(column, row)]} position={[0, -0.045, 0]} scale={[0.985, 0.09, 0.985]} />
+      <mesh receiveShadow geometry={cube} material={(theme?.top??grass)[checkerIndex(column, row)]} position={[0, -0.045, 0]} scale={[0.985, 0.09, 0.985]} />
     </group>
   )
 }

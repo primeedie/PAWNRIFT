@@ -81,13 +81,6 @@ export function Weapon({form,variant,side=1,motion,castOrigin}:{form:CharacterFo
     {[-0.13,-0.08,-0.03,0.02,0.07].map(y=><Part key={y} variant={variant} size={[0.065,0.018,0.065]} at={[0,y,0]} tone="accent" />)}
     <Part variant={variant} shape="octahedron" size={[0.085,0.08,0.075]} at={[0,-0.20,0]} tone="metal" />
   </group>
-  if(dark) return <group name="dark-dual-knuckle-weapon">
-    <Part variant={variant} shape="cylinder" size={[0.11,0.13,0.10]} at={[0,0.025,0]} tone="armor"/>
-    <Part variant={variant} size={[0.26,0.095,0.18]} at={[0,0.135,0]} tone="metal"/>
-    <Part variant={variant} size={[0.19,0.055,0.19]} at={[0,0.095,0]} tone="armor"/>
-    {[-1,0,1].map(i=><Part key={i} variant={variant} shape="octahedron" size={[0.045,0.045,0.055]} at={[i*0.075,0.205,0]} tone="ivory"/>)}
-    {[-1,1].map(i=><Part key={i} variant={variant} size={[0.045,0.17,0.17]} at={[i*0.105,0.04,0]} tone="accent"/>)}
-  </group>
   return <group name="light-dual-claws">
     <Part variant={variant} shape="plate" size={[0.17,0.18,0.07]} at={[0,0,0.045]} tone="armor"/>
     <Part variant={variant} size={[0.19,0.07,0.12]} at={[0,0.08,0]} tone="metal"/>

@@ -7,6 +7,7 @@ import { CombatTools } from './CombatTools'
 import { MapDiagnostics } from './MapDiagnostics'
 import { closeHudPanels } from './hudInteraction'
 import { ProgressionTools } from './ProgressionTools'
+import { ArtControls } from './ArtControls'
 
 export default function DungeonTools() {
   const state = usePawnStore(), { dungeon, revealAll } = state
@@ -46,6 +47,7 @@ export default function DungeonTools() {
         </form>
       </details>
       <MapDiagnostics />
+      <details><summary>Art comparison</summary><ArtControls/><p>Enter Training Grounds for the isolated character model viewer.</p></details>
       <p role="status">{message}</p>
     </div>
   </details>
