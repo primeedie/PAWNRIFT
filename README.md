@@ -89,7 +89,9 @@ git commit -m "Describe your changes"
 git push
 ```
 
-The user authorized ongoing GitHub pushes and Cloudflare deployments for completed, verified updates. This does not authorize beginning additional gameplay stages.
+The user authorized automatic GitHub pushes and Cloudflare deployments after every completed, verified requested edit, without repeat confirmation. This does not authorize beginning additional gameplay stages.
+
+For work across two devices, fetch and inspect the current branch and working tree before editing. Fast-forward a clean checkout to the latest remote branch; preserve uncommitted changes and reconcile concurrent edits before pushing. Never force-push or overwrite work from the other device. Both devices should follow the shared instructions in `AGENTS.md`. Report any authentication, tooling or deployment blocker explicitly; a successful push alone does not confirm a live deployment.
 
 After pushing, verify the current build at `https://pawnrift.pages.dev`. If Git integration has not published it, deploy the tested `dist` directly to the existing `pawnrift` project on branch `main`, then verify live assets. Do not leave publication pending on Git integration.
 
