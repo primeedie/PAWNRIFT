@@ -2,6 +2,7 @@ import { BOARD_SIZE } from '../../utils/grid'
 import { seededRandom } from '../../utils/seededRandom'
 import type { PropKind } from '../../data/demoBoard'
 import type { Cell } from './movement'
+import type { BiomeMotif } from '../../data/biomes'
 
 export const layoutStyles = ['maze', 'courtyard', 'corridors', 'branching'] as const
 // Initial density tuning, not quotas: preserve connectivity and obstacle spacing first.
@@ -12,7 +13,7 @@ export type DungeonTile = Cell & {
   blocksSight: boolean
   prop?: PropKind
   // Small corner scenery leaves the tile center clear and never participates in collision/sight.
-  decoration?: { kind: 'tree' | 'rock' | 'crystal'; corner: number }
+  decoration?: { kind: 'tree' | 'rock' | 'crystal'; corner: number;motif?:BiomeMotif }
   // Explicitly designated flat low block top; rounded rocks/trees/walls are not perches.
   perchHeight?: number
   rotation: number
@@ -99,8 +100,9 @@ export function dungeonIssues(dungeon: Dungeon): string[] {
 }
 export const validateDungeon = (dungeon: Dungeon) => dungeonIssues(dungeon).length === 0
 
-function buildDungeon(seed: string, requestedStyle?: LayoutStyle): Dungeon {
-  const random = seededRandom(seed)
+export type GenerationStreams={obstacles:string;environment:string}
+function buildDungeon(seed: string, requestedStyle?: LayoutStyle,streams?:GenerationStreams): Dungeon {
+  let random = seededRandom(seed)
   const integer = (limit: number) => Math.floor(random() * limit)
   const choose = <T,>(items: T[]) => items[integer(items.length)]
   const shuffled = <T,>(items: T[]) => {
@@ -183,6 +185,7 @@ function buildDungeon(seed: string, requestedStyle?: LayoutStyle): Dungeon {
   // Retain a few useful, separated blockers from the already connected layout. Opening
   // the rest creates combat space/diagonals without severing any established Pawn route.
   // Perimeter geometry is structural and excluded from the candidate-floor density.
+  if(streams)random=seededRandom(streams.obstacles)
   const interior = Array.from({ length: 64 }, (_, id) => id).filter((id) => {
     const { column, row } = cellFromId(id)
     return column > 0 && column < 7 && row > 0 && row < 7
@@ -213,14 +216,16 @@ function buildDungeon(seed: string, requestedStyle?: LayoutStyle): Dungeon {
   const kinds = ['alternate-exit', 'enemy', 'trap', 'treasure'] as const
   const protectedCells = new Set([spawnId, exitId, ...reserved])
   const obstacles: PropKind[] = ['wall', 'block', 'rock', 'tree']
+  const environment=streams?seededRandom(streams.environment):undefined
+  const props=streams?seededRandom(`${streams.obstacles}:models`):undefined
   const tiles: DungeonTile[] = Array.from({ length: 64 }, (_, id) => {
     const blocked = !open.has(id)
-    const prop = blocked ? choose(obstacles) : undefined
-    const decoration = !blocked && !protectedCells.has(id) && random() < dungeonTuning.decorationChance
-      ? { kind: choose<'tree' | 'rock' | 'crystal'>(['tree', 'rock', 'crystal']), corner: integer(4) } : undefined
+    const prop = blocked ? props?obstacles[Math.floor(props()*obstacles.length)]:choose(obstacles) : undefined
+    const decoration = !blocked && !protectedCells.has(id) && (environment??random)() < dungeonTuning.decorationChance
+      ? { kind: environment?(['tree','rock','crystal'] as const)[Math.floor(environment()*3)]:choose<'tree' | 'rock' | 'crystal'>(['tree', 'rock', 'crystal']), corner: environment?Math.floor(environment()*4):integer(4) } : undefined
     return { ...cellFromId(id), blocksMovement: blocked, blocksSight: prop === 'wall', prop,
       ...(decoration ? { decoration } : {}),
-      ...(prop === 'block' ? { perchHeight: 0.475 } : {}), rotation: integer(4) * Math.PI / 2 }
+      ...(prop === 'block' ? { perchHeight: 0.475 } : {}), rotation: (environment?Math.floor(environment()*4):integer(4)) * Math.PI / 2 }
   })
   const dungeon: Dungeon = {
     seed, style, tiles, spawn: cellFromId(spawnId), exit: cellFromId(exitId),
@@ -270,12 +275,12 @@ export function fallbackDungeon(seed: string, style: LayoutStyle = 'courtyard'):
     }) }
 }
 
-export function generateDungeon(seed: string, requestedStyle?: LayoutStyle): Dungeon {
+export function generateDungeon(seed: string, requestedStyle?: LayoutStyle,streams?:GenerationStreams): Dungeon {
   const failures: string[] = []
   for (let attempt = 0; attempt < 3; attempt++) {
     const sourceSeed = attempt ? `${seed}:layout-attempt:${attempt}` : seed
     try {
-      const candidate = { ...buildDungeon(sourceSeed, requestedStyle), seed }
+      const candidate = { ...buildDungeon(sourceSeed, requestedStyle,streams?{obstacles:`${streams.obstacles}:${attempt}`,environment:`${streams.environment}:${attempt}`}:undefined), seed }
       const issues = dungeonIssues(candidate)
       const repaired = issues.length > 0 ? repairDungeon(candidate) : candidate
       if (validateDungeon(repaired)) return { ...repaired, generation: { attempt, sourceSeed, repaired: issues.length > 0, fallback: false, issues: [...failures, ...issues] } }

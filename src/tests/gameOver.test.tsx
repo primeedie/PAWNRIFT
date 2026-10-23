@@ -54,7 +54,8 @@ describe('terminal defeat and clean restart', () => {
     const fresh = usePawnStore.getState()
     expect(fresh.dungeon.seed).not.toBe(old.dungeon.seed)
     expect(fresh).toMatchObject({ hp: combatBalance.playerMaxHp, status: 'playing', turn: 0,
-      guarding: false, phase: 'ready', isMoving: false, runActive: true, occupied: [], events: [], revealAll: false })
+      guarding: false, phase: 'ready', isMoving: false, runActive: true, events: [], revealAll: false })
+    expect(fresh.occupied).toEqual(fresh.floorContent?.chests.map(chest=>chest.cell)??[])
     expect(fresh.lastAction).toBeUndefined()
     expect(fresh.cell).toEqual(fresh.dungeon.spawn)
     expect(fresh.from).toEqual(fresh.cell)

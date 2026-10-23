@@ -13,11 +13,13 @@ export const useAppStore = create<AppState>((set) => ({
   screen: 'title',
   play: () => {
     const run = usePawnStore.getState()
+    if(run.saveError)return
     if (!run.hasStartedRun || run.status === 'defeat' || run.status === 'victory' || run.hp <= 0) run.restartRun()
     else run.resumeRun()
     set({ screen: 'scene' })
   },
   newRun: () => {
+    if(usePawnStore.getState().saveError)return
     usePawnStore.getState().restartRun()
     set({ screen: 'scene' })
   },

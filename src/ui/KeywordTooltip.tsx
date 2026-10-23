@@ -74,6 +74,8 @@ export function TooltipProvider({ children, sessionKey }: { children: ReactNode;
   }, [active])
   useEffect(() => {
     if (!active || active.topic === 'guide') return
+    const disconnected = new MutationObserver(() => { if (!active.trigger.isConnected) close() })
+    disconnected.observe(document.body, { childList: true, subtree: true })
     const outside = (event: PointerEvent) => {
       if (!outsideTooltip(event.target, active.trigger, panel.current)) return
       event.preventDefault()
@@ -92,6 +94,7 @@ export function TooltipProvider({ children, sessionKey }: { children: ReactNode;
     window.addEventListener('pointerdown', outside, true)
     window.addEventListener('keydown', keyboard, true)
     return () => {
+      disconnected.disconnect()
       window.removeEventListener('pointerdown', outside, true)
       window.removeEventListener('keydown', keyboard, true)
     }
@@ -103,7 +106,7 @@ export function TooltipProvider({ children, sessionKey }: { children: ReactNode;
       onFocus={keep} onBlur={leave} onClick={(event) => event.stopPropagation()}>
       <strong>{active.title ?? glossary[active.topic].label}</strong><p>{active.extra ?? glossary[active.topic].summary}</p>
       <small>Escape or click outside to close</small>
-    </div>, document.body))}
+    </div>, active.trigger.closest('dialog[open]') ?? document.body))}
   </TooltipContext.Provider>
 }
 

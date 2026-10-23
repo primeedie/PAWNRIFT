@@ -1,4 +1,4 @@
-import { cardBalance, cards } from '../../data/cards'
+import { cardBalance, cardDefinition } from '../../data/cards'
 import type { GameState } from './combat'
 import { cellId } from './dungeon'
 import { hasLineOfSight } from './enemyAI'
@@ -11,7 +11,7 @@ export type CardTarget = { kind: 'self' } | { kind: 'enemy'; enemyId: string } |
 export function cardOptions(state: GameState, instanceId: string): { reason?: string; targets: CardTarget[] } {
   const instance = state.deck.hand.find((entry) => entry.instanceId === instanceId)
   if (!instance) return { reason: 'Card is not in hand', targets: [] }
-  const card = cards[instance.definitionId]
+  const card = cardDefinition(instance)
   if (state.status !== 'playing' || state.hp <= 0) return { reason: 'Run ended', targets: [] }
   if (state.energy < card.cost) return { reason: 'Not enough energy', targets: [] }
   const effect = card.effect

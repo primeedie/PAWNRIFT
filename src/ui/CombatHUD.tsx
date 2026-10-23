@@ -8,6 +8,7 @@ import { blockWindowLabel } from '../game/logic/protection'
 
 function describeEvent(event: CombatEvent) {
   switch (event.kind) {
+    case 'chest':return 'Chest opened'
     case 'hit': return event.actor === 'pawn' ? `${event.effect === 'sharpener' ? 'Sharpener follow-up' : event.effect ?? 'Strike'} · ${event.amount} damage` : event.amount ? `−${event.amount} HP` : 'Guarded'
     case 'transform': return 'Transformation activated'
     case 'revert': return 'Returned to Pawn · recovery begins'
@@ -58,7 +59,7 @@ export function CombatHUD() {
         {inspection.aimingAttack && <button onClick={()=>useInspectionStore.setState({aimingAttack:false})}>Cancel attack</button>}
         <button disabled={locked} onClick={() => state.submitAction({ kind: 'defend' })} title="Guard and counter this turn (Q)"><kbd>Q</kbd><span>– Defend</span></button>
         <button disabled={locked} onClick={() => state.submitAction({ kind: 'wait' })} title="Wait one turn (Space or period)"><kbd>Space</kbd><span>– Wait</span></button>
-        {state.status === 'victory' && <button onClick={() => state.regenerateFloor()}>Restart floor</button>}
+        {state.status === 'victory' && !state.floorContent && <button onClick={() => state.regenerateFloor()}>Restart floor</button>}
         <select className="inspect-foe-select" aria-label="Inspect visible enemy" aria-controls="enemy-information" data-inspection-root value={inspection.enemyId ?? ''}
           disabled={!visibleEnemies(state).length || !!state.selectedCardId || state.selectedAbility || inspection.aimingAttack}
           onChange={event=>{if(inspectedEnemy(usePawnStore.getState(),event.target.value))inspection.toggleEnemy(event.target.value);else inspection.closeEnemy()}}>
@@ -66,7 +67,7 @@ export function CombatHUD() {
         </select>
       </div>
       <p className="combat-feedback" role="status" aria-live="polite" key={`${state.actionId}:${state.phase}`}>
-        {state.status === 'defeat' ? 'Defeated' : state.status === 'victory' ? 'Floor cleared' : inspection.aimingAttack ? 'Choose one highlighted foe · Escape cancels' : feedback}
+        {state.status === 'defeat' ? 'Defeated' : state.progress?.finished?'Development route ended · boss encounters remain unimplemented.':state.status === 'victory' ? 'Floor cleared' : inspection.aimingAttack ? 'Choose one highlighted foe · Escape cancels' : feedback}
       </p>
     </div>
   )

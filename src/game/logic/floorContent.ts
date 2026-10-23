@@ -1,0 +1,92 @@
+import { biomes, floorLocation, treasureBalance, type BiomeId } from '../../data/biomes'
+import { cards, rarities, type CardId, type Rarity } from '../../data/cards'
+import type { Attunement } from '../../data/forms'
+import { seededRandom } from '../../utils/seededRandom'
+import { cellId, cellFromId, distancesFrom, fallbackDungeon, floorSeed, generateDungeon, neighborIds, validateDungeon, type Dungeon, type LayoutStyle } from './dungeon'
+import { sameCell, type Cell } from './movement'
+import type { GameState } from './combat'
+import { hasLineOfSight } from './enemyAI'
+
+export type RouteVote={floor:number;alignment:Attunement}
+export type RunProgress={id:string;mode:'random'|'manual';routes:RouteVote[];cleared:number[];bossSkips:number[];introduced:BiomeId[];finished:boolean;layouts:Record<number,{seed:string;style?:LayoutStyle}>}
+export type RewardCard={definitionId:CardId;rarity:Rarity}
+export type Chest={id:string;cell:Cell;state:'closed'|'opened'|'claimed'|'skipped';offer:RewardCard[]}
+export type FloorContent={id:string;floor:number;biome:BiomeId;exits:{alignment:Attunement;cell:Cell}[];chests:Chest[];
+  boss?:{name:string;identity:typeof biomes[number]['identity'];variant:Attunement;spawn:Cell;status:'unimplemented'}}
+export const seedStream=(master:string,floor:number,system:string)=>`${master}:floor:${floor}:${system}:v1`
+export function alignmentCounts(routes:readonly RouteVote[],floor:number){
+  const base=Math.floor((floor-1)/6)*6
+  const votes=routes.filter(vote=>vote.floor>base&&vote.floor<=base+5)
+  return {light:votes.filter(vote=>vote.alignment==='light').length,dark:votes.filter(vote=>vote.alignment==='dark').length}
+}
+export function bossVariant(routes:readonly RouteVote[],floor:number):Attunement{
+  const counts=alignmentCounts(routes,floor)
+  if(counts.light+counts.dark!==5)throw Error('Boss manifestation requires five route votes')
+  return counts.light>counts.dark?'light':'dark'
+}
+export function treasureOffer(master:string,floor:number,id:string):RewardCard[]{
+  const random=seededRandom(seedStream(master,floor,`reward:${id}`)),pool=Object.keys(cards) as CardId[]
+  const weights=treasureBalance.weights[floorLocation(floor).index]
+  return Array.from({length:3},()=>{
+    let roll=random()*weights.reduce((sum,n)=>sum+n,0),tier=0
+    while(tier<weights.length-1&&(roll-=weights[tier])>=0)tier++
+    return {definitionId:pool.splice(Math.floor(random()*pool.length),1)[0],rarity:rarities[tier]}
+  })
+}
+export function floorContentIssues(dungeon:Dungeon,content:FloorContent,enemyCells:readonly Cell[]=[]){
+  const open=new Set(dungeon.tiles.filter(tile=>!tile.blocksMovement&&!content.chests.some(chest=>sameCell(chest.cell,tile))).map(cellId))
+  const reachable=distancesFrom(open,cellId(dungeon.spawn)),used=new Set([cellId(dungeon.spawn)])
+  const issues:string[]=[]
+  if(!validateDungeon(dungeon))issues.push('Invalid dungeon terrain')
+  for(const cell of [...content.exits.map(exit=>exit.cell),...content.chests.map(chest=>chest.cell),...enemyCells]){
+    const id=cellId(cell)
+    if(used.has(id))issues.push('Overlapping content');used.add(id)
+    if(!dungeon.tiles.some(tile=>sameCell(tile,cell)&&!tile.blocksMovement))issues.push('Content outside walkable terrain')
+  }
+  if(content.exits.some(exit=>!reachable.has(cellId(exit.cell))))issues.push('Exit not Pawn-reachable')
+  if(content.chests.some(chest=>!neighborIds(cellId(chest.cell)).some(id=>reachable.has(id))))issues.push('Chest cannot be approached')
+  if(enemyCells.some(cell=>!reachable.has(cellId(cell))))issues.push('Unreachable enemy')
+  if(!content.boss&&(content.exits.length!==2||new Set(content.exits.map(exit=>exit.alignment)).size!==2))issues.push('Missing route choice')
+  if(content.chests.some(chest=>chest.offer.length!==3||new Set(chest.offer.map(card=>card.definitionId)).size!==3))issues.push('Invalid reward offer')
+  return issues
+}
+export function createCampaignFloor(master:string,floor:number,routes:readonly RouteVote[],style?:LayoutStyle,override?:string,safe=false){
+  if(!Number.isInteger(floor)||floor<1||floor>24)throw Error('Invalid campaign floor')
+  const location=floorLocation(floor),seed=override??floorSeed(master,floor)
+  let dungeon=location.boss||safe?{...fallbackDungeon(seed),reservations:[]}:generateDungeon(seed,style,{obstacles:`${seed}:obstacles`,environment:`${seed}:environment`})
+  const content:FloorContent={id:seedStream(master,floor,'content'),floor,biome:location.biome.id,exits:[],chests:[]}
+  if(location.boss){
+    content.boss={name:location.biome.boss,identity:location.biome.identity,variant:bossVariant(routes,floor),spawn:{column:4,row:3},status:'unimplemented'}
+    return {dungeon,content,enemyCells:[] as Cell[]}
+  }
+  const open=new Set(dungeon.tiles.filter(tile=>!tile.blocksMovement).map(cellId)),spawn=cellId(dungeon.spawn)
+  const distances=distancesFrom(open,spawn),fromExit=distancesFrom(open,cellId(dungeon.exit))
+  const choices=[...open].filter(id=>id!==spawn&&id!==cellId(dungeon.exit)).sort((a,b)=>(distances.get(b)??0)-(distances.get(a)??0)||a-b)
+  const alternate=choices.find(id=>(fromExit.get(id)??0)>=3&&(distances.get(id)??0)>=3)??choices[0]
+  content.exits=[{alignment:'light',cell:{...dungeon.exit}},{alignment:'dark',cell:cellFromId(alternate)}]
+  const exitIds=new Set(content.exits.map(exit=>cellId(exit.cell)))
+  const treasureRandom=seededRandom(seedStream(master,floor,'treasure-placement'))
+  const chestCandidates=[...open].filter(id=>id!==spawn&&!exitIds.has(id)).filter(id=>{
+    const remaining=new Set([...open].filter(other=>other!==id)),reachable=distancesFrom(remaining,spawn)
+    return reachable.size===remaining.size&&[...exitIds].every(exit=>reachable.has(exit))&&neighborIds(id).some(neighbor=>reachable.has(neighbor))
+  }).sort((a,b)=>((distances.get(b)??0)+(fromExit.get(b)??0))-((distances.get(a)??0)+(fromExit.get(a)??0))||a-b)
+  if(chestCandidates.length&&treasureRandom()<treasureBalance.chance){
+    const cell=cellFromId(chestCandidates[Math.floor(treasureRandom()*Math.min(8,chestCandidates.length))])
+    content.chests=[{id:'chest-0',cell,state:'closed',offer:treasureOffer(master,floor,'chest-0')}]
+  }
+  const enemyRandom=seededRandom(seedStream(master,floor,'enemy-placement'))
+  const candidates=[...open].filter(id=>id!==spawn&&!exitIds.has(id)&&!content.chests.some(chest=>cellId(chest.cell)===id)&&(distances.get(id)??0)>=2)
+  const enemyCells=candidates.length?[cellFromId(candidates[Math.floor(enemyRandom()*candidates.length)])]:[]
+  dungeon={...dungeon,tiles:dungeon.tiles.map(tile=>({...tile,
+    decoration:exitIds.has(cellId(tile))||content.chests.some(chest=>sameCell(chest.cell,tile))||enemyCells.some(cell=>sameCell(cell,tile))?undefined
+      :tile.decoration?{...tile.decoration,motif:location.biome.motif}:undefined})),
+    reservations:[{...content.exits[1].cell,kind:'alternate-exit'},...enemyCells.map(cell=>({...cell,kind:'enemy' as const})),...content.chests.map(chest=>({...chest.cell,kind:'treasure' as const}))]}
+  const issues=floorContentIssues(dungeon,content,enemyCells)
+  if(issues.length){if(!safe)return createCampaignFloor(master,floor,routes,style,override,true);throw Error(issues.join('; '))}
+  return {dungeon,content,enemyCells}
+}
+export function canInteract(state:GameState,cell:Cell,standOn=false){
+  return state.status==='playing'&&state.hp>0&&state.visible.has(cellId(cell))&&hasLineOfSight(state.dungeon,state.cell,cell)
+    &&((standOn&&sameCell(state.cell,cell))||Math.abs(state.cell.column-cell.column)+Math.abs(state.cell.row-cell.row)===1)
+}
+export const pendingChest=(state:GameState)=>state.floorContent?.chests.find(chest=>chest.state==='opened')

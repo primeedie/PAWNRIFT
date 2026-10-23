@@ -12,6 +12,10 @@ import { bossForms, type Attunement, type BossForm } from '../../data/forms'
 import { tutorials, tutorialLesson, type LessonId } from '../../data/tutorials'
 import { lessonCompleted, newTutorial, observeTutorial, tutorialExercise, tutorialRejection, tutorialStep, type PracticeForm, type TutorialSession, type TutorialSignal } from '../logic/tutorial'
 import { useTutorialProgress } from './tutorialProgress'
+import { newCampaign, campaignGame, advanceCampaign, enterCampaignFloor, floorToken } from '../logic/run'
+import { bossVariant, floorContentIssues, pendingChest, treasureOffer, type RunProgress } from '../logic/floorContent'
+import { floorLocation, type BiomeId } from '../../data/biomes'
+import { deserializeRun, localRunStorage, readRunSave, runSaveKey, serializeRun } from './runPersistence'
 import { emptyPassives } from '../logic/passives'
 import { emptySignatures, vaultDestinations } from '../logic/signatures'
 import { applyPlaytest, movementRejection, PLAYTEST_TOOLS_ENABLED, type PlaytestAction, type DiagnosticLayer } from '../logic/playtesting'
@@ -19,7 +23,20 @@ import { applyPlaytest, movementRejection, PLAYTEST_TOOLS_ENABLED, type Playtest
 const initialDungeon = generateDungeon(newRunSeed(''))
 
 export type TurnPhase = 'ready' | 'player' | 'enemies'
-type PawnState = GameState & {
+export type PawnState = GameState & {
+  saveError?:string
+  saveNotice?:string
+  restoreRunSave:(raw?:string)=>boolean
+  discardSavedRun:()=>boolean
+  progress:RunProgress|null
+  introBiome?:BiomeId
+  leaveFloor:(token:string,alignment:Attunement)=>boolean
+  skipBoss:(token:string)=>boolean
+  claimTreasure:(token:string,chestId:string,choice:number|null)=>boolean
+  dismissBiomeIntro:()=>void
+  restartSameSeed:()=>void
+  debugProgress:(floor:number,votes?:Attunement[])=>boolean
+  debugChest:()=>boolean
   tutorial: TutorialSession | null
   enterTutorial: (lesson: LessonId, sequence?: boolean) => boolean
   exitTutorial: () => boolean
@@ -68,7 +85,7 @@ type PawnState = GameState & {
   restartRun: () => void
   suspendRun: () => void
   resumeRun: () => void
-  loadDungeon: (seed: string, style?: LayoutStyle) => void
+  loadDungeon: (seed: string, style?: LayoutStyle,mode?:RunProgress['mode']) => void
   toggleReveal: () => void
   tryMove: (destination: Cell) => boolean
   tryAttack: (targetId?: string) => boolean
@@ -84,6 +101,79 @@ const dataSnapshot=(state:PawnState)=>structuredClone(Object.fromEntries(Object.
 function learned(session:TutorialSession|null){if(session&&lessonCompleted(session))useTutorialProgress.getState().complete(session.lesson);return session}
 export const usePawnStore = create<PawnState>((set, get) => ({
   ...createGame(initialDungeon),
+  progress:null,
+  restoreRunSave:raw=>{
+    if(get().training)return false
+    try{
+      const result=raw===undefined?readRunSave():{data:deserializeRun(raw)}
+      if(result.error){set({saveError:result.error});return false}
+      if(!result.data)return false
+      set({...result.data,saveError:undefined,saveNotice:undefined,actionId:get().actionId+1});return true
+    }catch(error){set({saveError:`Run save unavailable: ${error instanceof Error?error.message:'invalid data'}. Original data preserved.`});return false}
+  },
+  discardSavedRun:()=>{
+    if(get().training)return false
+    try{localRunStorage()?.removeItem(runSaveKey);set({saveError:undefined,saveNotice:undefined,hasStartedRun:false,progress:null});return true}
+    catch{set({saveError:'Unable to remove the unreadable save. Browser storage may be blocked.'});return false}
+  },
+  dismissBiomeIntro:()=>set({introBiome:undefined}),
+  leaveFloor:(token,alignment)=>{
+    const state=get()
+    if(state.training||!state.runActive||state.phase!=='ready'||!['light','dark'].includes(alignment))return false
+    const next=advanceCampaign(state,token,alignment)
+    if(!next)return false
+    set({...next,from:'cell' in next?next.cell:state.cell,fromElevation:0,isMoving:false,phase:'ready',actionId:state.actionId+1,
+      revealAll:false,selectedCardId:undefined,selectedAbility:false,abilityDestination:undefined,lastAction:undefined})
+    return true
+  },
+  skipBoss:token=>{
+    const state=get()
+    if(!PLAYTEST_TOOLS_ENABLED||state.training||!state.runActive||state.phase!=='ready'||!state.floorContent?.boss)return false
+    const next=advanceCampaign(state,token,undefined,true)
+    if(!next)return false
+    set({...next,from:'cell' in next?next.cell:state.cell,fromElevation:0,isMoving:false,phase:'ready',actionId:state.actionId+1,
+      revealAll:false,selectedCardId:undefined,selectedAbility:false,abilityDestination:undefined,lastAction:undefined})
+    return true
+  },
+  claimTreasure:(token,chestId,choice)=>{
+    const state=get(),chest=pendingChest(state)
+    if(state.training||!state.runActive||state.phase!=='ready'||state.status!=='playing'||floorToken(state)!==token||!chest||chest.id!==chestId
+      ||(choice!==null&&(!Number.isInteger(choice)||!chest.offer[choice])))return false
+    const reward=choice===null?undefined:chest.offer[choice]
+    set({floorContent:{...state.floorContent!,chests:state.floorContent!.chests.map(candidate=>candidate.id===chestId?{...candidate,state:reward?'claimed':'skipped'}:candidate)},
+      deck:reward?{...state.deck,discard:[...state.deck.discard,{...reward,instanceId:`reward:${state.floorContent!.id}:${chestId}`}]}:state.deck})
+    return true
+  },
+  restartSameSeed:()=>{const state=get();if(!state.training)state.loadDungeon(state.masterSeed,state.progress?.layouts[1]?.style,'manual')},
+  debugProgress:(floor,votes)=>{
+    const state=get()
+    if(!PLAYTEST_TOOLS_ENABLED||state.training||!state.progress||!state.runActive||state.phase!=='ready'||state.hp<=0||!Number.isInteger(floor)||floor<1||floor>24||pendingChest(state))return false
+    if(votes&&(votes.length!==5||votes.some(vote=>!['light','dark'].includes(vote))))return false
+    const base=floorLocation(floor).index*6
+    const routes=Array.from({length:floor-1},(_,index)=>index+1).filter(index=>index%6!==0).map(index=>({floor:index,
+      alignment:votes&&index>base?votes[index-base-1]:state.progress!.routes.find(vote=>vote.floor===index)?.alignment??'light' as Attunement}))
+    const progress={...state.progress,routes,cleared:Array.from({length:floor-1},(_,index)=>index+1),bossSkips:Array.from({length:Math.floor((floor-1)/6)},(_,index)=>(index+1)*6),finished:false}
+    if(floor===state.floorNumber){
+      const boss=state.floorContent?.boss
+      set({progress,playtestMode:true,...(boss?{floorContent:{...state.floorContent!,boss:{...boss,variant:bossVariant(progress.routes,floor)}}}:{})})
+      return true
+    }
+    const next=enterCampaignFloor(state,floor,progress,true)
+    set({...next,from:next.cell,fromElevation:0,isMoving:false,phase:'ready',actionId:state.actionId+1,revealAll:false,
+      selectedCardId:undefined,selectedAbility:false,abilityDestination:undefined,lastAction:undefined})
+    return true
+  },
+  debugChest:()=>{
+    const state=get(),content=state.floorContent
+    if(!PLAYTEST_TOOLS_ENABLED||state.training||!content||content.boss||!state.runActive||state.phase!=='ready'||state.status!=='playing'||pendingChest(state)||content.chests.length>=4)return false
+    for(const tile of state.dungeon.tiles.filter(tile=>state.visible.has(tile.row*8+tile.column)&&!tile.blocksMovement&&Math.abs(tile.column-state.cell.column)+Math.abs(tile.row-state.cell.row)===1)){
+      const chest={id:`test-chest-${content.chests.length}`,cell:{column:tile.column,row:tile.row},state:'closed' as const,offer:treasureOffer(state.masterSeed,state.floorNumber,`test-chest-${content.chests.length}`)}
+      const updated={...content,chests:[...content.chests,chest]}
+      if(floorContentIssues(state.dungeon,updated,state.enemies.filter(enemy=>enemy.hp>0).map(enemy=>enemy.cell)).length||sameCell(tile,state.cell))continue
+      set({floorContent:updated,occupied:[...state.occupied,chest.cell],playtestMode:true});return true
+    }
+    return false
+  },
   tutorial:null,
   requestTutorialExit:requested=>set(state=>({tutorial:state.tutorial?{...state.tutorial,exitRequested:requested}:null})),
   enterTutorial:(lesson,sequence=false)=>{
@@ -196,6 +286,18 @@ export const usePawnStore = create<PawnState>((set, get) => ({
   regenerateFloor: (seed, style) => {
     const state = get()
     if (state.training || !state.runActive || state.phase !== 'ready' || state.hp <= 0) return false
+    if(state.progress){
+      if(pendingChest(state))return false
+      const progress={...state.progress,layouts:{...state.progress.layouts,[state.floorNumber]:{seed:seed??state.dungeon.seed,style:style??state.dungeon.style}}}
+      const fresh=campaignGame(state.masterSeed,state.floorNumber,progress)
+      if(fresh.floorContent)fresh.floorContent={...fresh.floorContent,chests:fresh.floorContent.chests.map(chest=>{
+        const old=state.floorContent?.chests.find(old=>old.id===chest.id);return old?{...chest,state:old.state,offer:old.offer}:chest
+      })}
+      set({...fresh,progress,hp:state.hp,maxHp:state.maxHp,deck:state.deck,energy:state.energy,maxEnergy:state.maxEnergy,focus:state.focus,turn:state.turn,
+        transformations:state.transformations,passives:{...state.passives},signatures:{...emptySignatures(),cooldowns:{...state.signatures.cooldowns},eyeUsed:state.signatures.eyeUsed,samuraiCharges:state.signatures.samuraiCharges},
+        from:fresh.cell,fromElevation:0,isMoving:false,phase:'ready',actionId:state.actionId+1,playtestMode:true,selectedCardId:undefined,selectedAbility:false,abilityDestination:undefined,revealAll:false,lastAction:undefined})
+      return true
+    }
     const dungeon = generateDungeon(seed ?? state.dungeon.seed, style ?? (seed === undefined ? state.dungeon.style : undefined))
     set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck, energy: state.energy, maxEnergy: state.maxEnergy,
       focus: state.focus, turn: state.turn, transformations: state.transformations, passives: { ...state.passives },
@@ -229,6 +331,13 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     if (state.training) return false
     if ((testing && !PLAYTEST_TOOLS_ENABLED) || state.phase !== 'ready' || state.hp <= 0 || (!state.runActive)
       || (state.status !== 'victory' && !testing)) return false
+    if(state.progress){
+      const next=advanceCampaign(state,floorToken(state),'light',testing)
+      if(!next)return false
+      set({...next,from:'cell' in next?next.cell:state.cell,fromElevation:0,isMoving:false,phase:'ready',actionId:state.actionId+1,
+        selectedCardId:undefined,selectedAbility:false,abilityDestination:undefined,revealAll:false,lastAction:undefined})
+      return true
+    }
     const dungeon = generateDungeon(seed ?? floorSeed(state.masterSeed, state.floorNumber + 1))
     set({ ...createGame(dungeon), hp: state.hp, maxHp: state.maxHp, deck: state.deck,
       energy: state.energy, maxEnergy: state.maxEnergy, focus: state.focus, turn: state.turn,
@@ -271,19 +380,20 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     const cardInstanceId = get().selectedCardId
     return cardInstanceId ? get().submitAction({ kind: 'card', cardInstanceId, target }) : false
   },
-  restartRun: () => { const state = get(); if (state.training) state.train({ kind: 'reset' }); else state.loadDungeon(newRunSeed(state.dungeon.seed)) },
+  restartRun: () => { const state = get(); if (state.training) state.train({ kind: 'reset' }); else state.loadDungeon(newRunSeed(state.masterSeed),undefined,'random') },
   suspendRun: () => set((state) => ({ runActive: false, selectedCardId: undefined, selectedAbility: false, abilityDestination: undefined, actionId: state.actionId + 1 })),
   resumeRun: () => set((state) => ({ runActive: true, actionId: state.actionId + 1 })),
-  loadDungeon: (seed, style) => {
+  loadDungeon: (seed, style,mode='manual') => {
     const state = get()
-    if (state.training) return
+    seed=seed.trim()
+    if (state.training||state.saveError||!seed||seed.length>200||/[\u0000-\u001f]/.test(seed)) return
     if (state.status === 'defeat' && !state.deathRetentionDone && retentionChoices(state.transformations).length) return
     const retained = state.status === 'defeat' && !state.deathRetentionDone
       ? retainAfterDeath(state.transformations)! : transformationsForNewRun(state.transformations)
-    const dungeon = generateDungeon(seed, style)
-    set({ ...createGame(dungeon), from: dungeon.spawn, fromElevation: 0, isMoving: false, phase: 'ready',
+    const fresh=newCampaign(seed,newRunSeed(seed),mode,style)
+    set({ ...fresh, from: fresh.cell, fromElevation: 0, isMoving: false, phase: 'ready',
       transformations: transformationsForNewRun(retained), floorNumber: 1, masterSeed: seed, hasStartedRun: true, deathRetentionDone: false, selectedAbility: false, abilityDestination: undefined,
-      playtestMode: state.playtestMode && retained.inventory.length > 0, diagnosticLayers: [], diagnosticsEnabled: false, lastMovementRejection: undefined,
+      playtestMode: state.playtestMode && (retained.inventory.length > 0 || retained.recovery > 0 || Object.keys(retained.reconstruction).length > 0), diagnosticLayers: [], diagnosticsEnabled: false, lastMovementRejection: undefined,
       actionId: get().actionId + 1, revealAll: false, runActive: true, selectedCardId: undefined, lastAction: undefined })
   },
   toggleReveal: () => set((state) => ({ revealAll: !state.revealAll, playtestMode: true })),
@@ -331,3 +441,15 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     else set({ phase: 'ready' })
   },
 }))
+
+// Save only the actual run. Training/tutorial snapshots never replace browser storage.
+const restoredRun=readRunSave()
+if(restoredRun.data)usePawnStore.setState({...restoredRun.data,actionId:1})
+if(restoredRun.error)usePawnStore.setState({saveError:restoredRun.error})
+usePawnStore.subscribe(state=>{
+  const storage=localRunStorage()
+  if(state.training||state.tutorial||!state.progress||!state.hasStartedRun||state.saveError)return
+  if(!storage){if(typeof window!=='undefined'&&!state.saveNotice)usePawnStore.setState({saveNotice:'Run could not be saved in this browser. Keep this tab open to continue.'});return}
+  try{storage.setItem(runSaveKey,serializeRun(state))}
+  catch{if(!state.saveNotice)usePawnStore.setState({saveNotice:'Run could not be saved in this browser. Keep this tab open to continue.'})}
+})

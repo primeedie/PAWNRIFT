@@ -20,3 +20,23 @@ export const cards = {
 } as const satisfies Record<string, CardDefinition>
 export type CardId = keyof typeof cards
 export const starterCards: readonly CardId[] = ['cut', 'cut', 'cut', 'ward', 'ward', 'riposte', 'riposte', 'slip', 'slip', 'focus', 'crimson', 'mend']
+export const coreStarterCards:readonly CardId[]=['cut','cut','ward','ward','riposte','slip','focus','mend']
+export const starterPools:readonly (readonly CardId[])[]=[['cut','crimson'],['ward','riposte'],['slip','focus','mend'],Object.keys(cards) as CardId[]]
+export const starterCopyCap=3 // Provisional; preserves the previous maximum starter duplication.
+export const rarities=['common','uncommon','rare','epic'] as const
+export type Rarity=typeof rarities[number]
+export const rarityLabels={common:'Common',uncommon:'Uncommon',rare:'Rare',epic:'Epic'} as const
+// Explicit bounded numeric variants; no new effects or costs. Provisional power tuning.
+const tierValues={cut:[4,5,6,7],ward:[3,4,5,6],riposte:[4,5,6,7],slip:[1,2,2,3],focus:[1,1,2,2],crimson:[7,8,9,10],mend:[4,5,6,7]} as const
+export function cardDefinition(instance:{definitionId:CardId;rarity?:Rarity}):CardDefinition {
+  const base=cards[instance.definitionId],tier=rarities.indexOf(instance.rarity??'common')
+  if(tier<=0)return base
+  const amount=tierValues[instance.definitionId][tier]
+  const effect:CardEffect=base.effect.kind==='counter'?{...base.effect,amount,block:[1,2,2,3][tier]}:base.effect.kind==='move'?{...base.effect,block:amount}:{...base.effect,amount}
+  const description=effect.kind==='damage'?`Deal ${effect.amount} Damage to one adjacent enemy.`
+    :effect.kind==='block'?`Gain ${effect.amount} Block for ${defenseBalance.cardWindows} enemy responses.`
+      :effect.kind==='counter'?`Gain ${effect.block} Block for ${defenseBalance.cardWindows} responses. Counter the first hit for ${effect.amount} damage this response.`
+        :effect.kind==='move'?`Move 1 clear adjacent tile. Gain ${effect.block} Block for ${defenseBalance.cardWindows} responses.`
+          :effect.kind==='focus'?`Gain ${effect.amount} Focus (max 3) for your next strike.`:`Heal yourself for ${effect.amount} HP, up to full.`
+  return {...base,effect,description}
+}

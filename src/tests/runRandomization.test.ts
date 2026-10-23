@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { starterCards } from '../data/cards'
-import { generateDungeon } from '../game/logic/dungeon'
+import { coreStarterCards } from '../data/cards'
+import { campaignGame } from '../game/logic/run'
+import { selectStartingCards } from '../game/logic/deck'
 import { emptyTransformations } from '../game/logic/transformations'
 import { usePawnStore } from '../game/state/pawnStore'
 import { useAppStore } from '../game/state/appStore'
@@ -17,7 +18,7 @@ describe('normal runs versus explicit seed overrides', () => {
     const state = usePawnStore.getState()
     expect(state.hasStartedRun).toBe(true)
     expect(state.dungeon.seed).not.toBe('old-hardcoded-start')
-    expect(state.dungeon).toEqual(generateDungeon(state.dungeon.seed))
+    expect(state.dungeon).toEqual(campaignGame(state.masterSeed,state.floorNumber,state.progress!).dungeon)
     expect(state.turn).toBe(0)
   })
   it('Resume preserves a living run and its pending phase; New Run explicitly replaces it', () => {
@@ -36,15 +37,17 @@ describe('normal runs versus explicit seed overrides', () => {
     expect(fresh.dungeon.seed).not.toBe(seed)
     expect(fresh).toMatchObject({ turn: 0, floorNumber: 1, phase: 'ready', isMoving: false })
   })
-  it('100 consecutive normal restarts generally produce distinct layouts while keeping the fixed Stage 7A deck composition', () => {
+  it('100 normal restarts vary layouts and seeded Stage 8 deck composition while preserving the core eight', () => {
     const seeds = new Set<string>(), layouts = new Set<string>()
     for (let i = 0; i < 100; i++) {
       usePawnStore.getState().restartRun()
       const state = usePawnStore.getState()
       seeds.add(state.dungeon.seed)
       layouts.add(JSON.stringify(state.dungeon.tiles.map((tile) => [tile.blocksMovement, tile.prop])))
-      expect(state.dungeon).toEqual(generateDungeon(state.dungeon.seed))
-      expect([...state.deck.hand, ...state.deck.draw].map((card) => card.definitionId).sort()).toEqual([...starterCards].sort())
+      expect(state.dungeon).toEqual(campaignGame(state.masterSeed,state.floorNumber,state.progress!).dungeon)
+      expect(state.deck.originalStarter).toEqual(selectStartingCards(state.masterSeed))
+      expect(state.deck.originalStarter?.slice(0,8)).toEqual(coreStarterCards)
+      expect([...state.deck.hand,...state.deck.draw]).toHaveLength(12)
     }
     expect(seeds.size).toBe(100)
     expect(layouts.size).toBeGreaterThan(70)

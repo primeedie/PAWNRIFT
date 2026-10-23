@@ -6,6 +6,7 @@ import TransformationTools from './TransformationTools'
 import { CombatTools } from './CombatTools'
 import { MapDiagnostics } from './MapDiagnostics'
 import { closeHudPanels } from './hudInteraction'
+import { ProgressionTools } from './ProgressionTools'
 
 export default function DungeonTools() {
   const state = usePawnStore(), { dungeon, revealAll } = state
@@ -27,6 +28,7 @@ export default function DungeonTools() {
       <p>Public prototype tools. Explicit overrides affect only this test session.</p>
       <details id="transformation-testing"><summary>Transformation testing</summary><TransformationTools /></details>
       <details><summary>Combat testing</summary><CombatTools /></details>
+      {state.progress&&<ProgressionTools/>}
       <details><summary>Dungeon controls</summary>
         <form onSubmit={(event) => { event.preventDefault(); setMessage(state.regenerateFloor(seed, style || undefined) ? 'Seed generated; carried forms and run resources preserved.' : 'Finish the current action first.') }}>
           <label>Seed<input value={seed} maxLength={200} onChange={(event) => setSeed(event.target.value)} /></label>

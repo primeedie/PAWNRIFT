@@ -15,6 +15,7 @@ import { elevationAt } from '../../game/logic/perching'
 import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
 import { consumeInspectionBoardClick } from '../../ui/inspectionStore'
 import { TutorialHighlight } from './TutorialHighlight'
+import { BiomeAdornment, RouteExit, TreasureChest } from './FloorObjects'
 
 export function DungeonBoard() {
   const state = usePawnStore()
@@ -44,17 +45,19 @@ export function DungeonBoard() {
             else tryMove(tile)
           }}>
             <FoggedTerrain visibility={visibility}>
-              <TerrainTile column={tile.column} row={tile.row} />
+              <TerrainTile column={tile.column} row={tile.row} biome={state.floorContent?.biome} />
               {tile.prop && <group rotation={[0, tile.rotation, 0]}><GeometricProp kind={tile.prop} /></group>}
               {tile.decoration && <group position={[tile.decoration.corner % 2 ? 0.32 : -0.32, 0, tile.decoration.corner < 2 ? -0.32 : 0.32]}
                 scale={tile.decoration.kind === 'tree' ? 0.32 : 0.42} rotation={[0, tile.rotation, 0]}>
-                <GeometricProp kind={tile.decoration.kind} />
+                {tile.decoration.motif?<BiomeAdornment motif={tile.decoration.motif}/>:<GeometricProp kind={tile.decoration.kind} />}
               </group>}
               {state.signatures.reveal?.cells.includes(id) && <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
                 <ringGeometry args={[0.57, 0.585, 4]} /><meshBasicMaterial color={state.signatures.reveal.foresight ? '#a698c1' : '#c1aa76'} transparent opacity={0.6} depthWrite={false} />
               </mesh>}
-              {state.mode !== 'training' && sameCell(tile, dungeon.exit) && <ExitMarker />}
+              {!state.floorContent&&state.mode !== 'training' && sameCell(tile, dungeon.exit) && <ExitMarker />}
+              <group visible={state.explored.has(id)}>{state.floorContent?.exits.filter(exit=>sameCell(exit.cell,tile)).map(exit=><RouteExit key={exit.alignment} alignment={exit.alignment}/>)}</group>
             </FoggedTerrain>
+            {state.visible.has(id)&&state.floorContent?.chests.filter(chest=>sameCell(chest.cell,tile)).map(chest=><TreasureChest key={chest.id} chest={chest}/>)}
             {preview && <group position={[0, state.explored.has(id) ? elevationAt(dungeon, tile) : 0, 0]}><LegalTileHighlight uncertain={preview.uncertain}
               selected={!!state.abilityDestination && sameCell(state.abilityDestination, tile)} /></group>}
           </group>

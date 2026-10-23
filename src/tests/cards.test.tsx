@@ -4,7 +4,7 @@ import { cardBalance, cards, type CardId } from '../data/cards'
 import { createGame, resolveEnemyPhase, resolvePlayerAction, resolveTurn, type Enemy, type GameState } from '../game/logic/combat'
 import { cardOptions, type CardTarget } from '../game/logic/cardRules'
 import { combatIndicator, visibleEnemies } from '../game/logic/combatIndicators'
-import { createStarterDeck, discardAndRefill, type DeckState } from '../game/logic/deck'
+import { createStarterDeck, createRunDeck, discardAndRefill, type DeckState } from '../game/logic/deck'
 import { cellFromId, cellId, type Dungeon } from '../game/logic/dungeon'
 import { usePawnStore } from '../game/state/pawnStore'
 import { CardHand } from '../ui/CardHand'
@@ -302,7 +302,7 @@ describe('card inspection, playback locking and reset', () => {
     const fresh = usePawnStore.getState()
     expect(fresh).toMatchObject({ hp: 12, turn: 0, status: 'playing', energy: 3, focus: 0, block: 0, preparedCounter: 0, eventSerial: 0 })
     expect(fresh.selectedCardId).toBeUndefined()
-    expect(fresh.deck).toEqual(createStarterDeck(fresh.dungeon.seed))
+    expect(fresh.deck).toEqual(createRunDeck(fresh.masterSeed))
     expect(fresh.deck.hand).toHaveLength(cardBalance.handSize)
     expect(fresh.deck.discard).toEqual([])
   })

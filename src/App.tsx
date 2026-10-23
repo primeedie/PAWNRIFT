@@ -14,6 +14,8 @@ import { InspectionPanels } from './ui/InspectionPanels'
 import { useInspection } from './ui/useInspection'
 import { TutorialPanel } from './ui/TutorialPanel'
 import { tutorialStep } from './game/logic/tutorial'
+import { RunHUD, FloorInteractions, BiomeIntroduction } from './ui/RunHUD'
+import { TreasureReward } from './ui/TreasureReward'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
 const TrainingTools = lazy(() => import('./ui/TrainingTools'))
@@ -28,7 +30,6 @@ export function App() {
   const training = usePawnStore((state) => state.training)
   const tutorial = usePawnStore(state=>state.tutorial)
   const leaveTraining = usePawnStore((state) => state.leaveTraining)
-  const floor = usePawnStore((state) => state.floorNumber)
   const root = useRef<HTMLElement>(null)
   useHudLayout(root, screen === 'scene')
 
@@ -39,7 +40,7 @@ export function App() {
       data-tutorial-cue={tutorial&&!tutorial.done?tutorialStep(tutorial).cue:undefined}
       data-tutorial-inspection={tutorial?tutorialStep(tutorial).goal:undefined}>
       <header className="scene-header">
-        <div><h1>PAWNRIFT</h1><p className="level-label">{tutorial?'TUTORIAL':training ? 'TRAINING GROUNDS' : `LEVEL ${floor}`}</p><TransformationHUD /></div>
+        <div><h1>PAWNRIFT</h1><div className="level-label">{tutorial?'TUTORIAL':training ? 'TRAINING GROUNDS' : <RunHUD/>}</div><TransformationHUD /></div>
         <CombatStatus />
       </header>
       <div className="scene-viewport">
@@ -50,6 +51,7 @@ export function App() {
       </div>
       <footer className="scene-footer" data-tooltip-avoid>
         <div className="game-actions">
+          <FloorInteractions/>
           <CombatHUD />
           {training && !tutorial && <button className="secondary-button" onClick={leaveTraining}>Leave Training</button>}
           <button className="secondary-button" onClick={showTitle}>Return to menu</button>
@@ -82,6 +84,8 @@ export function App() {
       </footer>
       <CardHand />
       <InspectionPanels />
+      <BiomeIntroduction/>
+      <TreasureReward/>
       {tutorial&&<TutorialPanel/>}
       {defeated && !tutorial && <GameOver />}
     </main></TooltipProvider>

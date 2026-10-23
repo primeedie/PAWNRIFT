@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { cards } from '../data/cards'
-import { cardCategories, cardPresentation, cardSummaries } from '../data/cardPresentation'
+import { cardDefinition,rarityLabels } from '../data/cards'
+import { cardCategories, cardPresentationFor, cardSummaryFor } from '../data/cardPresentation'
 import { cardInspection } from './cardInspection'
 import { type CardTextToken } from '../data/glossary'
 import { cardOptions } from '../game/logic/cardRules'
@@ -64,7 +64,7 @@ export function CardHand() {
         </div>
         <div className="card-targeting" role="status">
           {selected && <>
-            <span>{options?.reason ?? (options?.targets[0]?.kind === 'self' ? cards[selected.definitionId].name : 'Choose a highlighted target')}</span>
+            <span>{options?.reason ?? (options?.targets[0]?.kind === 'self' ? cardDefinition(selected).name : 'Choose a highlighted target')}</span>
             {options?.targets[0]?.kind === 'self' && <button disabled={locked} onClick={() => state.playSelectedCard({ kind: 'self' })}>Play</button>}
             <button onClick={() => { state.selectCard(undefined); restoreGameFocus() }} title="Cancel targeting (Escape)">Cancel</button>
           </>}
@@ -72,15 +72,15 @@ export function CardHand() {
       </div>
       <div className="hand-cards" role="group" aria-label="Playing cards. Scroll horizontally for more cards." tabIndex={0} onScroll={() => setInspection(undefined)}>
         {state.deck.hand.map((instance) => {
-          const card = cards[instance.definitionId]
-          const presentation = cardPresentation[instance.definitionId]
+          const card = cardDefinition(instance)
+          const presentation = cardPresentationFor(instance)
           const category = cardCategories[presentation.category]
           const reason = cardOptions(state, instance.instanceId).reason
           const shortfall = card.cost - state.energy
           const energyHelp = shortfall > 0
             ? `Costs ${card.cost} Energy; you have ${state.energy}. You need ${shortfall} more. A basic move, attack, defend, or wait restores 1 after enemies respond.`
             : `Costs ${card.cost} Energy, paid before the effect. Playing a valid card advances the world once.`
-          return <article key={instance.instanceId} className="hand-card" data-category={presentation.category}
+          return <article key={instance.instanceId} className="hand-card" data-category={presentation.category} data-rarity={instance.rarity??'common'}
             data-tutorial-focus={!!state.tutorial&&tutorialStep(state.tutorial).card===instance.definitionId}
             data-tooltip-avoid
             data-inspected={inspection?.id === instance.instanceId}
@@ -101,8 +101,8 @@ export function CardHand() {
               <EnergyIcon /><strong>{card.cost}</strong>
             </KeywordTooltip>
             <CardIllustration card={instance.definitionId} />
-            <span className="card-category"><span aria-hidden="true">{category.symbol}</span> {category.label}</span>
-            <p className="card-summary">{emphasizeValues(cardSummaries[instance.definitionId])}</p>
+            <span className="card-category"><span aria-hidden="true">{category.symbol}</span> {category.label} <span className="rarity-label">· {rarityLabels[instance.rarity??'common']}</span></span>
+            <p className="card-summary">{emphasizeValues(cardSummaryFor(instance))}</p>
             <CardDescription tokens={presentation.tokens} />
             {shortfall > 0 && <span className="card-unavailable">Need {shortfall} more Energy</span>}
             </div>

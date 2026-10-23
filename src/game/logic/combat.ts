@@ -1,5 +1,6 @@
 import { combatBalance as balance } from '../../data/combatBalance'
-import { cardBalance, cards } from '../../data/cards'
+import { cardBalance, cards, cardDefinition } from '../../data/cards'
+import { canInteract, pendingChest, type FloorContent } from './floorContent'
 import { createStarterDeck, discardAndRefill, type DeckState } from './deck'
 import { validCardTarget, type CardTarget } from './cardRules'
 import { cellId, cellFromId, distancesFrom, neighborIds, type Dungeon } from './dungeon'
@@ -23,6 +24,7 @@ import { blockPools, blockTotal, grantBlock, spendBlock, tickBlock, type BlockPo
 import { defenseBalance } from '../../data/defenseBalance'
 
 export type PlayerAction =
+  | {kind:'open-chest';floorId:string;chestId:string}
   | { kind: 'transform'; form: BossForm; attunement: Attunement }
   | { kind: 'ability'; targetId?: string; destination?: Cell }
   | { kind: 'revert' }
@@ -59,7 +61,7 @@ export type Enemy = {
 }
 export type CombatEvent = {
   id: number
-  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory' | 'heal' | 'focus' | 'transform' | 'revert' | 'reveal' | 'fear' | 'parry' | 'stun'
+  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory' | 'heal' | 'focus' | 'transform' | 'revert' | 'reveal' | 'fear' | 'parry' | 'stun' | 'chest'
   targetId?: string
   actor: 'pawn' | string
   cell: Cell
@@ -77,6 +79,7 @@ export type CombatEvent = {
   seen: boolean
 }
 export type GameState = FogState & {
+  floorContent?:FloorContent
   mode?: 'run' | 'training'
   trainingVision?: 'full' | 'fog'
   dungeon: Dungeon
@@ -119,7 +122,7 @@ export function createGame(dungeon: Dungeon): GameState {
     dungeon, cell: dungeon.spawn, facing: 'south', hp: balance.playerMaxHp, maxHp: balance.playerMaxHp,
     enemies: cell ? [{ id: 'rookling-1', kind: 'rookling', cell, from: cell, hp: balance.enemyMaxHp,
       maxHp: balance.enemyMaxHp, intent: 'idle', searchLeft: 0 }] : [],
-    occupied: [], turn: 0, status: 'playing', guarding: false, events: [], eventSerial: 0,
+    occupied: [],floorContent:undefined, turn: 0, status: 'playing', guarding: false, events: [], eventSerial: 0,
     deck: createStarterDeck(dungeon.seed), energy: cardBalance.maxEnergy, maxEnergy: cardBalance.maxEnergy,
     focus: 0, block: 0, blockSources:[], fortified:undefined, preparedCounter: 0, passives: emptyPassives(), transformations: emptyTransformations(), signatures: emptySignatures(), elevation: 0,
     ...updateFog(dungeon.tiles, dungeon.spawn),
@@ -137,6 +140,7 @@ export function attackTargets(state: GameState) {
 // Future forms can supply a different movement predicate; any accepted destination still costs one turn.
 export function resolvePlayerAction(state: GameState, action: PlayerAction, movement?: MovementRule): GameState | null {
   if (state.status !== 'playing' || state.hp <= 0) return null
+  if(pendingChest(state))return null
   if (state.mode !== 'training' && ((currentForm(state.transformations) === 'king' && action.kind !== 'revert') || (action.kind === 'transform' && action.form === 'king'))) return null
   if (action.kind === 'ability') return resolveSignature(state, action)
   let cell = state.cell, facing = state.facing
@@ -151,6 +155,7 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
   const light = transformations.active?.attunement === 'light'
   const dark = transformations.active?.attunement === 'dark'
   let pools=blockPools(state),preparedCounter=0
+  let floorContent=state.floorContent
   const strike = (enemy: Enemy, damage: number, basic = false) => {
     facing = directionTo(cell, enemy.cell)
     const bonus = form === 'pawn' ? basic ? passives.sharpener : Math.min(passives.sharpener, passiveBalance.sharpenerSkillCap) : 0
@@ -197,7 +202,7 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
   } else if (action.kind === 'card') {
     if (!validCardTarget(state, action.cardInstanceId, action.target)) return null
     const instance = state.deck.hand.find((entry) => entry.instanceId === action.cardInstanceId)!
-    const card = cards[instance.definitionId]
+    const card = cardDefinition(instance)
     energy -= card.cost // Validate against pre-action energy; recovery belongs to the completed world turn.
     const effect = card.effect
     if (effect.kind === 'damage' && action.target.kind === 'enemy') {
@@ -221,10 +226,15 @@ export function resolvePlayerAction(state: GameState, action: PlayerAction, move
       emit({ kind: 'heal', actor: 'pawn', targetId: 'pawn', cell, amount, seen: true })
     }
     deck = discardAndRefill(deck, action.cardInstanceId)
+  } else if(action.kind==='open-chest'){
+    const chest=floorContent?.chests.find(chest=>chest.id===action.chestId&&chest.state==='closed')
+    if(state.mode==='training'||!floorContent||floorContent.id!==action.floorId||!chest||!canInteract(state,chest.cell))return null
+    floorContent={...floorContent,chests:floorContent.chests.map(candidate=>candidate.id===chest.id?{...candidate,state:'opened'}:candidate)}
+    emit({kind:'chest',actor:'pawn',cell:chest.cell,seen:true})
   } else if (action.kind === 'defend' || action.kind === 'wait') {
     emit({ kind: action.kind === 'defend' ? 'guard' : 'wait', actor: 'pawn', cell, seen: true })
   } else return null
-  const next = { ...state, passives, cell, facing, enemies, events, eventSerial, hp, energy, focus, deck, block:blockTotal(pools),blockSources:pools, preparedCounter, transformations,
+  const next = { ...state,floorContent, passives, cell, facing, enemies, events, eventSerial, hp, energy, focus, deck, block:blockTotal(pools),blockSources:pools, preparedCounter, transformations,
     elevation: currentForm(transformations) === 'knight' ? elevationAt(state.dungeon, cell) : 0,
     signatures: { ...state.signatures, usedThisTurn: undefined, parryReady: false,
       samuraiCharges: currentForm(transformations)==='pawn'?state.signatures.samuraiCharges:0 },
@@ -341,7 +351,7 @@ export function resolveEnemyPhase(state: GameState): GameState {
   // Decree winds up through the complete response. Defeat cancels it before any shockwave.
   const decree = hp > 0 ? resolveRoyalDecree({ ...state, enemies, hp, events, eventSerial, passives }) : undefined
   if (decree) eventSerial = decree.eventSerial
-  const status = hp <= 0 ? 'defeat' : state.mode !== 'training' && sameCell(state.cell, state.dungeon.exit)
+  const status = hp <= 0 ? 'defeat' : !state.floorContent&&state.mode !== 'training' && sameCell(state.cell, state.dungeon.exit)
     && enemies.every((enemy) => enemy.hp <= 0) ? 'victory' : 'playing'
   if (status !== 'playing') emit({ kind: status, actor: 'pawn', cell: state.cell })
   pools=status==='playing'?tickBlock(pools):[]

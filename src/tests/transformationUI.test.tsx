@@ -22,7 +22,7 @@ describe('transformation interaction and lifecycle integration', () => {
   beforeEach(() => {
     const base = createGame(generateDungeon('transformation-ui'))
     const inventory = grantTransformation(grantTransformation(emptyTransformations(), 'knight', 'light')!, 'bishop', 'dark')!
-    usePawnStore.setState({ ...base, transformations: inventory, from: base.cell, phase: 'ready', actionId: 0,
+    usePawnStore.setState({ ...base,progress:null, transformations: inventory, from: base.cell, phase: 'ready', actionId: 0,
       runActive: true, hasStartedRun: true, deathRetentionDone: false, floorNumber: 1, selectedCardId: undefined, selectedAbility: false })
   })
   afterEach(() => vi.unstubAllEnvs())

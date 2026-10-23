@@ -1,6 +1,6 @@
 # PAWNRIFT — Game Design
 
-This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 7C: optional interactive tutorials and beginner onboarding**, preserving the Stage 7B.4 models, weapons, inspection, Samurai Mode and combat values. Stage 8 progression/randomized deck composition and Stage 10 run saving are future work. Publish verified updates to GitHub and Cloudflare; directly deploy the tested build if it is not live. **Provisional** balance needs playtesting. **Open** design is not permission to invent later systems. Basic movement and attacks never require dice.
+This document records confirmed design and a proposed delivery plan. Implementation is authorized through **Stage 8: multi-floor progression, seeded deckbuilding, treasure and run saving**, preserving the existing models, movement, combat, camera, Training and tutorials. Boss encounters, permanent rewards, lobby and Stage 9 remain future work. Publish verified updates to GitHub and Cloudflare; directly deploy the tested build if not live. **Provisional** balance needs playtesting. **Open** design is not permission to invent later systems. Basic movement and attacks never require dice. Earlier stage sections record historical behavior; the Stage 8 section supersedes their single-floor, fixed-starter and unsaved-run limitations.
 
 ## Concept and pillars
 
@@ -254,7 +254,60 @@ Automated validation exercises the entire sequence, each ordinary form/attunemen
 
 The repeated first layout came from the fixed initial seed and Play resuming that initialization board. Initial state and first Play now use fresh cryptographic run-boundary seeds. New Run and Restart always choose fresh seeds; Resume preserves an existing living run, including pending enemy playback. Play after victory starts fresh. An explicitly entered seed/style remains reproducible and is passed unchanged into the generator; generation algorithms and seeded randomness are unchanged. The title distinguishes Resume from New Run.
 
-**Planned for Stage 8, not implemented:** each starting deck totals 12 cards: 8 essential starters plus 4 chosen from a balanced starter pool. Normal runs should vary composition; a saved seed should reproduce the same selection. Use independent deterministic streams for dungeon layouts, starter selection and shuffle order, so changing one system cannot consume another system's randomness. Essential identities, pool balance and duplicate constraints remain open. Stage 7A keeps the existing fixed 12-card composition and seeded shuffle.
+**Implemented in Stage 8:** the 12-card starter has eight essentials plus four controlled selections. Starter selection, shuffle, layouts and rewards use independent seeded streams. Same-seed starts reproduce initial content; reload restores the actual evolved deck, never recreates it. The old fixed starter remains a practice fixture only.
+
+### Stage 8 - continuous dungeon runs
+
+TIMEO KINGDOM contains these ordered biomes, configured in `src/data/biomes.ts`:
+
+| Biome | Identity / boss | Restrained environmental motif |
+| --- | --- | --- |
+| PORTA BARRACKS | Knight / Chimera Knight | Sage checker tiles, teal sides, small barricades |
+| ASTRA ACADEMY | Bishop / Yin and Yang Bishop | Cool slate greens, stacked books |
+| THE HIGH WALL | Rook / Twin Towers | Desaturated stone greens, battlements |
+| TIMEO CASTLE | Queen / Queen of Pain | Muted mauve, small geometric regalia |
+
+Each biome has five ordinary floors and one boss floor, totaling 24. Global checker parity, 64 tiles, camera, movement and one-tile fog remain unchanged. Connected routes precede separated blocking props; bounded deterministic repair/fallback validates spawn, both exits, approachable treasure and enemy placement. Mandatory routes need only Pawn movement. Cosmetic randomness cannot change collision, placement, starter selection or reward offers. Current ordinary floors reuse one Rookling; additional enemy rosters and traps are not implemented.
+
+Each ordinary floor has structurally distinct discovered **Hallowed (Light)** and **Void (Dark)** exit gateways. After clearing enemies, interact from the exit or an orthogonally adjacent visible cell. This free floor boundary records one vote and advances once; it does not create an extra enemy response. Stale tokens, rapid repeated clicks, pending responses/rewards and remote interactions are rejected. The next floor is generated from the master seed and absolute floor. HP, resources, deck and charges carry forward; temporary protection, statuses and per-floor counters reset. The completed-floor hook alone decrements transformation duration and recovery, exactly once, including a final development floor. Cooldowns persist; Eye becomes available again and Samurai charges expire.
+
+Five choices independently select each biome's Floor 6 manifestation by strict majority. Route history persists; the next biome starts its own count. Light/Dark represents Hallowed/Void corruption, never morality. **Open:** additional route-dependent offensive/defensive benefits; none are invented here.
+
+**Boss audit remains C: concept only.** No functioning models/AI exist for the four bosses or Mirror. Stage 8 creates seeded arena infrastructure and selected name/identity/variant metadata, not combat. **Skip Unimplemented Boss - Development Only** advances and marks the run development-modified; it never counts as a victory for essences, acquisition or reconstruction. Skipping Floor 24 ends the development traversal explicitly. Real boss victory, permanent progression and final run rewards remain unimplemented. In Limine and Umbral Light are future areas. King remains Training-only.
+
+A dismissible, approximately three-second biome title with a short Mirror Pawn quote appears once per biome/run. Quotes and visual accents are provisional presentation; no Mirror encounter is implied. The compact HUD shows biome, local floor and Light/Dark counts. Run / seed opens creation mode, master seed/copy, route history and original starter. New Run/Restart use fresh random master seeds; entering a seed or restarting the same seed is explicitly manual. Manual and development-modified runs are ineligible for future legitimate permanent rewards. No such reward system exists yet.
+
+#### Starter selection and numerical rarities
+
+The **eight essentials** are Cut x2, Ward x2, Riposte, Slip, Focus and Mend. Four seeded selections use attack (Cut/Crimson), defense (Ward/Riposte), utility (Slip/Focus/Mend), then a flexible slot from all seven; a provisional maximum of three copies per name applies. All starter instances are Common. The independent selection/shuffle streams and original 12-card record remain stable through floors, reload and practice. Treasure never changes the starter pool.
+
+Seven implemented names retain their existing individual SVG icons, targeting, effects and Energy costs. `cardDefinition(instance)` supplies the actual numerical tier to rules and UI. Values below are **provisional**, Common / Uncommon / Rare / Epic:
+
+| Card | Values across tiers | Unchanged cost |
+| --- | --- | --- |
+| Cut | Damage 4 / 5 / 6 / 7 | 1 |
+| Ward | Block 3 / 4 / 5 / 6, existing 2-response lifetime | 1 |
+| Riposte | Counter 4 / 5 / 6 / 7; Block 1 / 2 / 2 / 3 | 1 |
+| Slip | Block 1 / 2 / 2 / 3, ordinary one-tile move | 1 |
+| Focus | Gain 1 / 1 / 2 / 2, existing cap 3 | 0 |
+| Crimson | Damage 7 / 8 / 9 / 10 | 3 |
+| Mend | Heal 4 / 5 / 6 / 7, capped by missing HP | 2 |
+
+Rarity is explicit per instance, not an implicit new mechanic. Modest labels/accent colors distinguish tiers; printed values remain authoritative. Shared Help includes rarity and treasure basics. Practice uses its existing Common definitions; no tutorial engine or combat balance is rebuilt.
+
+#### Treasure and run saves
+
+Optional treasure has a **provisional 70% ordinary-floor chance**, at most one generated chest. A chest occupies a non-articulation tile: both exits and every remaining open cell stay Pawn-reachable. Only current sight reveals its model or interaction; remembered terrain and public terrain reveal never expose treasure. All chest states retain collision. Opening requires an orthogonally adjacent visible cell with clear sight and uses the real resolver for **one world turn and one enemy response**. The compact three-card dialog appears only after that response/presentation. Choose one into discard or skip all for no additional turn. Pending rewards block world actions and exits; Decide later/menu/reload retain the same offer. Tokens, unique reward IDs and resolved chest state prevent repeat grants.
+
+Each offer contains three different implemented names. Central provisional Common/Uncommon/Rare/Epic weights by biome are **72/23/4/1**, **68/24/6/2**, **62/27/9/2**, **58/28/11/3**. Rewards are run-only and clear on a new run. Boss skips grant no cards or transformation items.
+
+`pawnStore` remains authoritative. `logic/run.ts` handles boundaries; `floorContent.ts` handles seeded entities/content validation; `data/biomes.ts` defines metadata. Absolute floor, route history and run ID are canonical; local floor, biome and alignment counts are derived. No duplicate progression framework is added.
+
+`state/runPersistence.ts` saves a validated versioned snapshot under **pawnrift:active-run:v1**: seed/mode, map/fog, route/clear/skip history, actual deck and original starter, player/enemies/statuses, resources, transformation ownership/duration/reconstruction/recovery, cooldowns and chest offers/resolution. Accepted player and resolved enemy phases are also saved so reload neither omits nor repeats a pending response. Hydration pauses at the title; Resume uses a fresh callback token. Regeneration/vote edits never count as floor completion. Unsupported/corrupt saves are preserved with an explicit discard/reset action; unavailable storage shows a notice. No migration from a prior run schema is needed because previous stages saved only tutorial preferences. Future schema changes require migration or this explicit recovery path.
+
+Training/tutorial snapshots stay separate and never overwrite the saved real run or consume its randomness/resources. Their exact restore and pending-response guards remain intact. Only tutorial preferences/checkmarks use the separate tutorial key. Death/retention retains the established rules; no lobby, permanent rewards or global progression save is fabricated.
+
+Public Playtest Tools add biome/floor jumps, prior-vote overrides, seed restart/copy, nearby test chests, original starter inspection and explicit boss skip. Jumps/spawns/overrides/skips mark modified runs; opening a test chest still receives the real response. Same-floor vote overrides do not tick duration. See `docs/IMPLEMENTATION_STATUS.md` for verified coverage and browser limitations.
 
 ### Stage 5 turn and combat rules
 
@@ -281,7 +334,7 @@ Stage 7A implements Pawn, Knight L-jump, Bishop diagonal slide, Rook orthogonal 
 
 ## Floors, alignment, and bosses
 
-There are **four main biomes**, each containing **six floors**: five regular floors followed by one boss floor, for **24 main-route floors**. Biome names, environments, transitions, and exact boss ordering remain open.
+There are **four main biomes**, each containing **six floors**: five regular floors followed by one boss floor, for **24 main-route floors**. TIMEO KINGDOM's confirmed order and boss assignments are the Stage 8 table above.
 
 On each regular floor, choose **Light (offensive)** or **Dark (defensive)** alignment. The majority of that biome's five choices selects its Floor 6 boss variant. Five votes always produce a majority; reset the tally for the next biome. **Open:** when the choice is made and what concrete offensive/defensive changes it grants.
 
@@ -292,7 +345,7 @@ On each regular floor, choose **Light (offensive)** or **Dark (defensive)** alig
 | Twin Towers | Two Rooks | Light and Dark |
 | Queen of Pain | One Queen | Light and Dark |
 
-Each biome has one of these boss identities. The Bishop's left/right visual identity remains intact in both variants. Variant mechanics, encounter balance, and biome assignment are **open**.
+Each biome has its assigned identity from the Stage 8 table. The Bishop's left/right visual identity remains intact in both variants. Variant mechanics and encounter balance remain **open**; boss AI/models are not implemented.
 
 Generation must be seed-reproducible. **Provisional acceptance criteria:** start and exit are connected, required objectives are reachable, obstacles do not seal the only route, placements do not overlap illegally, and regular floors offer meaningful alternate routes. Layout density, treasure frequency, enemy counts, and boss-floor layout constraints remain **provisional**.
 
@@ -355,10 +408,10 @@ Avoid photorealism, generic AI-generated fantasy aesthetics, and excessive clutt
 
 Confirmed stack: **TypeScript, React/Vite, Three.js / React Three Fiber, Zustand, Vitest**. Local saved progression; no multiplayer.
 
-- **Rules:** pure TypeScript movement, collision, sight, perception/pathfinding, cards/deck cycling, and explicit turn resolution; no React or Three.js dependencies. Future dice, alignment, transformation lifecycle, and progression extend these rules.
+- **Rules:** pure TypeScript movement, collision, sight, perception/pathfinding, cards/deck cycling, transformation lifecycle, route/progression boundaries and explicit turn resolution; no React or Three.js dependencies. Optional dice remain future work.
 - **Generation:** seeded board generation and validation. Route all gameplay randomness through an explicit seeded source; rendering must not consume gameplay randomness.
 - **Application state:** Zustand coordinates rule state and player commands. React handles menus/HUD; React Three Fiber renders the board and characters from rule state.
-- **Persistence:** a versioned local save for confirmed permanent progression, transformation ownership/charges, and any later-approved persistent fields. **Open:** mid-run saving, autosave timing, and recovery from invalid saves.
+- **Persistence:** Stage 8 uses a validated, versioned active-run save with pending-phase restoration and explicit unreadable-save recovery. Tutorial preferences are separate. Permanent essence/lobby progression remains future work.
 - **Verification:** Vitest for deterministic rules and generation invariants, alignment majorities, transformation timing/depletion/reconstruction, and save round trips. Verify visual readability separately once implementation is authorized.
 - **Static deployment preparation:** Node 24, Vite base `/`, `npm run build` → `dist`, Cloudflare Pages production branch `main`. No backend or Workers. Lockfile and local assets remain in version control; dependencies/output/secrets are ignored. The standing user instruction authorizes publishing completed, verified updates to GitHub and Cloudflare Pages.
 
@@ -366,7 +419,7 @@ These are responsibilities, not a requirement to create a large framework or fin
 
 ## Minimal playable vertical slice — proposed
 
-Before full content production, validate **one biome's six-floor loop**: five small regular boards with alignment choices and one boss floor with the majority-selected variant. Use Chimera Knight and its Light/Dark variants as the **provisional** first boss. Use placeholder low-poly visuals, a small explicitly defined card pool covering the four card roles, and the minimum enemy roster needed to test tactics.
+This original planning target is retained for future boss/lobby production; Stage 8 explicitly expands the shared floor infrastructure across all four biomes without implementing their encounters. Before full boss content production, validate **one biome's six-floor loop** with a functioning majority-selected Chimera Knight encounter, approved card pool and minimum enemy roster.
 
 The slice must demonstrate seeded 8×8 generation, alternate routes, obstacles, treasure, one-tile fog, unified player-driven combat, a small approved card pool, both alignment outcomes, a walkable lobby with essence display, and local persistence. Optional 2d6 decisions may be added only after their role is approved; they must not gate base movement/attacks. Include one boss-form consumable type with shared Light/Dark charges and the complete lifecycle rules; the inventory still supports two slots.
 
