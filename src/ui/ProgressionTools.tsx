@@ -14,7 +14,7 @@ export function ProgressionTools(){
     <label>Floor<select value={floor} onChange={event=>setFloor(Number(event.target.value))}>{[1,2,3,4,5,6].map(floor=><option key={floor}>{floor}</option>)}</select></label>
     <fieldset><legend>Prior route choices (development)</legend>{votes.map((vote,index)=><label key={index}>Floor {index+1}<select value={vote} onChange={event=>setVotes(votes.map((value,i)=>i===index?event.target.value as Attunement:value))}><option value="light">Light</option><option value="dark">Dark</option></select></label>)}</fieldset>
     <button disabled={locked} onClick={()=>state.debugProgress(biome*6+floor,votes)}>Jump / set prior votes — development</button>
-    <button disabled={locked||!state.floorContent?.boss||state.progress?.finished} onClick={()=>state.skipBoss(floorToken(state))}>Skip Unimplemented Boss — Development Only</button>
+    <button disabled={locked||!state.floorContent?.boss||state.progress?.finished} onClick={()=>state.skipBoss(floorToken(state))}>Skip Boss — Development Only (no win/rewards)</button>
     <button disabled={locked||!!state.floorContent?.boss} onClick={state.debugChest}>Spawn nearby test chest — development</button>
     {state.floorContent?.chests.filter(chest=>chest.state==='closed'&&canInteract(state,chest.cell)).map(chest=><button disabled={locked} key={chest.id} onClick={()=>state.submitAction({kind:'open-chest',floorId:state.floorContent!.id,chestId:chest.id})}>Open test chest · real 1-turn response</button>)}
     <details><summary>Original starter deck</summary><p>{state.deck.originalStarter?.join(' · ')}</p></details>

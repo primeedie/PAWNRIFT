@@ -5,6 +5,7 @@ import { bossForms, testForms } from '../../data/forms'
 import { cellId, validCell, validateDungeon, layoutStyles } from '../logic/dungeon'
 import { bossVariant, floorContentIssues, initialWorldAlignment, worldAlignment, completedAlignmentHistory } from '../logic/floorContent'
 import { blockTotal } from '../logic/protection'
+import { enemyIds, enemies as definitions } from '../../data/enemies'
 
 export const runSaveKey='pawnrift:active-run:v1'
 const keys=['dungeon','floorContent','cell','facing','hp','maxHp','enemies','occupied','turn','status','guarding','deck','energy','maxEnergy','focus','block','blockSources','fortified','preparedCounter','eventSerial','transformations','passives','signatures','elevation','lastAction','events','visible','explored',
@@ -12,7 +13,7 @@ const keys=['dungeon','floorContent','cell','facing','hp','maxHp','enemies','occ
 export function serializeRun(state:PawnState){
   if(state.training||state.tutorial||!state.progress||!state.hasStartedRun)throw Error('Only an actual run can be saved')
   const data=Object.fromEntries(keys.map(key=>[key,key==='visible'||key==='explored'?[...state[key]]:state[key]]))
-  return JSON.stringify({version:2,data})
+  return JSON.stringify({version:3,data})
 }
 function requireValue(condition:unknown,message:string):asserts condition{if(!condition)throw Error(message)}
 const integer=(value:unknown,low=0,high=1e9)=>Number.isInteger(value)&&Number(value)>=low&&Number(value)<=high
@@ -28,7 +29,7 @@ function inspectNumbers(value:unknown,depth=0){
 export function deserializeRun(raw:string):Partial<PawnState>{
   requireValue(raw.length<2_000_000,'Save exceeds supported size')
   const envelope=JSON.parse(raw) as {version?:unknown;data?:unknown}
-  requireValue(envelope?.version===1||envelope?.version===2,'Unsupported save version; the original save has been preserved')
+  requireValue(envelope?.version===1||envelope?.version===2||envelope?.version===3,'Unsupported save version; the original save has been preserved')
   requireValue(object(envelope.data),'Missing run data')
   inspectNumbers(envelope.data)
   const d=envelope.data as PawnState,p=d.progress
@@ -37,6 +38,7 @@ export function deserializeRun(raw:string):Partial<PawnState>{
   requireValue(Array.isArray(p!.cleared)&&p!.cleared.length<=24&&p!.cleared.every(floor=>integer(floor,1,24))&&unique(p!.cleared),'Invalid completed floors')
   requireValue(Array.isArray(p!.bossSkips)&&p!.bossSkips.every(floor=>integer(floor,6,24)&&floor%6===0)&&unique(p!.bossSkips)&&Array.isArray(p!.introduced)&&p!.introduced.every(id=>biomes.some(biome=>biome.id===id))&&typeof p!.finished==='boolean'&&object(p!.layouts),'Invalid progression metadata')
   requireValue(typeof d.playtestMode==='boolean'&&(!p!.bossSkips.length||d.playtestMode),'Development skip lost its classification')
+  requireValue(p!.bossClears===undefined||(Array.isArray(p!.bossClears)&&p!.bossClears.length<=1&&p!.bossClears.every(clear=>clear.floor===6&&['light','dark'].includes(clear.variant)&&typeof clear.eligible==='boolean'&&(!clear.eligible||p!.mode==='random'))&&unique(p!.bossClears.map(clear=>clear.floor))),'Invalid boss clear history')
   requireValue(Object.entries(p!.layouts).every(([floor,override])=>integer(Number(floor),1,24)&&object(override)&&string(override.seed,300)&&(override.style===undefined||layoutStyles.includes(override.style))),'Invalid floor override')
   requireValue(p!.routes.every(vote=>vote.floor<d.floorNumber)&&p!.cleared.every(floor=>floor<d.floorNumber||(p!.finished&&floor===24)),'History is ahead of the floor')
   if(envelope.version===1){
@@ -74,7 +76,20 @@ export function deserializeRun(raw:string):Partial<PawnState>{
   requireValue(s.reveal===null||(object(s.reveal)&&Array.isArray(s.reveal.cells)&&s.reveal.cells.every(id=>integer(id,0,63))&&integer(s.reveal.turnsLeft,1,2)&&typeof s.reveal.foresight==='boolean'),'Invalid temporary sight')
   const fog=d as unknown as {visible:number[];explored:number[]}
   requireValue([fog.visible,fog.explored].every(set=>Array.isArray(set)&&set.length<=64&&unique(set)&&set.every(id=>integer(id,0,63)))&&fog.visible.every(id=>fog.explored.includes(id)),'Invalid fog memory')
-  requireValue(Array.isArray(d.occupied)&&d.occupied.every(cell)&&Array.isArray(d.enemies)&&d.enemies.length<=64&&unique(d.enemies.map(enemy=>enemy.id))&&d.enemies.every(enemy=>object(enemy)&&enemy.kind==='rookling'&&string(enemy.id)&&cell(enemy.cell)&&cell(enemy.from)&&integer(enemy.hp)&&integer(enemy.maxHp,1)&&enemy.hp<=enemy.maxHp&&['idle','pursue','search','attack'].includes(enemy.intent)&&integer(enemy.searchLeft)),'Invalid enemy state')
+  requireValue(Array.isArray(d.occupied)&&d.occupied.every(cell)&&Array.isArray(d.enemies)&&d.enemies.length<=64&&unique(d.enemies.map(enemy=>enemy.id))&&d.enemies.every(enemy=>object(enemy)&&(enemy.kind==='rookling'||enemyIds.some(id=>id===enemy.kind))&&string(enemy.id)&&cell(enemy.cell)&&cell(enemy.from)&&integer(enemy.hp)&&integer(enemy.maxHp,1)&&enemy.hp<=enemy.maxHp&&['idle','pursue','search','attack'].includes(enemy.intent)&&integer(enemy.searchLeft)),'Invalid enemy state')
+  requireValue(d.enemies.every(enemy=>{
+    if(enemy.kind==='rookling')return !enemy.tactics
+    if(enemy.kind==='dummy')return false
+    const t=enemy.tactics,definition=definitions[enemy.kind]
+    if(!object(t)||!integer(t!.phase,0,1)||!integer(t!.step)||!integer(t!.recovery,0,20)||!['light','dark'].includes(enemy.variant!)||!integer(enemy.defense??0)||!integer(enemy.block??0)
+      ||!!enemy.boss!==(definition.rank==='boss')||!!enemy.elite!==(definition.rank==='elite')
+      ||[t!.observed,t!.passive,t!.paused].some(value=>value!==undefined&&typeof value!=='boolean'))return false
+    const plan=t!.pending
+    return (!t!.lastPattern||definition.patterns.includes(t!.lastPattern))&&(!plan||(object(plan)&&definition.patterns.includes(plan.pattern)&&cell(plan.origin)&&cell(plan.target)
+      &&Array.isArray(plan.cells)&&plan.cells.length<=7&&plan.cells.every(cell)&&unique(plan.cells.map(cellId))
+      &&Array.isArray(plan.path)&&plan.path.length<=7&&plan.path.every(cell)&&plan.path.every(step=>plan.cells.some(at=>cellId(at)===cellId(step)))))
+      &&(enemy.blockSources===undefined||(Array.isArray(enemy.blockSources)&&enemy.blockSources.length<=4&&enemy.blockSources.every(pool=>string(pool.id)&&string(pool.name)&&integer(pool.amount,1)&&integer(pool.windowsLeft,1,3))&&blockTotal(enemy.blockSources)===(enemy.block??0)))
+  }),'Invalid enemy tactics or finite protection')
   requireValue(d.enemies.every(enemy=>(!enemy.burn||(object(enemy.burn)&&integer(enemy.burn.turnsLeft,1,2)&&integer(enemy.burn.appliedTurn)))&&(!enemy.bleed||(Array.isArray(enemy.bleed)&&enemy.bleed.length<=3&&enemy.bleed.every(stack=>object(stack)&&integer(stack.turnsLeft,1,3)&&integer(stack.appliedTurn))))),'Invalid damage statuses')
   requireValue(d.enemies.every(enemy=>(enemy.lastSeen===undefined||cell(enemy.lastSeen))&&(enemy.attackTarget===undefined||cell(enemy.attackTarget))
     &&[enemy.exposedTurns,enemy.fearTurns,enemy.weakenedDamage,enemy.concussion,enemy.stunImmunity].every(value=>value===undefined||integer(value))
@@ -85,7 +100,7 @@ export function deserializeRun(raw:string):Partial<PawnState>{
   requireValue(d.floorContent.alignment===worldAlignment(d.masterSeed,d.floorNumber,p!.routes,p!.initialAlignment),'Invalid current world alignment')
   requireValue(d.floorContent.chests.every(chest=>object(chest)&&string(chest.id)&&cell(chest.cell)&&['closed','opened','claimed','skipped'].includes(chest.state)&&Array.isArray(chest.offer)&&chest.offer.length===3&&chest.offer.every(card=>Object.hasOwn(cards,card.definitionId)&&rarities.includes(card.rarity)))&&unique(d.floorContent.chests.map(chest=>chest.id))&&d.floorContent.chests.filter(chest=>chest.state==='opened').length<=1,'Invalid treasure state')
   requireValue(d.floorContent.exits.every(exit=>cell(exit.cell)&&['light','dark'].includes(exit.alignment)),'Invalid exits')
-  if(floorLocation(d.floorNumber).boss)requireValue(d.floorContent.boss?.status==='unimplemented'&&cell(d.floorContent.boss.spawn)&&d.floorContent.boss.variant===bossVariant(p!.routes,d.floorNumber),'Invalid boss manifestation')
+  if(floorLocation(d.floorNumber).boss)requireValue(d.floorContent.boss&&['unimplemented',...(d.floorNumber===6?['active','defeated']:[])].includes(d.floorContent.boss.status)&&cell(d.floorContent.boss.spawn)&&d.floorContent.boss.variant===bossVariant(p!.routes,d.floorNumber),'Invalid boss manifestation')
   else requireValue(!d.floorContent.boss,'Unexpected boss record')
   // Generation reserves initial enemy cells; moving enemies may later stand on an exit or the old spawn.
   requireValue(floorContentIssues(d.dungeon,d.floorContent).length===0,'Saved content overlaps or is unreachable')

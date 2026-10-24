@@ -7,6 +7,7 @@ import { canSeeContent } from '../../game/logic/visibility'
 import { gridToWorld } from '../../utils/grid'
 import type { CombatEvent } from '../../game/logic/combat'
 import { impactPresentationDelay } from '../../utils/combatPresentation'
+import { playCombatCue } from '../../ui/combatAudio'
 
 const LIFETIME_MS = 850
 type Indicator = { event: CombatEvent; born: number; lane: number }
@@ -20,6 +21,7 @@ export function CombatFeedback() {
     const previous = changedFloor ? 0 : cursor.current.serial
     cursor.current = { dungeon: state.dungeon, serial: state.eventSerial }
     const fresh = state.events.filter((event) => event.id > previous && combatIndicator(event))
+    state.events.filter(event=>event.id>previous&&event.seen).slice(-6).forEach(playCombatCue)
     const now = performance.now()
     setIndicators((old) => {
       const active = changedFloor ? [] : old.filter((entry) => now - entry.born < LIFETIME_MS)

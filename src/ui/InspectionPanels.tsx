@@ -62,6 +62,7 @@ export function EnemyInformation() {
   return <section id="enemy-information" className="inspection-panel enemy-information" role="region" tabIndex={-1} aria-labelledby="enemy-information-title" data-inspection-root data-tooltip-avoid>
     <header><h2 id="enemy-information-title">{enemyName(enemy)}</h2><button onClick={()=>{ui.closeEnemy();restoreGameFocus()}} aria-label="Close enemy information">×</button></header>
     <p>{enemy.boss?'Boss':enemy.elite?'Elite':'Normal'}{enemy.kind==='dummy'?' · training dummy':''}</p>
+    {enemy.tactics&&<p className="inspection-note">Provisional statistics · {enemy.variant==='dark'?'Void':'Hallowed'}{enemy.boss?` · Phase ${enemy.tactics.phase+1}`:''}. Amber lanes resolve on the next accepted world action; guard/parry applies to strikes.</p>}
     <p className="inspection-health"><strong>{enemy.hp}/{enemy.maxHp}</strong> HP</p>
     <span className="health-track" role="progressbar" aria-label={`${enemyName(enemy)} health`} aria-valuemin={0} aria-valuemax={enemy.maxHp} aria-valuenow={enemy.hp}><span style={{width:`${100*enemy.hp/enemy.maxHp}%`}} /></span>
     <dl className="inspection-stats"><Row label="Defense"><strong>{enemy.defense ?? 0}</strong></Row><Row label="Current Block"><strong>{enemy.block ?? 0}</strong></Row><Row label="Intent">{enemyIntentLabel(enemy)}</Row>{foresight && <Row label="Foresight">{foresight}</Row>}</dl>

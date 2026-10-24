@@ -3,6 +3,7 @@ import { testForms, formNames, type ChessForm } from '../data/forms'
 import { usePawnStore } from '../game/state/pawnStore'
 import { PassiveTools } from './PassiveTools'
 import type { PlaytestAction } from '../game/logic/playtesting'
+import { EnemyTools } from './EnemyTools'
 export function CombatTools() {
   const state = usePawnStore(), [form, setForm] = useState<ChessForm>('pawn'), [message, setMessage] = useState('')
   const locked = !state.runActive || state.phase !== 'ready' || state.status !== 'playing'
@@ -20,6 +21,7 @@ export function CombatTools() {
     <button type="button" disabled={locked} onClick={() => run({ kind: 'cooldown' })}>Reset all cooldowns</button>
     <p>Turn {state.turn} - {state.phase}. Test enemies spawn only on valid visible cells.</p>
     <PassiveTools />
+    <EnemyTools />
     <p role="status">{message}</p>
   </fieldset>
 }

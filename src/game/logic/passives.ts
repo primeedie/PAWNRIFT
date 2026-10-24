@@ -79,7 +79,7 @@ export function pushEnemy(state: GameState, enemy: Enemy, origin: Cell) {
     row: enemy.cell.row + Math.sign(enemy.cell.row - origin.row) }
   const board = { size: 8, available: state.dungeon.tiles, blocked: state.dungeon.tiles.filter((tile) => tile.blocksMovement),
     occupied: [state.cell, ...state.occupied, ...state.enemies.filter((other) => other.hp > 0 && other.id !== enemy.id).map((other) => other.cell)] }
-  if (canOccupy(destination, board)) { enemy.from = enemy.cell; enemy.cell = destination; enemy.attackTarget = undefined; enemy.intent = 'idle' }
+  if (canOccupy(destination, board)) { enemy.from = enemy.cell; enemy.cell = destination; enemy.attackTarget = undefined; enemy.intent = 'idle';if(enemy.tactics)enemy.tactics.pending=undefined }
 }
 
 // Called once at each living enemy's response boundary. New DoTs skip their application

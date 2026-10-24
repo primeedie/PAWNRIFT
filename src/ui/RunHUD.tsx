@@ -28,7 +28,7 @@ export function RunHUD(){
     <span>{location.biome.name} · Floor {location.local}/6 · {state.floorContent?.alignment==='dark'?'Void':'Hallowed'}</span>
     <details name="hud-panels"><summary>Run / seed</summary><div className="hud-panel run-panel" onKeyDown={event=>event.stopPropagation()}>
       <button onClick={()=>closeHudPanels()}>Close</button><h2>TIMEO KINGDOM</h2>
-      <p>{state.progress.mode==='manual'?'Manual seed':state.playtestMode?'Development-modified random run':'Random run'} · {state.playtestMode||state.progress.mode==='manual'?'Permanent rewards disabled':'Eligible creation mode; boss rewards are not implemented yet.'}</p>
+      <p>{state.progress.mode==='manual'?'Manual seed':state.playtestMode?'Development-modified random run':'Random run'} · {state.playtestMode||state.progress.mode==='manual'?'Boss rewards disabled':'Eligible for supported Knight consumable rewards. Permanent essences remain future work.'}</p>
       <label>Master seed<input readOnly value={state.masterSeed}/></label>
       <button onClick={async()=>{try{await navigator.clipboard.writeText(state.masterSeed);setMessage('Master seed copied.')}catch{setMessage('Select and copy the master seed field.')}}}>Copy seed</button>
       <button disabled={state.phase!=='ready'} onClick={()=>{state.restartSameSeed();closeHudPanels()}}>Restart same seed (manual)</button>
@@ -52,7 +52,7 @@ export function FloorInteractions(){
       onFocus={()=>focusInteraction(item.id)} onPointerEnter={()=>focusInteraction(item.id)} onClick={()=>requestInteraction(item.id)}>
       {item.id===focused?.id&&!explicit&&<kbd>E</kbd>} {item.label}{item.kind==='chest'?' · 1 turn':''}
     </button>)}
-    {content.boss&&<span className="boss-development-note">{content.boss.name} · {content.boss.variant==='light'?'Hallowed':'Void'} arena. Encounter unimplemented; development skip is in Playtest Tools.</span>}
+    {content.boss&&<span className="boss-development-note">{content.boss.name} · {content.boss.status==='unimplemented'?'Encounter unimplemented; development skip is in Playtest Tools.':content.boss.status==='defeated'?'Commander defeated. Reach the gateway to Astra Academy.':'Evade committed attacks; strike during recovery. Temporary balance fixtures.'}</span>}
   </div>
 }
 export function BiomeIntroduction(){

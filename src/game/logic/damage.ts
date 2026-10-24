@@ -1,15 +1,18 @@
 import { abilityBalance } from '../../data/abilities'
 import type { Enemy } from './combat'
 import type { DamageInput } from './combatAnalysis'
+import { spendBlock, blockTotal } from './protection'
 
 export function cloneEnemy(enemy: Enemy): Enemy {
-  return { ...enemy, bleed: enemy.bleed?.map((stack) => ({ ...stack })), burn: enemy.burn && { ...enemy.burn } }
+  return { ...enemy, tactics:enemy.tactics&&structuredClone(enemy.tactics),blockSources:enemy.blockSources?.map(pool=>({...pool})), bleed: enemy.bleed?.map((stack) => ({ ...stack })), burn: enemy.burn && { ...enemy.burn } }
 }
 export function clearDeadStatuses(enemy: Enemy) {
   if (enemy.hp > 0) return
   enemy.burn = undefined; enemy.bleed = undefined; enemy.concussion = undefined
   enemy.stunImmunity = 0; enemy.stunned = false; enemy.exposedTurns = 0
   enemy.fearTurns = 0; enemy.weakenedDamage = 0
+  enemy.attackTarget=undefined;enemy.intent='idle';enemy.block=0;enemy.blockSources=undefined
+  if(enemy.tactics)enemy.tactics.pending=undefined
 }
 
 // One logical attack may have several presentation impacts. Flat defense is paid once;
@@ -29,6 +32,7 @@ export function damageAttack(enemy: Enemy, components: readonly number[], option
     const afterDefense = amount - reduced
     const blocked = Math.min(Math.max(0, enemy.block ?? 0), afterDefense)
     if (enemy.block !== undefined) enemy.block -= blocked
+    if(enemy.blockSources){enemy.blockSources=spendBlock(enemy.blockSources,blocked);enemy.block=blockTotal(enemy.blockSources)}
     const oldHP = enemy.hp
     const damage = Math.min(oldHP, afterDefense - blocked)
     enemy.hp -= damage

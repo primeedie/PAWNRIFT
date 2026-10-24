@@ -22,6 +22,8 @@ import { abilityBalance } from '../../data/abilities'
 import { defendIncoming, sparringAttack, type IncomingAttack, type SparringPattern } from './playerDefense'
 import { blockPools, blockTotal, grantBlock, spendBlock, tickBlock, type BlockPool, type Fortification } from './protection'
 import { defenseBalance } from '../../data/defenseBalance'
+import { enemies as enemyDefinitions, type EnemyId } from '../../data/enemies'
+import { respondRosterEnemy, isRosterEnemy, tickEnemyBlock, enemyPlanLabel, type EnemyTactics } from './enemyTactics'
 
 export type PlayerAction =
   | {kind:'open-chest';floorId:string;chestId:string}
@@ -35,7 +37,10 @@ export type PlayerAction =
   | { kind: 'wait' }
 export type Enemy = {
   id: string
-  kind: 'rookling' | 'dummy'
+  kind: 'rookling' | 'dummy' | EnemyId
+  variant?: Attunement
+  tactics?: EnemyTactics
+  blockSources?: BlockPool[]
   trainingDummy?: { behavior: 'passive' | 'sparring'; knockback: boolean; pattern?: SparringPattern }
   cell: Cell
   from: Cell
@@ -61,7 +66,7 @@ export type Enemy = {
 }
 export type CombatEvent = {
   id: number
-  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory' | 'heal' | 'focus' | 'transform' | 'revert' | 'reveal' | 'fear' | 'parry' | 'stun' | 'chest'
+  kind: 'move' | 'hit' | 'counter' | 'guard' | 'windup' | 'miss' | 'defeat' | 'wait' | 'victory' | 'heal' | 'focus' | 'transform' | 'revert' | 'reveal' | 'fear' | 'parry' | 'stun' | 'chest' | 'phase'
   targetId?: string
   actor: 'pawn' | string
   cell: Cell
@@ -261,15 +266,15 @@ export function resolveEnemyPhase(state: GameState): GameState {
   const emit = (event: Omit<CombatEvent, 'seen' | 'id'>) => events.push({ ...event, id: ++eventSerial,
     seen: event.targetId === 'pawn' || (event.actor === 'pawn' && !event.targetId) || canSeeContent(cellId(event.cell), state) })
   const receive=(enemy:Enemy,attack:IncomingAttack)=>{
-    const result=defendIncoming(attack,{raw:Math.max(0,balance.enemyDamage-(enemy.weakenedDamage??0)),hp,block:blockTotal(pools),
+    const result=defendIncoming(attack,{raw:Math.max(0,(isRosterEnemy(enemy)?enemyDefinitions[enemy.kind].stats.damage:balance.enemyDamage)-(enemy.weakenedDamage??0)),hp,block:blockTotal(pools),
       guard:state.guarding?balance.guardReduction:0,poise:king&&!poiseUsed?passiveBalance.kingPoise:0,charges:samuraiCharges,manual:parryReady})
     samuraiCharges=result.charges
     if(result.manual)parryReady=false
     if(result.poiseUsed)poiseUsed=true
     enemy.weakenedDamage=0;pools=spendBlock(pools,result.blocked);hp-=result.damage
     if(result.parried)emit({kind:'parry',actor:'pawn',targetId:'pawn',sourceId:enemy.id,cell:state.cell,
-      parryKind:result.automatic?'samurai':'manual',parriesLeft:samuraiCharges,attackKind:attack.kind,delayMs:parryIndex++*parryPresentationMs})
-    else emit({kind:'hit',actor:enemy.id,targetId:'pawn',cell:state.cell,amount:result.damage,blocked:result.blocked,attackKind:attack.kind})
+      parryKind:result.automatic?'samurai':'manual',parriesLeft:samuraiCharges,attackKind:attack.kind,delayMs:(enemy.tactics?350:0)+parryIndex++*parryPresentationMs})
+    else emit({kind:'hit',actor:enemy.id,targetId:'pawn',cell:state.cell,amount:result.damage,blocked:result.blocked,attackKind:attack.kind,delayMs:enemy.tactics?350:undefined})
     const direct=attack.kind==='melee'||attack.kind==='projectile'
     // Auto-parries are defense only. A separately prepared Riposte may still answer
     // one direct strike; ordinary Defend/manual behavior stays independent.
@@ -287,9 +292,10 @@ export function resolveEnemyPhase(state: GameState): GameState {
   }
   for (const enemy of [...enemies].sort((a, b) => a.id.localeCompare(b.id))) {
     if (enemy.hp <= 0 || hp <= 0) continue
+    tickEnemyBlock(enemy)
     tickEnemyStatuses(enemy, state.turn, emit)
     if (enemy.hp <= 0) continue
-    if (skipConcussedResponse(enemy)) { emit({ kind: 'stun', actor: enemy.id, cell: enemy.cell, effect: 'concussion' }); continue }
+    if (skipConcussedResponse(enemy)) { if(enemy.tactics)enemy.tactics.pending=undefined; enemy.attackTarget=undefined;enemy.intent='idle'; emit({ kind: 'stun', actor: enemy.id, cell: enemy.cell, effect: 'concussion' }); continue }
     if (enemy.uninterruptible) continue
     if ((enemy.fearTurns ?? 0) > 0 && !enemy.boss) {
       const board = movementBoard({ ...state, enemies })
@@ -298,10 +304,12 @@ export function resolveEnemyPhase(state: GameState): GameState {
         && canOccupy(cell, board) && gridDistance(cell, state.cell) > distance)
         .sort((a, b) => gridDistance(b, state.cell) - gridDistance(a, state.cell) || cellId(a) - cellId(b))[0]
       enemy.fearTurns = 0; enemy.attackTarget = undefined; enemy.intent = 'idle'
+      if(enemy.tactics)enemy.tactics.pending=undefined
       if (retreat) { enemy.cell = retreat; emit({ kind: 'move', actor: enemy.id, cell: retreat }) }
       else emit({ kind: 'fear', actor: enemy.id, cell: enemy.cell })
       continue
     }
+    if(isRosterEnemy(enemy)){respondRosterEnemy({...state,enemies},enemy,emit,receive);continue}
     if (enemy.kind === 'dummy' && enemy.trainingDummy?.behavior === 'passive') { emit({ kind: 'wait', actor: enemy.id, cell: enemy.cell }); continue }
     const pattern=state.mode==='training'&&enemy.kind==='dummy'?enemy.trainingDummy?.pattern:undefined
     if(pattern&&pattern!=='telegraphed'){
@@ -366,6 +374,8 @@ export function resolveTurn(state: GameState, action: PlayerAction, movement?: M
 }
 
 export function enemyIntentLabel(enemy: Enemy) {
+  const tactical=enemyPlanLabel(enemy)
+  if(tactical)return tactical
   return { idle: 'Idle', pursue: 'Approaching', search: 'Searching', attack: 'Strike next turn' }[enemy.intent]
 }
 

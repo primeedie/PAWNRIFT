@@ -74,7 +74,8 @@ function chestSetup(){
   const s=usePawnStore.getState(),chest=s.floorContent!.chests[0]
   const position=neighborIds(cellId(chest.cell)).map(cellFromId).find(cell=>s.dungeon.tiles.some(tile=>sameCell(tile,cell)&&!tile.blocksMovement))!
   const enemyCell=neighborIds(cellId(position)).map(cellFromId).find(cell=>!sameCell(cell,chest.cell)&&s.dungeon.tiles.some(tile=>sameCell(tile,cell)&&!tile.blocksMovement))!
-  const enemy={...s.enemies[0],cell:enemyCell,from:enemyCell,intent:'attack' as const,attackTarget:position}
+  // Legacy committed-strike fixture isolates chest/pending-response semantics from roster AI.
+  const enemy={...s.enemies[0],kind:'rookling' as const,tactics:undefined,cell:enemyCell,from:enemyCell,intent:'attack' as const,attackTarget:position}
   usePawnStore.setState({cell:position,from:position,enemies:[enemy],...updateFog(s.dungeon.tiles,position)})
   return {chest,token:floorToken(usePawnStore.getState()),action:{kind:'open-chest' as const,floorId:s.floorContent!.id,chestId:chest.id}}
 }
@@ -95,7 +96,7 @@ describe('Stage 8 seeded floor generation',()=>{
       for(const exit of built.content.exits)expect(seen.has(cellId(exit.cell))).toBe(true)
       for(const chest of built.content.chests)expect(neighborIds(cellId(chest.cell)).some(id=>seen.has(id))).toBe(true)
       if(floor%6!==0){ordinary++;chests+=built.content.chests.length;blockers+=built.dungeon.tiles.filter(tile=>tile.column>0&&tile.column<7&&tile.row>0&&tile.row<7&&tile.blocksMovement).length}
-      else {expect(built.enemyCells).toEqual([]);expect(built.content.boss?.status).toBe('unimplemented');expect(built.content.boss?.variant).toBe('dark')}
+      else {expect(built.enemyCells).toHaveLength(floor===6?1:0);expect(built.content.boss?.status).toBe(floor===6?'active':'unimplemented');expect(built.content.boss?.variant).toBe('dark')}
     }
     console.log(JSON.stringify({stage8Floors:2400,ordinary,treasureFloors:chests,interiorBlockingPercent:100*blockers/(ordinary*36)}))
     expect(chests).toBeGreaterThan(1000);expect(chests).toBeLessThan(1700)
@@ -121,13 +122,13 @@ describe('Stage 8 seeded floor generation',()=>{
 })
 
 describe('continuous route progression',()=>{
-  it('walks/fights all 20 regular floors and explicitly skips four unimplemented bosses',()=>{
+  it('walks/fights all 20 regular floors and explicitly development-skips four bosses without rewards',()=>{
     usePawnStore.getState().loadDungeon('full-route-test')
     const starter=structuredClone(usePawnStore.getState().deck)
     for(let floor=1;floor<=24;floor++){
       const s=usePawnStore.getState();expect(s.floorNumber).toBe(floor)
       if(floor%6===0){
-        expect(s.floorContent?.boss?.variant).toBe('dark');expect(s.enemies).toEqual([])
+        expect(s.floorContent?.boss?.variant).toBe('dark');expect(s.enemies).toHaveLength(floor===6?1:0)
         expect(s.skipBoss(floorToken(s))).toBe(true)
       }else {
         clearFloor();const current=usePawnStore.getState(),alignment=(floor-1)%6%2===0?'dark':'light'

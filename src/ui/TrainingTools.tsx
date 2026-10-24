@@ -8,6 +8,7 @@ import { cellId } from '../game/logic/dungeon'
 import { closeHudPanels } from './hudInteraction'
 import { sparringPatterns } from '../game/logic/playerDefense'
 import { characterDesigns } from '../data/characterDesigns'
+import { EnemyTools } from './EnemyTools'
 
 function DummySettings({ spec, apply, locked }: { spec: DummySpec; apply: (command: TrainingCommand) => void; locked: boolean }) {
   const state = usePawnStore(), [draft, setDraft] = useState(spec)
@@ -100,6 +101,6 @@ export default function TrainingTools() {
       <button onClick={() => apply({ kind: 'reset' })}>Reset training comparison</button>
     </fieldset></details>
     <details><summary>Automatic parry events</summary><p>Samurai Mode: {state.signatures.samuraiCharges}/3 · cooldown {state.signatures.cooldowns.pawn}</p><ol className="analysis-log">{training.analysis.history.filter(event=>event.parryKind==='samurai').slice(-9).map(event=><li key={event.id}>Auto-parry · {event.attackKind} · {event.parriesLeft}/3 remaining</li>)}</ol></details>
-    <ArtControls viewer/><CombatAnalysis /><p role="status">{message}</p>
+    <EnemyTools/><ArtControls viewer/><CombatAnalysis /><p role="status">{message}</p>
   </div></details>
 }

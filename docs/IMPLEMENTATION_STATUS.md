@@ -1,6 +1,15 @@
 # PAWNRIFT implementation status
 
-Current scope: Stage 8.1 presentation overhaul on Stage 8. No Stage 9 work.
+Current scope: Stage 9 Porta Barracks enemies and Knight encounters, preserving Stage 8 progression and subsequent character/world refinements. No Stage 10.
+
+## Stage 9
+
+- Four normal archetypes (Initiate, Halberdier, Crossbow Sentinel, Shield Guard), Elite Cavalier, Hallowed Cavalry Commander and two-headed Void Chimera Knight. Definitions/fixtures are centralized in `data/enemies.ts`; all final statistics await the user's document. Shared committed plans, stable pathfinding, spacing, recovery, finite Block and existing statuses/mitigation run through the normal deterministic resolver.
+- Porta floors 1–5 use conservative encounter fixtures; Floor 6 has a dedicated majority-selected court and actual boss. Thin current-sight-only threat outlines, Crossbow aim segments and charge landing markers share collision geometry with damage. No player/camera overhaul or vision expansion. One-tile ordinary sight limits long ranged engagements; full-sight Training/Eye can test complete lanes.
+- Explicit phase testing switches pattern ordering, cancels incompatible plans and grants a recovery opening. No automatic HP thresholds or final scaling/resistances. Real death is settled once, records the manifestation, runs supported eligible Knight acquisition/reconstruction and opens Astra. Manual/modified/Training/skips cannot earn legitimate rewards. No permanent essences, lobby or later bosses.
+- Public enemy tools and Training expose the actual roster, passive/sparring, pause, pattern, phase, status, reset and arena controls. Combat Analysis and exact run snapshots remain. Save envelope v3 preserves plans/finite protection/outcomes and accepts v1/v2 without rerolling existing content. Full inventory preserves ready Knight reconstruction credit rather than replacing/refilling items.
+- Optional quiet, user-enabled synthesized wind-up/impact/Block/parry/phase/defeat cues use no downloaded audio. Model grips are checked on actual articulated meshes in four facings; offline close/game/thumbnail silhouettes/material-color renders reviewed. No browser is connected: live PBR/ink, responsive play, all-animation clipping, audio output and FPS remain unverified.
+- Verification: **424 tests across 34 files pass**; TypeScript and production build pass. Includes 1,000 seeds across all six Porta floors (6,000 encounters), full Stage 8 progression/save/tutorial/Training regressions, genuine boss outcomes, interrupted tactical responses, and actual mesh grips/grounding in four facings. Existing Three CommonJS/bundle-size warnings remain nonfatal. Offline roster renders supplement tests; live browser QA remains unavailable. Numerical fields pending: HP, damage, defense, attack parameters/recovery/cooldowns, resistances/status modifiers, HP phase thresholds, floor scaling, encounter budgets and reward balance.
 
 ## Stage 8.1 presentation
 
@@ -24,9 +33,9 @@ Current scope: Stage 8.1 presentation overhaul on Stage 8. No Stage 9 work.
 
 ## Boss audit and deferred content
 
-All four bosses and Mirror remain **C: concept/documentation only**. No boss models or AI existed to reuse. Boss floors contain arena/setup/variant metadata only; **Skip Unimplemented Boss — Development Only** advances without legitimate win, essence, transformation grant or reconstruction credit. Floor 24 ends development traversal explicitly.
+Historical Stage 8 audit: all bosses were concepts. Stage 9 now implements the two Porta manifestations only. Astra/High Wall/Timeo/Mirror remain **C: concept/documentation only**; their boss floors still use explicit development skips without win/reward credit. Floor 24 ends development traversal explicitly.
 
-No permanent lobby/essence progression, boss fights, In Limine, Umbral Light, King story unlock, multiplayer, new enemy roster, traps, dice or general character redesign. King remains isolated to Training. Treasure/deck/rarity tuning is provisional; playtest before final balance.
+No permanent lobby/essence progression, later biome boss fights, In Limine, Umbral Light, King story unlock, multiplayer, traps, dice or player redesign. King remains isolated to Training. All tuning is provisional; enemy/boss statistics remain deferred.
 
 ## Verification
 

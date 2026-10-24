@@ -19,6 +19,9 @@ import { currentForm } from '../../game/logic/transformations'
 import { gridDistance } from '../../game/logic/enemyAI'
 import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
 import { impactPresentationDelay, targetReaction } from '../../utils/combatPresentation'
+import { PortaEnemyModel } from './PortaEnemyModel'
+import { currentThreat } from '../../game/logic/enemyTactics'
+import { enemyPresentationDuration } from '../../utils/characterAnimation'
 
 function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhase; interpolate: boolean }) {
   const state = usePawnStore()
@@ -36,7 +39,7 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
   }, [enemy.from, enemy.cell, phase, interpolate])
   useFrame((_, delta) => {
     if (!root.current) return
-    progress.current = Math.min(1, progress.current + delta / (turnTiming.enemyMs / 1000))
+    progress.current = Math.min(1, progress.current + delta / ((enemy.tactics?enemyPresentationDuration(state):turnTiming.enemyMs) / 1000))
     const t = phase === 'enemies' && interpolate ? progress.current : 1
     const eased = t * t * (3 - 2 * t)
     const a = gridToWorld(enemy.from.column, enemy.from.row), b = gridToWorld(enemy.cell.column, enemy.cell.row)
@@ -64,7 +67,7 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
       restoreGameFocus()
       clickEnemy(enemy.id)
     }}>
-      {enemy.kind === 'dummy' ? <TrainingDummy materialRef={material} /> : <>
+      {enemy.kind === 'dummy' ? <TrainingDummy materialRef={material} /> : enemy.tactics?<PortaEnemyModel enemy={enemy}/>:<>
       <mesh position={[0, 0.08, 0]}>
         <cylinderGeometry args={[0.26, 0.29, 0.16, 8]} />
         <meshLambertMaterial color="#46515f" flatShading />
@@ -86,7 +89,7 @@ function Rookling({ enemy, phase, interpolate }: { enemy: Enemy; phase: TurnPhas
         <meshBasicMaterial color={enemy.intent === 'attack' ? '#f2ba76' : '#c9786f'} />
       </mesh>
       </>}
-      {enemy.hp>0 && canSeeContent(cellId(enemy.cell),state) && <Html position={[0, enemy.kind==='dummy'?1.20:0.98, 0]} center zIndexRange={[4, 0]} style={{ pointerEvents: 'none' }}>
+      {enemy.hp>0 && canSeeContent(cellId(enemy.cell),state) && <Html position={[0, enemy.boss?1.65:enemy.tactics?1.4:enemy.kind==='dummy'?1.20:0.98, 0]} center zIndexRange={[4, 0]} style={{ pointerEvents: 'none' }}>
         <EnemyHealthBar hp={enemy.hp} maxHp={enemy.maxHp}/>
       </Html>}
     </group>
@@ -112,13 +115,28 @@ export function DungeonEnemies() {
         {targets.some((target) => target.kind === 'enemy' && target.enemyId === enemy.id)
           && <group position={gridToWorld(enemy.cell.column, enemy.cell.row)}><LegalTileHighlight attack /></group>}
         <Rookling enemy={enemy} phase={state.phase} interpolate={canSeeContent(cellId(enemy.from), state)} />
-        {enemy.intent === 'attack' && enemy.attackTarget && canSeeContent(cellId(enemy.attackTarget), state) && (
-          <mesh position={gridToWorld(enemy.attackTarget.column, enemy.attackTarget.row).map((v, i) => i === 1 ? 0.025 : v) as [number, number, number]}
+        {(enemy.tactics?currentThreat(state,enemy):enemy.intent==='attack'&&enemy.attackTarget?[enemy.attackTarget]:[]).filter(cell=>canSeeContent(cellId(cell),state)).map(cell=>(
+          <mesh key={cellId(cell)} raycast={()=>{}} position={gridToWorld(cell.column, cell.row).map((v, i) => i === 1 ? 0.031 : v) as [number, number, number]}
             rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
             <ringGeometry args={[0.47, 0.55, 4]} />
             <meshBasicMaterial color="#d3a66e" transparent opacity={0.8} depthWrite={false} />
           </mesh>
-        )}
+        ))}
+        {enemy.tactics?.pending?.pattern==='shot'&&[enemy.cell,...currentThreat(state,enemy)].slice(1).map((cell,index)=>{
+          const previous=[enemy.cell,...currentThreat(state,enemy)][index]
+          if(!canSeeContent(cellId(cell),state)||!canSeeContent(cellId(previous),state))return null
+          const a=gridToWorld(previous.column,previous.row),b=gridToWorld(cell.column,cell.row)
+          return <mesh key={`aim-${index}`} raycast={()=>{}} position={[(a[0]+b[0])/2,0.042,(a[2]+b[2])/2]} rotation={[0,Math.atan2(b[0]-a[0],b[2]-a[2]),0]}>
+            <boxGeometry args={[0.018,0.008,Math.hypot(b[0]-a[0],b[2]-a[2])]}/><meshBasicMaterial color="#e1bb80" transparent opacity={0.7} depthWrite={false}/>
+          </mesh>
+        })}
+        {enemy.tactics?.pending?.path.slice(-1).filter(cell=>canSeeContent(cellId(cell),state)&&currentThreat(state,enemy).some(threat=>cellId(threat)===cellId(cell))).map(cell=>
+          <mesh key="charge-destination" raycast={()=>{}} position={gridToWorld(cell.column,cell.row).map((v,i)=>i===1?0.052:v) as [number,number,number]} rotation={[-Math.PI/2,0,0]}>
+            <circleGeometry args={[0.13,3]}/><meshBasicMaterial color="#e1bb80" transparent opacity={0.85} depthWrite={false}/>
+          </mesh>)}
+        {(enemy.block??0)>0&&<group position={gridToWorld(enemy.cell.column,enemy.cell.row)}><mesh position={[0,0.045,0]} rotation={[-Math.PI/2,0,0]} raycast={()=>{}}>
+          <ringGeometry args={[0.28,0.31,8]}/><meshBasicMaterial color="#a8bdcf" transparent opacity={0.7} depthWrite={false}/>
+        </mesh></group>}
       </group>
     ))}
   </group>

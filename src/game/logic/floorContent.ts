@@ -6,13 +6,14 @@ import { cellId, cellFromId, distancesFrom, fallbackDungeon, floorSeed, generate
 import { sameCell, type Cell } from './movement'
 import type { GameState } from './combat'
 import { hasLineOfSight } from './enemyAI'
+import { BALANCE_PENDING_USER_DOCUMENT as fixture, type EnemyId } from '../../data/enemies'
 
 export type RouteVote={floor:number;alignment:Attunement}
-export type RunProgress={id:string;mode:'random'|'manual';initialAlignment:Attunement;completedAlignments:RouteVote[];routes:RouteVote[];cleared:number[];bossSkips:number[];introduced:BiomeId[];finished:boolean;layouts:Record<number,{seed:string;style?:LayoutStyle}>}
+export type RunProgress={id:string;mode:'random'|'manual';initialAlignment:Attunement;completedAlignments:RouteVote[];routes:RouteVote[];cleared:number[];bossSkips:number[];bossClears?:{floor:number;variant:Attunement;eligible:boolean}[];introduced:BiomeId[];finished:boolean;layouts:Record<number,{seed:string;style?:LayoutStyle}>}
 export type RewardCard={definitionId:CardId;rarity:Rarity}
 export type Chest={id:string;cell:Cell;state:'closed'|'opened'|'claimed'|'skipped';offer:RewardCard[]}
 export type FloorContent={id:string;floor:number;biome:BiomeId;alignment:Attunement;exits:{alignment:Attunement;cell:Cell}[];chests:Chest[];
-  boss?:{name:string;identity:typeof biomes[number]['identity'];variant:Attunement;spawn:Cell;status:'unimplemented'}}
+  boss?:{name:string;identity:typeof biomes[number]['identity'];variant:Attunement;spawn:Cell;status:'unimplemented'|'active'|'defeated';rewardResolved?:boolean;rewardGranted?:boolean}}
 export const seedStream=(master:string,floor:number,system:string)=>`${master}:floor:${floor}:${system}:v1`
 export const initialWorldAlignment=(master:string):Attunement=>seededRandom(`${master}:world-alignment:v1`)()<0.5?'light':'dark'
 export function worldAlignment(master:string,floor:number,routes:readonly RouteVote[],initial=initialWorldAlignment(master)):Attunement{
@@ -66,7 +67,16 @@ export function createCampaignFloor(master:string,floor:number,routes:readonly R
   const content:FloorContent={id:seedStream(master,floor,'content'),floor,biome:location.biome.id,alignment:worldAlignment(master,floor,routes),exits:[],chests:[]}
   if(location.boss){
     content.boss={name:location.biome.boss,identity:location.biome.identity,variant:bossVariant(routes,floor),spawn:{column:4,row:3},status:'unimplemented'}
-    return {dungeon,content,enemyCells:[] as Cell[]}
+    if(floor===6){
+      content.boss={...content.boss,name:content.alignment==='light'?'Hallowed Cavalry Commander':'Void Chimera Knight',status:'active'}
+      // Dedicated court: matched Hallowed barricades versus displaced, fractured Void cover.
+      const walls=content.alignment==='light'?[18,21,42,45]:[17,22,41,46]
+      dungeon={...dungeon,spawn:{column:3,row:6},exit:{column:3,row:1},tiles:Array.from({length:64},(_,id)=>({
+        ...cellFromId(id),blocksMovement:walls.includes(id),blocksSight:walls.includes(id),prop:walls.includes(id)?'wall' as const:undefined,rotation:0,
+        ...([0,7,56,63].includes(id)?{decoration:{kind:'rock' as const,corner:id%4,motif:'barricade' as const}}:{})}))}
+      content.exits=[{alignment:content.alignment,cell:{...dungeon.exit}}]
+    }
+    return {dungeon,content,enemyCells:floor===6?[content.boss.spawn]:[] as Cell[],enemyKinds:floor===6?[content.alignment==='light'?'hallowed-commander':'chimera-knight'] as EnemyId[]:[]}
   }
   const open=new Set(dungeon.tiles.filter(tile=>!tile.blocksMovement).map(cellId)),spawn=cellId(dungeon.spawn)
   const distances=distancesFrom(open,spawn),fromExit=distancesFrom(open,cellId(dungeon.exit))
@@ -85,14 +95,19 @@ export function createCampaignFloor(master:string,floor:number,routes:readonly R
   }
   const enemyRandom=seededRandom(seedStream(master,floor,'enemy-placement'))
   const candidates=[...open].filter(id=>id!==spawn&&!exitIds.has(id)&&!content.chests.some(chest=>cellId(chest.cell)===id)&&(distances.get(id)??0)>=2)
-  const enemyCells=candidates.length?[cellFromId(candidates[Math.floor(enemyRandom()*candidates.length)])]:[]
+  const enemyKinds:EnemyId[]=location.index===0?[...fixture.encounters[location.local-1]]:[]
+  const desired=location.index===0?enemyKinds.length:1
+  const enemyCells:Cell[]=[]
+  // Independent placement stream; reserve a safe opening and distinct cells, never alter routes.
+  const safeCandidates=candidates.filter(id=>(distances.get(id)??0)>=(location.index===0?fixture.safeSpawnDistance:2))
+  for(let index=0;index<desired&&safeCandidates.length;index++)enemyCells.push(cellFromId(safeCandidates.splice(Math.floor(enemyRandom()*safeCandidates.length),1)[0]))
   dungeon={...dungeon,tiles:dungeon.tiles.map(tile=>({...tile,
     decoration:exitIds.has(cellId(tile))||content.chests.some(chest=>sameCell(chest.cell,tile))||enemyCells.some(cell=>sameCell(cell,tile))?undefined
       :tile.decoration?{...tile.decoration,motif:location.biome.motif}:undefined})),
     reservations:[{...content.exits[1].cell,kind:'alternate-exit'},...enemyCells.map(cell=>({...cell,kind:'enemy' as const})),...content.chests.map(chest=>({...chest.cell,kind:'treasure' as const}))]}
   const issues=floorContentIssues(dungeon,content,enemyCells)
   if(issues.length){if(!safe)return createCampaignFloor(master,floor,routes,style,override,true);throw Error(issues.join('; '))}
-  return {dungeon,content,enemyCells}
+  return {dungeon,content,enemyCells,enemyKinds:enemyKinds.slice(0,enemyCells.length)}
 }
 export function canInteract(state:GameState,cell:Cell,standOn=false){
   return state.status==='playing'&&state.hp>0&&state.visible.has(cellId(cell))&&hasLineOfSight(state.dungeon,state.cell,cell)

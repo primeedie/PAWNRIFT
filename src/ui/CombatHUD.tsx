@@ -1,4 +1,4 @@
-import { attackTargets, type CombatEvent } from '../game/logic/combat'
+import { attackTargets, type CombatEvent, type Enemy } from '../game/logic/combat'
 import { visibleEnemies } from '../game/logic/combatIndicators'
 import { enemyName } from './enemyPresentation'
 import { aimBasicAttack, inspectedEnemy, useInspectionStore } from './inspectionStore'
@@ -7,7 +7,8 @@ import { usePawnStore } from '../game/state/pawnStore'
 import { blockWindowLabel } from '../game/logic/protection'
 import { eligibleInteractions } from '../game/logic/interactions'
 
-function describeEvent(event: CombatEvent) {
+function describeEvent(event: CombatEvent, enemies:Enemy[]) {
+  const actor=enemies.find(enemy=>enemy.id===event.actor),name=actor?enemyName(actor):'Enemy'
   switch (event.kind) {
     case 'chest':return 'Chest opened'
     case 'hit': return event.actor === 'pawn' ? `${event.effect === 'sharpener' ? 'Sharpener follow-up' : event.effect ?? 'Strike'} · ${event.amount} damage` : event.amount ? `−${event.amount} HP` : 'Guarded'
@@ -20,10 +21,11 @@ function describeEvent(event: CombatEvent) {
     case 'guard': return 'Guard ready'
     case 'heal': return `Restored ${event.amount} HP`
     case 'focus': return 'Focus gained'
-    case 'windup': return event.actor === 'pawn' ? 'Royal Decree winding up' : event.actor.startsWith('dummy-') ? 'Dummy readies a strike' : 'Rookling readies a strike'
+    case 'windup': return event.actor === 'pawn' ? 'Royal Decree winding up' : `${name} prepares · amber warnings resolve next response`
     case 'stun': return 'Concussion: response skipped'
-    case 'miss': return event.actor.startsWith('dummy-') ? 'Dummy misses' : 'Rookling misses'
-    case 'defeat': return event.actor === 'pawn' ? 'Defeated' : event.actor.startsWith('dummy-') ? 'Dummy defeated' : 'Rookling defeated'
+    case 'miss': return `${name} misses`
+    case 'phase': return `${name} changes stance · recovery opening`
+    case 'defeat': return event.actor === 'pawn' ? 'Defeated' : `${name} defeated`
     case 'victory': return 'Floor cleared'
     default: return ''
   }
@@ -49,7 +51,7 @@ export function CombatHUD() {
   const state = usePawnStore()
   const inspection=useInspectionStore()
   const locked = state.phase !== 'ready' || state.status !== 'playing'
-  const feedback = state.events.filter((event) => event.seen).map(describeEvent).filter(Boolean).slice(-3).join(' · ')
+  const feedback = state.events.filter((event) => event.seen).map(event=>describeEvent(event,state.enemies)).filter(Boolean).slice(-3).join(' · ')
   const context=!(state.selectedCardId||state.selectedAbility||inspection.aimingAttack)&&eligibleInteractions(state).length>0
   return (
     <div className="combat-hud">

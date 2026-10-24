@@ -5,7 +5,8 @@ import type { Attunement } from '../data/forms'
 
 export type AnimationCue = 'idle' | 'move' | 'attack' | 'signature' | 'defend' | 'parry' | 'counter' | 'hit' | 'transform' | 'revert' | 'death'
 export function enemyPresentationDuration(state:GameState){
-  return Math.max(turnTiming.enemyMs,...state.events.filter(e=>e.kind==='parry'&&e.actor==='pawn').map(e=>(e.delayMs??0)+parryPresentationMs))
+  const tactical=state.events.some(event=>event.seen&&state.enemies.some(enemy=>enemy.tactics&&enemy.id===(event.sourceId??event.actor)))
+  return Math.max(tactical?900:turnTiming.enemyMs,...state.events.filter(e=>e.kind==='parry'&&e.actor==='pawn').map(e=>(e.delayMs??0)+parryPresentationMs))
 }
 export function parryPresentation(state:GameState,elapsed:number){
   const event=state.events.find(e=>e.kind==='parry'&&e.actor==='pawn'&&elapsed>=(e.delayMs??0)&&elapsed<(e.delayMs??0)+parryPresentationMs)

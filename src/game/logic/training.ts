@@ -9,14 +9,17 @@ import { emptySignatures, signatureFog } from './signatures'
 import { emptyPassives } from './passives'
 import { emptyAnalysis, type Analysis } from './combatAnalysis'
 import { sparringPatterns, type SparringPattern } from './playerDefense'
+import { enemyTestControl, type EnemyTestCommand } from './enemyTesting'
 
 export type TrainingForm = 'pawn' | typeof testForms[number]
 export type DummySpec = { id: string; cell: Cell; hp: number; defense: number; block: number;
   rank: 'normal' | 'elite' | 'boss'; behavior: 'passive' | 'sparring'; knockback: boolean; pattern?: SparringPattern }
 export type TrainingScenario = 'open' | 'line' | 'cluster' | 'separated' | 'blocked' | 'perch' | 'eye'
 export const trainingScenarios: TrainingScenario[] = ['open', 'line', 'cluster', 'separated', 'blocked', 'perch', 'eye']
-export type TrainingSession = { id: number; scenario: TrainingScenario; dummies: DummySpec[]; analysis: Analysis }
+export type TrainingSession = { id: number; scenario: TrainingScenario; dummies: DummySpec[]; analysis: Analysis; roster?:Enemy[] }
 export type TrainingCommand =
+  | {kind:'roster-reset'}
+  | {kind:'enemy-control';command:EnemyTestCommand}
   | { kind: 'form'; form: TrainingForm; attunement: Attunement }
   | { kind: 'scenario'; scenario: TrainingScenario }
   | { kind: 'dummies'; specs: DummySpec[] }
@@ -73,6 +76,15 @@ function validDummies(game: GameState, specs: DummySpec[]) {
 }
 export function trainingControl(game: GameState, session: TrainingSession, command: TrainingCommand): { game: GameState; session: TrainingSession } | null {
   if (game.mode !== 'training') return null
+  if(command.kind==='roster-reset'){
+    if(!session.roster||session.roster.some(enemy=>sameCell(enemy.cell,game.cell)))return null
+    return {game:{...game,enemies:structuredClone(session.roster),events:[]},session:{...session,analysis:emptyAnalysis()}}
+  }
+  if(command.kind==='enemy-control'){
+    const next=enemyTestControl(game,command.command)
+    return next?{game:next,session:command.command.kind==='spawn'||command.command.kind==='clear'
+      ?{...session,roster:structuredClone(next.enemies)}:session}:null
+  }
   let next = { ...game, events: [] as GameState['events'] }, metadata = session
   if (command.kind === 'form') {
     if (command.form !== 'pawn' && !testForms.some((form) => form === command.form)) return null

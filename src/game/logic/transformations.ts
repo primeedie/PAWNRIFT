@@ -60,7 +60,7 @@ export function recordTransformationBossWin(state: TransformationState, form: Bo
     const ready = { ...state, reconstruction: { ...state.reconstruction, [form]: 2 as const } }
     return grantTransformation(ready, form, attunement) ?? ready
   }
-  return grantTransformation(state, form, attunement) ?? state
+  return grantTransformation(state, form, attunement) ?? {...state,reconstruction:{...state.reconstruction,[form]:2}}
 }
 export const retentionChoices = (state: TransformationState) => state.inventory.filter((item) => item.charges > 0)
 

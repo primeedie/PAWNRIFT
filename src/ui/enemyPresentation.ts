@@ -1,5 +1,6 @@
 import { enemyIntentLabel, type Enemy } from '../game/logic/combat'
-export const enemyName = (enemy: Enemy) => enemy.kind === 'dummy' ? 'Dummy' : 'Rookling'
+import { enemies } from '../data/enemies'
+export const enemyName = (enemy: Enemy) => enemy.kind === 'dummy' ? 'Dummy' : enemy.kind==='rookling'?'Rookling':enemies[enemy.kind].name
 export function enemyStatuses(enemy: Enemy) {
   const entries: { icon: string; label: string; count?: number; tone?: string }[] = []
   if (enemy.intent === 'attack') entries.push({ icon: '!', label: enemyIntentLabel(enemy), tone: 'threat' })

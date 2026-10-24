@@ -10,8 +10,10 @@ import { chessDestinations, formMovement } from './chessMovement'
 import { applyBleed, applyBurn, applyConcussion, emptyPassives } from './passives'
 import { cloneEnemy } from './damage'
 import { knownPreviewState } from './formCombat'
+import { enemyTestControl, type EnemyTestCommand } from './enemyTesting'
 
 export type PlaytestAction =
+  | {kind:'enemy-control';command:EnemyTestCommand}
   | { kind: 'passive-reset' | 'sharpener-reset' | 'king-availability' }
   | { kind: 'status'; targetId: string; effect: 'burn' | 'bleed' | 'concussion' | 'immunity' | 'clear' | 'clear-burn' | 'clear-bleed' | 'clear-concussion' }
   | { kind: 'replace'; form: BossForm; attunement: Attunement; replace: BossForm }
@@ -28,6 +30,7 @@ export type DiagnosticLayer = typeof diagnosticLayers[number]
 // Explicit public prototype overrides. Ordinary grants, actions and floor hooks never call this.
 export function applyPlaytest(state: GameState, action: PlaytestAction): GameState | null {
   if (!PLAYTEST_TOOLS_ENABLED || state.status !== 'playing' || state.hp <= 0) return null
+  if(action.kind==='enemy-control')return enemyTestControl(state,action.command)
   if (state.mode !== 'training' && (action.kind === 'king-availability' || ('form' in action && action.form === 'king'))) return null
   const next: GameState = { ...state, events: [], guarding: false, block: 0, blockSources:[],fortified:undefined,preparedCounter: 0 }
   if (action.kind === 'king-availability') {

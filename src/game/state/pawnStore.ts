@@ -12,7 +12,7 @@ import { bossForms, type Attunement, type BossForm } from '../../data/forms'
 import { tutorials, tutorialLesson, type LessonId } from '../../data/tutorials'
 import { lessonCompleted, newTutorial, observeTutorial, tutorialExercise, tutorialRejection, tutorialStep, type PracticeForm, type TutorialSession, type TutorialSignal } from '../logic/tutorial'
 import { useTutorialProgress } from './tutorialProgress'
-import { newCampaign, campaignGame, advanceCampaign, enterCampaignFloor, floorToken } from '../logic/run'
+import { newCampaign, campaignGame, advanceCampaign, enterCampaignFloor, floorToken, settleBossDefeat } from '../logic/run'
 import { bossVariant, worldAlignment, completedAlignmentHistory, floorContentIssues, pendingChest, treasureOffer, type RunProgress } from '../logic/floorContent'
 import { floorLocation, type BiomeId } from '../../data/biomes'
 import { deserializeRun, localRunStorage, readRunSave, runSaveKey, serializeRun } from './runPersistence'
@@ -157,6 +157,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     if(floor===state.floorNumber){
       const boss=state.floorContent?.boss
       set({progress,playtestMode:true,floorContent:{...state.floorContent!,alignment:worldAlignment(state.masterSeed,floor,routes,progress.initialAlignment),...(boss?{boss:{...boss,variant:bossVariant(progress.routes,floor)}}:{})}})
+      if(boss)return get().regenerateFloor()
       return true
     }
     const next=enterCampaignFloor(state,floor,progress,true)
@@ -433,7 +434,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
       return
     }
     if (phase === 'player') {
-      const resolved = resolveEnemyPhase(state)
+      const resolved = settleBossDefeat({...state,...resolveEnemyPhase(state)})
       set({ ...resolved,tutorial:state.tutorial?learned(observeTutorial(state.tutorial,state,resolved,{kind:'response'})):null,
         training: state.training ? { ...state.training, analysis: recordAnalysis(state.training.analysis, resolved.events, state.actionId) } : null, from: state.cell, isMoving: false,
         phase: resolved.status === 'defeat' ? 'ready' : 'enemies',
