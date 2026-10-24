@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { usePawnStore } from '../game/state/pawnStore'
 import { useAppStore } from '../game/state/appStore'
 import { biomes, floorLocation } from '../data/biomes'
-import { alignmentCounts, canInteract, pendingChest } from '../game/logic/floorContent'
-import { floorToken } from '../game/logic/run'
+import { eligibleInteractions } from '../game/logic/interactions'
+import { useInteractionStore, focusInteraction, requestInteraction } from './interactionStore'
+import { useInspectionStore } from './inspectionStore'
 import { closeHudPanels } from './hudInteraction'
 
 export function SeedEntry({disabled=false}:{disabled?:boolean}){
@@ -22,9 +23,9 @@ export function SeedEntry({disabled=false}:{disabled?:boolean}){
 export function RunHUD(){
   const state=usePawnStore(),[message,setMessage]=useState('')
   if(state.training||!state.progress)return null
-  const location=floorLocation(state.floorNumber),counts=alignmentCounts(state.progress.routes,state.floorNumber)
+  const location=floorLocation(state.floorNumber)
   return <div className="run-hud" data-tooltip-avoid>
-    <span>{location.biome.name} · Floor {location.local}/6</span><span>Light {counts.light} / Dark {counts.dark}</span>
+    <span>{location.biome.name} · Floor {location.local}/6 · {state.floorContent?.alignment==='dark'?'Void':'Hallowed'}</span>
     <details name="hud-panels"><summary>Run / seed</summary><div className="hud-panel run-panel" onKeyDown={event=>event.stopPropagation()}>
       <button onClick={()=>closeHudPanels()}>Close</button><h2>TIMEO KINGDOM</h2>
       <p>{state.progress.mode==='manual'?'Manual seed':state.playtestMode?'Development-modified random run':'Random run'} · {state.playtestMode||state.progress.mode==='manual'?'Permanent rewards disabled':'Eligible creation mode; boss rewards are not implemented yet.'}</p>
@@ -41,12 +42,15 @@ export function RunHUD(){
 }
 export function FloorInteractions(){
   const state=usePawnStore(),content=state.floorContent
+  const focus=useInteractionStore(ui=>ui.focusedId)
+  const aimingAttack=useInspectionStore(ui=>ui.aimingAttack)
   if(state.training||!content||state.progress?.finished)return null
-  const locked=state.phase!=='ready'||!!pendingChest(state),token=floorToken(state)
+  const items=eligibleInteractions(state),focused=items.find(item=>item.id===focus)??items[0]
+  const explicit=state.selectedCardId||state.selectedAbility||aimingAttack
   return <div className="floor-interactions">
-    {content.chests.filter(chest=>chest.state==='closed'&&canInteract(state,chest.cell)).map(chest=><button key={chest.id} disabled={locked} onClick={()=>state.submitAction({kind:'open-chest',floorId:content.id,chestId:chest.id})}>Open chest · 1 turn</button>)}
-    {content.exits.filter(exit=>canInteract(state,exit.cell,true)).map(exit=><button key={exit.alignment} className={`attunement-${exit.alignment}`} disabled={locked||state.enemies.some(enemy=>enemy.hp>0)} onClick={()=>state.leaveFloor(token,exit.alignment)}>
-      {exit.alignment==='light'?'Hallowed':'Void'} exit{state.enemies.some(enemy=>enemy.hp>0)?' · clear floor first':''}
+    {items.map(item=><button key={item.id} aria-label={`${item.label}, row ${item.cell.row+1}, column ${item.cell.column+1}`} aria-pressed={item.id===focused?.id} disabled={state.phase!=='ready'||!!explicit}
+      onFocus={()=>focusInteraction(item.id)} onPointerEnter={()=>focusInteraction(item.id)} onClick={()=>requestInteraction(item.id)}>
+      {item.id===focused?.id&&!explicit&&<kbd>E</kbd>} {item.label}{item.kind==='chest'?' · 1 turn':''}
     </button>)}
     {content.boss&&<span className="boss-development-note">{content.boss.name} · {content.boss.variant==='light'?'Hallowed':'Void'} arena. Encounter unimplemented; development skip is in Playtest Tools.</span>}
   </div>

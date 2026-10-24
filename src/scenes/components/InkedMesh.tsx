@@ -1,6 +1,7 @@
 import { BackSide, ShaderMaterial, Vector2, type BufferGeometry, type Material, type Mesh } from 'three'
 import { useRef } from 'react'
 import { useArtSettings } from '../../ui/artSettingsStore'
+import { useModelComparison } from './ModelComparison'
 
 const resolution=new Vector2()
 // Inverted hull: one extra pass for selected silhouettes, no framebuffer or full-screen pass.
@@ -21,7 +22,8 @@ export const inkMaterial=new ShaderMaterial({side:BackSide,transparent:true,dept
 export function InkHull({geometry}:{geometry:BufferGeometry}){
   const hull=useRef<Mesh>(null)
   const enabled=useArtSettings(state=>state.outlines)
-  return enabled?<mesh ref={hull} geometry={geometry} material={inkMaterial} raycast={()=>{}} renderOrder={-1}
+  const mode=useModelComparison()
+  return enabled&&mode==='final'?<mesh ref={hull} geometry={geometry} material={inkMaterial} raycast={()=>{}} renderOrder={-1}
       onBeforeRender={renderer=>{
         renderer.getDrawingBufferSize(resolution);inkMaterial.uniforms.resolution.value.copy(resolution)
         let ancestor=hull.current?.parent??null,alpha=1

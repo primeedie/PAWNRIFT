@@ -49,7 +49,7 @@ export function boardVisualPoints(tiles?: readonly DungeonTile[]): Point[] {
       // Allow Pawn/enemy movement anywhere traversable without changing the framing.
       // Lower envelope includes the sheathed katana at every facing and idle/step sway.
       box(x, z, 1.15, 1.15, 0.12 + height, 1.25 + height)
-      box(x, z, 0.38, 0.38, -0.02 + height, 1.58 + height)
+      box(x, z, 0.38, 0.38, -0.02 + height, 1.68 + height)
     }
   }
   return points

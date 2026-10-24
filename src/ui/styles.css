@@ -478,3 +478,19 @@ button:focus-visible { outline: 3px solid #f3cc82; outline-offset: 6px; }
   .inspection-panel { top: 12px; }
 }
 @media (prefers-reduced-motion:reduce) { .enemy-health-bar > span { transition: none; } }
+.route-progress { position: relative; z-index: 101; width: min(320px,calc(100% - 24px)); margin: 0 auto 7px; color: var(--ui-text); font-size: 0.65rem; line-height: 1.4; text-align: center; pointer-events: none; text-shadow: 0 1px 3px #080d18; }
+.route-vote-counts { display: flex; justify-content: space-between; color: #d6ccb1; }
+.route-vote-counts span:last-child { color: #c3b0da; }
+.route-segments { display: grid; grid-template-columns: repeat(5,1fr); gap: 3px; margin: 3px 0; }
+.route-segments span { height: 7px; background: #29313f; border: 1px solid #68727e; border-radius: 2px; }
+.route-segments [data-alignment="light"] { background: #b9aa7c; border-color: #e1d6b6; }
+.route-segments [data-alignment="dark"] { background: #8b70a4; border-color: #c9b3de; }
+.route-progress small { color: var(--ui-secondary); font-size: 0.6rem; }
+/* Leave the card face and tooltip usable without changing measured camera clearance. */
+.card-hand:has(.hand-card[data-inspected="true"]) .route-progress { transform: translateY(-85px); }
+.exit-confirmation { width: min(390px,calc(100vw - 32px)); padding: 24px; color: var(--ui-text); border: 1px solid #8c829c; border-radius: 10px; background: #202733; box-shadow: 0 20px 70px #050911aa; }
+.exit-confirmation::backdrop { background: #090e18b8; }
+.exit-confirmation h2 { font-size: 1.2rem; margin-top: 0; }
+.exit-confirmation p { font: 0.9rem/1.5 system-ui,sans-serif; }
+.exit-confirmation > div { display: flex; gap: 12px; justify-content: center; }
+.floor-interactions [aria-pressed="true"] { border-color: var(--ui-energy); }

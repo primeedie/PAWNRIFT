@@ -1,9 +1,9 @@
-import { BoxGeometry, ConeGeometry, MeshLambertMaterial, RingGeometry } from 'three'
+import { BoxGeometry, ConeGeometry, MeshLambertMaterial, MeshBasicMaterial, RingGeometry, DoubleSide } from 'three'
 import { usePawnStore } from '../../game/state/pawnStore'
 import type { Attunement } from '../../data/forms'
 import type { BiomeMotif } from '../../data/biomes'
 import type { Chest } from '../../game/logic/floorContent'
-import { floorToken } from '../../game/logic/run'
+import { requestInteraction, focusInteraction } from '../../ui/interactionStore'
 import { gameplayBlocked, restoreGameFocus } from '../../ui/hudInteraction'
 import { consumeInspectionBoardClick } from '../../ui/inspectionStore'
 
@@ -11,11 +11,27 @@ const box=new BoxGeometry(1,1,1),point=new ConeGeometry(1,1,4),ring=new RingGeom
 const materials={stone:new MeshLambertMaterial({color:'#71818c',flatShading:true}),wood:new MeshLambertMaterial({color:'#6d594c',flatShading:true}),
   gold:new MeshLambertMaterial({color:'#bda576',flatShading:true}),ivory:new MeshLambertMaterial({color:'#d4cdb4',flatShading:true}),
   void:new MeshLambertMaterial({color:'#706285',flatShading:true}),dark:new MeshLambertMaterial({color:'#37414d',flatShading:true}),paper:new MeshLambertMaterial({color:'#aaadba',flatShading:true})}
+const atmosphere={light:new MeshBasicMaterial({color:'#d2c393',transparent:true,opacity:0.055,depthWrite:false,side:DoubleSide}),
+  dark:new MeshBasicMaterial({color:'#9881b1',transparent:true,opacity:0.07,depthWrite:false,side:DoubleSide})}
+export function WorldAccent({alignment}:{alignment:Attunement}){
+  return <group name={`${alignment}-atmospheric-accent`}>
+    {alignment==='light'?<mesh geometry={point} material={atmosphere.light} position={[0,0.31,0]} scale={[0.24,0.62,0.24]} rotation={[Math.PI,0,0]}/>
+      :<mesh geometry={fracture} material={atmosphere.dark} position={[0,0.18,0]} rotation={[-0.6,0,0.5]} scale={0.65}/>}
+  </group>
+}
 function Block({size,at=[0,0,0],tone='stone',rotate=0}:{size:[number,number,number];at?:[number,number,number];tone?:keyof typeof materials;rotate?:number}){
   return <mesh geometry={box} material={materials[tone]} scale={size} position={at} rotation={[0,0,rotate]}/>
 }
-export function BiomeAdornment({motif}:{motif:BiomeMotif}){
-  return <group dispose={null}>
+export function BiomeAdornment({motif,alignment='light'}:{motif:BiomeMotif;alignment?:Attunement}){
+  const dark=alignment==='dark'
+  return <group dispose={null} rotation={[0,dark?0.17:0,dark?-0.12:0]} name={`${alignment}-${motif}`}>
+    {dark?<>
+      <Block size={[0.16,0.20,0.14]} at={[-0.36,0.10,0.08]} tone="void" rotate={-0.4}/>
+      <mesh geometry={fracture} material={materials.void} position={[0,0.025,0]} rotation={[-Math.PI/2,0,0.6]} scale={1.7}/>
+    </>:<>
+      <Block size={[0.85,0.07,0.65]} at={[0,0.035,0]} tone="ivory"/>
+      {[-1,1].map(s=><Block key={s} size={[0.035,0.56,0.06]} at={[s*0.34,0.3,-0.12]} tone="gold"/>)}
+    </>}
     {motif==='barricade'?<><Block size={[0.9,0.12,0.13]} at={[0,0.3,0]} tone="wood" rotate={0.3}/><Block size={[0.9,0.12,0.13]} at={[0,0.3,0]} tone="wood" rotate={-0.3}/>{[-1,1].map(s=><Block key={s} size={[0.10,0.7,0.12]} at={[s*0.28,0.35,0]} tone="stone"/>)}</>
       :motif==='books'?<>{[0,1,2].map(i=><group key={i} position={[i%2*0.08,i*0.13+0.07,0]} rotation={[0,i*0.3,0]}><Block size={[0.65,0.11,0.44]} tone={i%2?'void':'paper'}/><Block size={[0.68,0.02,0.46]} at={[0,0.065,0]} tone="dark"/></group>)}</>
         :motif==='battlement'?<><Block size={[0.85,0.4,0.25]} at={[0,0.2,0]}/>{[-1,1].map(s=><Block key={s} size={[0.25,0.25,0.3]} at={[s*0.3,0.5,0]} tone="paper"/>)}</>
@@ -23,11 +39,11 @@ export function BiomeAdornment({motif}:{motif:BiomeMotif}){
   </group>
 }
 export function RouteExit({alignment}:{alignment:Attunement}){
-  const state=usePawnStore(),token=floorToken(state),dark=alignment==='dark'
-  return <group name={`${alignment}-route-exit`} dispose={null} onClick={event=>{
+  const state=usePawnStore(),dark=alignment==='dark'
+  return <group name={`${alignment}-route-exit`} dispose={null} onPointerOver={()=>focusInteraction(`exit:${alignment}`)} onClick={event=>{
     if(state.selectedCardId||state.selectedAbility)return // Let the board's explicit targeting win.
     event.stopPropagation();if(gameplayBlocked())return
-    restoreGameFocus();if(!consumeInspectionBoardClick())state.leaveFloor(token,alignment)
+    restoreGameFocus();if(!consumeInspectionBoardClick())requestInteraction(`exit:${alignment}`)
   }}>
     <Block size={[0.68,0.07,0.58]} at={[0,0.035,0]} tone={dark?'dark':'ivory'}/>
     {[-1,1].map(s=><group key={s} position={[s*0.25,dark&&s===1?0.23:0.32,0]} rotation={[0,0,dark?s*0.15:0]}><Block size={[dark?0.10:0.12,dark&&s===1?0.42:0.62,0.13]} tone={dark?'void':'ivory'}/></group>)}
@@ -38,10 +54,10 @@ export function RouteExit({alignment}:{alignment:Attunement}){
 }
 export function TreasureChest({chest}:{chest:Chest}){
   const state=usePawnStore(),floorId=state.floorContent?.id
-  return <group name="treasure-chest" dispose={null} onClick={event=>{
+  return <group name="treasure-chest" dispose={null} onPointerOver={()=>focusInteraction(`chest:${chest.id}`)} onClick={event=>{
     if(state.selectedCardId||state.selectedAbility)return
     event.stopPropagation();if(!floorId||gameplayBlocked())return
-    restoreGameFocus();if(!consumeInspectionBoardClick())state.submitAction({kind:'open-chest',floorId,chestId:chest.id})
+    restoreGameFocus();if(!consumeInspectionBoardClick())requestInteraction(`chest:${chest.id}`)
   }}>
     <Block size={[0.50,0.28,0.34]} at={[0,0.14,0]} tone="wood"/>
     <group position={[0,0.28,-0.16]} rotation={[chest.state==='closed'?0:-1.2,0,0]}><Block size={[0.53,0.09,0.37]} at={[0,0.04,0.16]} tone="dark"/></group>

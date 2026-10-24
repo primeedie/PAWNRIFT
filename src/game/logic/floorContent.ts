@@ -8,12 +8,21 @@ import type { GameState } from './combat'
 import { hasLineOfSight } from './enemyAI'
 
 export type RouteVote={floor:number;alignment:Attunement}
-export type RunProgress={id:string;mode:'random'|'manual';routes:RouteVote[];cleared:number[];bossSkips:number[];introduced:BiomeId[];finished:boolean;layouts:Record<number,{seed:string;style?:LayoutStyle}>}
+export type RunProgress={id:string;mode:'random'|'manual';initialAlignment:Attunement;completedAlignments:RouteVote[];routes:RouteVote[];cleared:number[];bossSkips:number[];introduced:BiomeId[];finished:boolean;layouts:Record<number,{seed:string;style?:LayoutStyle}>}
 export type RewardCard={definitionId:CardId;rarity:Rarity}
 export type Chest={id:string;cell:Cell;state:'closed'|'opened'|'claimed'|'skipped';offer:RewardCard[]}
-export type FloorContent={id:string;floor:number;biome:BiomeId;exits:{alignment:Attunement;cell:Cell}[];chests:Chest[];
+export type FloorContent={id:string;floor:number;biome:BiomeId;alignment:Attunement;exits:{alignment:Attunement;cell:Cell}[];chests:Chest[];
   boss?:{name:string;identity:typeof biomes[number]['identity'];variant:Attunement;spawn:Cell;status:'unimplemented'}}
 export const seedStream=(master:string,floor:number,system:string)=>`${master}:floor:${floor}:${system}:v1`
+export const initialWorldAlignment=(master:string):Attunement=>seededRandom(`${master}:world-alignment:v1`)()<0.5?'light':'dark'
+export function worldAlignment(master:string,floor:number,routes:readonly RouteVote[],initial=initialWorldAlignment(master)):Attunement{
+  if(floorLocation(floor).boss)return bossVariant(routes,floor)
+  // A boss arena uses the majority; the fifth exit still sets the next ordinary floor.
+  return [...routes].filter(vote=>vote.floor<floor).sort((a,b)=>b.floor-a.floor)[0]?.alignment??initial
+}
+export function completedAlignmentHistory(master:string,cleared:readonly number[],routes:readonly RouteVote[],initial=initialWorldAlignment(master)){
+  return cleared.filter(floor=>floor%6!==0).map(floor=>({floor,alignment:worldAlignment(master,floor,routes,initial)}))
+}
 export function alignmentCounts(routes:readonly RouteVote[],floor:number){
   const base=Math.floor((floor-1)/6)*6
   const votes=routes.filter(vote=>vote.floor>base&&vote.floor<=base+5)
@@ -54,7 +63,7 @@ export function createCampaignFloor(master:string,floor:number,routes:readonly R
   if(!Number.isInteger(floor)||floor<1||floor>24)throw Error('Invalid campaign floor')
   const location=floorLocation(floor),seed=override??floorSeed(master,floor)
   let dungeon=location.boss||safe?{...fallbackDungeon(seed),reservations:[]}:generateDungeon(seed,style,{obstacles:`${seed}:obstacles`,environment:`${seed}:environment`})
-  const content:FloorContent={id:seedStream(master,floor,'content'),floor,biome:location.biome.id,exits:[],chests:[]}
+  const content:FloorContent={id:seedStream(master,floor,'content'),floor,biome:location.biome.id,alignment:worldAlignment(master,floor,routes),exits:[],chests:[]}
   if(location.boss){
     content.boss={name:location.biome.boss,identity:location.biome.identity,variant:bossVariant(routes,floor),spawn:{column:4,row:3},status:'unimplemented'}
     return {dungeon,content,enemyCells:[] as Cell[]}

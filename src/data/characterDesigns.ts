@@ -1,12 +1,12 @@
 import type { Attunement } from './forms'
 export type CharacterForm = 'pawn' | 'knight' | 'bishop' | 'rook' | 'queen' | 'king'
 export const characterDesigns = {
-  pawn: { title: 'The Duelist', head: 'angular ronin hood and pawn mask', chest: [0.32, 0.33, 0.23], shoulder: 0.19, headY: 0.98, height: 1.23, light: 'crimson katana', dark: 'crimson katana' },
-  knight: { title: 'The Lancer', head: 'horse visor and mane crest', chest: [0.31, 0.34, 0.21], shoulder: 0.21, headY: 1.05, height: 1.34, light: 'cavalry lance', dark: 'combat spear' },
+  pawn: { title: 'The Duelist', head: 'angular ronin hood and pawn mask', chest: [0.29, 0.31, 0.22], shoulder: 0.19, headY: 0.96, height: 1.23, light: 'crimson katana', dark: 'crimson katana' },
+  knight: { title: 'The Lancer', head: 'elongated equine chess head and sculpted mane', chest: [0.32, 0.37, 0.24], shoulder: 0.21, headY: 1.05, height: 1.43, light: 'cavalry lance', dark: 'combat spear' },
   bishop: { title: 'The Arcanist', head: 'split mitre', chest: [0.25, 0.37, 0.19], shoulder: 0.18, headY: 1.02, height: 1.45, light: 'ceremonial staff', dark: 'void tome' },
-  rook: { title: 'The Bulwark', head: 'battlement helm', chest: [0.43, 0.35, 0.26], shoulder: 0.23, headY: 1.00, height: 1.29, light: 'hallowed warhammer', dark: 'void warhammer' },
-  queen: { title: 'The Sovereign', head: 'five-point crown', chest: [0.29, 0.37, 0.21], shoulder: 0.21, headY: 1.05, height: 1.39, light: 'dual claws', dark: 'bladed void mantle wings' },
-  king: { title: 'Iudicium', head: 'tiered angular royal crown', chest: [0.44, 0.40, 0.27], shoulder: 0.25, headY: 1.10, height: 1.55, light: 'greatsword', dark: 'greatsword (training)' },
+  rook: { title: 'The Bulwark', head: 'castle battlement helm', chest: [0.49, 0.35, 0.36], shoulder: 0.23, headY: 0.98, height: 1.29, light: 'hallowed warhammer', dark: 'void battle mace' },
+  queen: { title: 'The Sovereign', head: 'flared sovereign crown', chest: [0.29, 0.39, 0.22], shoulder: 0.21, headY: 1.05, height: 1.41, light: 'dual claws', dark: 'bladed void mantle wings' },
+  king: { title: 'Iudicium', head: 'tall cross-crested monarch crown', chest: [0.43, 0.42, 0.30], shoulder: 0.25, headY: 1.10, height: 1.68, light: 'greatsword', dark: 'greatsword (training)' },
 } as const
 export const characterPalettes = {
   light: { ivory: '#d4cbb5', armor: '#68717e', cloth: '#4a454e', metal: '#b7bcc4', accent: '#b79a60', dark: '#272c39', eye: '#202736', glow: '#d4b578' },

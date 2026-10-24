@@ -53,16 +53,17 @@ export function handPose(form:CharacterForm,p:CharacterPose,side:-1|1,variant:At
   } else if(form==='bishop') {
     position=[0.23,0.64+p.cast*0.08,0.18];rotation=[0.10+p.cast*0.42,0.10,0.10]
     if(variant==='dark'){
-      position=[-0.02,0.71+p.cast*0.06,0.28];rotation=[-0.30,0.12,0.08]
-      if(side===-1)return {position:[-0.17,0.63+p.cast*0.08,0.25],rotation:[0.3-p.cast*0.2,0.12,0.08]}
+      // Left palm cradles the book spine; right fingers hover over the open pages.
+      position=[0.07,0.74+p.cast*0.055,0.24];rotation=[-0.45,0.12,-0.15]
+      if(side===-1)return {position:[-0.10,0.66+p.cast*0.06,0.22],rotation:[0.72-p.cast*0.15,0.04,-0.12]}
     }else if(side===-1)return {position:[-0.20,0.57+p.cast*0.08,0.12],rotation:[-0.25,0.10,-0.1]}
   } else if(form==='rook'||form==='king') {
-    position=[0.07,0.65+Math.max(0,-p.swing)*0.30,0.20+Math.max(0,p.swing)*0.12]
-    rotation=[0.30+p.swing*1.18,0.16-p.swing*0.38,-0.18+p.swing*0.20]
-    if(form==='king') {position=[0.08,0.68+Math.max(0,-p.swing)*0.32,0.24+Math.max(0,p.swing)*0.10];rotation=[0.18+p.swing*1.40,0.25-p.swing*0.55,-0.35+p.swing*0.42]}
+    position=[0.12-Math.max(0,p.swing)*0.05,0.61+Math.max(0,p.swing)*0.04+Math.max(0,-p.swing)*0.30,0.18+Math.max(0,p.swing)*0.14]
+    rotation=[-0.25+p.swing*1.73,0.08-p.swing*0.30,-0.95+p.swing*0.97]
+    if(form==='king') {position=[0.13-Math.max(0,p.swing)*0.05,0.68+Math.max(0,-p.swing)*0.32,0.17+Math.max(0,p.swing)*0.17];rotation=[0.15+p.swing*1.43,-0.10-p.swing*0.20,-0.75+p.swing*0.82]}
     if(variant==='dark'){
-      if(form==='rook')position=[-0.02,0.66+Math.max(0,-p.swing)*0.26,0.18+Math.max(0,p.swing)*0.14]
-      else {position=[0.04,0.65+Math.max(0,-p.swing)*0.29,0.24+Math.max(0,p.swing)*0.10];rotation=[0.12+p.swing*1.40,0.20-p.swing*0.50,-0.25+p.swing*0.34]}
+      if(form==='rook')position=[0.10-Math.max(0,p.swing)*0.12,0.61+Math.max(0,p.swing)*0.05+Math.max(0,-p.swing)*0.26,0.18+Math.max(0,p.swing)*0.14]
+      else {position=[0.11-Math.max(0,p.swing)*0.07,0.65+Math.max(0,-p.swing)*0.29,0.17+Math.max(0,p.swing)*0.17];rotation=[0.12+p.swing*1.40,0.10-p.swing*0.40,-0.75+p.swing*0.84]}
     }
     rotation=surfaceGrip(p,rotation,Math.max(0,p.swing))
     if(p.guard) {position=[0.06,0.68,0.25];rotation=[0.18,0,-0.18]}

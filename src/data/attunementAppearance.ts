@@ -6,7 +6,7 @@ export const attunementAppearance={
 } as const
 export const equipmentByForm={
   pawn:{light:'katana',dark:'katana'},knight:{light:'lance',dark:'spear'},bishop:{light:'staff',dark:'tome'},
-  rook:{light:'hallowed-hammer',dark:'void-hammer'},queen:{light:'claws',dark:'void-mantle'},king:{light:'greatsword',dark:'void-greatsword'},
+  rook:{light:'hallowed-hammer',dark:'void-mace'},queen:{light:'claws',dark:'void-mantle'},king:{light:'greatsword',dark:'void-greatsword'},
 } as const
 export function handEquipment(form:CharacterForm,variant:Attunement,side:number){
   if(form==='pawn')return undefined

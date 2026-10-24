@@ -53,15 +53,16 @@ export function Weapon({form,variant,side=1,motion,castOrigin}:{form:CharacterFo
     {[-1,1].map(s=><Part key={s} variant={variant} shape="plate" size={[0.08,0.22,0.06]} at={[s*0.10,0.66,0]} rotate={[0,0,s*-0.3]} tone={dark?'armor':'metal'} />)}
     <Part variant={variant} shape="ring" size={[1.05,1.05,0.8]} at={[0,0.70,0]} tone="metal" />
   </group>
-  if(form==='rook') return <group name={dark?'void-warhammer':'hallowed-warhammer'}>
+  if(form==='rook') return <group name={dark?'void-battle-mace':'hallowed-warhammer'}>
     <Part variant={variant} shape="cylinder" size={[0.052,0.77,0.052]} at={[0,0.11,0]} tone="cloth" />
     {[-0.18,-0.12,-0.06,0,0.06,0.12].map(y=><Part key={y} variant={variant} shape="cylinder" size={[0.064,0.02,0.064]} at={[0,y,0]} tone="dark" />)}
     <Part variant={variant} shape="octahedron" size={[0.065,0.07,0.065]} at={[0,-0.31,0]} tone="metal" />
     {dark?<>
-      <Part variant={variant} size={[0.18,0.23,0.22]} at={[-0.14,0.50,0]} rotate={[0,0,-0.10]} tone="armor"/>
-      <Part variant={variant} size={[0.14,0.19,0.22]} at={[0.13,0.48,0]} tone="armor"/>
-      <Part variant={variant} size={[0.055,0.25,0.27]} at={[0.23,0.48,0]} tone="metal"/>
-      <Part variant={variant} shape="plate" size={[0.10,0.13,0.045]} at={[-0.16,0.52,0.13]} rotate={[0,0,0.2]} tone="accent"/>
+      <Part variant={variant} shape="octahedron" size={[0.17,0.23,0.17]} at={[0,0.50,0]} tone="armor"/>
+      {[0,1,2,3,4,5].map(i=><group key={i} rotation={[0,i*Math.PI/3,0]}>
+        <Part variant={variant} shape="voidBlade" size={[0.20,i===2?0.25:0.31,0.045]} at={[0.15,0.50,0]} rotate={[0,0,-Math.PI/2]} tone="metal"/>
+      </group>)}
+      <Part variant={variant} shape="octahedron" size={[0.05,0.12,0.05]} at={[0,0.72,0]} tone="accent"/>
     </>:<>
       <Part variant={variant} size={[0.43,0.24,0.22]} at={[0,0.50,0]} tone="ivory"/>
       {[-1,1].map(s=><group key={s}>

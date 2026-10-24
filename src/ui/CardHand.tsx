@@ -10,6 +10,7 @@ import { KeywordTooltip } from './KeywordTooltip'
 import { CardIllustration } from './CardIllustration'
 import { restoreGameFocus } from './hudInteraction'
 import { tutorialStep } from '../game/logic/tutorial'
+import { RouteProgress } from './RouteProgress'
 
 function emphasizeValues(text: string) {
   return text.split(/(\b\d+\b)/g).map((part, index) => /^\d+$/.test(part) ? <strong key={index}>{part}</strong> : part)
@@ -54,6 +55,7 @@ export function CardHand() {
       event.stopPropagation()
       if (event.key === 'Escape') { setInspection(undefined); state.selectCard(undefined); restoreGameFocus() }
     }}>
+      <RouteProgress/>
       <div className="hand-meta" data-tooltip-avoid>
         <div className="hand-resources">
           <KeywordTooltip topic="energy" className="energy-total"><EnergyIcon /><span>ENERGY <strong>{state.energy}/{state.maxEnergy}</strong></span></KeywordTooltip>

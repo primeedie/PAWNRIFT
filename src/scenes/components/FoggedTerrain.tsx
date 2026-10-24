@@ -4,7 +4,7 @@ import { Color, Group, Mesh, MeshLambertMaterial, MeshBasicMaterial, MeshStandar
 import type { Visibility } from '../../game/logic/visibility'
 
 type FogMaterial = MeshLambertMaterial | MeshBasicMaterial | MeshStandardMaterial
-type FadingMaterial = { material: FogMaterial; base: Color }
+type FadingMaterial = { material: FogMaterial; base: Color; opacity:number; transparent:boolean; depthWrite:boolean; emissive?:Color }
 const mist = new Color('#354153')
 
 // Static terrain only: no opaque fog plane over the Pawn. Dynamic content must use current sight.
@@ -22,7 +22,8 @@ export function FoggedTerrain({ visibility, children }: { visibility: Visibility
       const copy = (source: Material) => {
         if(!(source instanceof MeshLambertMaterial||source instanceof MeshBasicMaterial||source instanceof MeshStandardMaterial))return source
         const material = source.clone()
-        materials.current.push({ material, base: source.color.clone() })
+        materials.current.push({ material, base: source.color.clone(),opacity:source.opacity,transparent:source.transparent,depthWrite:source.depthWrite,
+          emissive:'emissive' in source?source.emissive.clone():undefined })
         return material
       }
       object.material = Array.isArray(original)
@@ -42,12 +43,13 @@ export function FoggedTerrain({ visibility, children }: { visibility: Visibility
     const value = amount.current
     root.current!.userData.fogAmount=value
     root.current!.visible = value > 0.002
-    for (const { material, base } of materials.current) {
-      const transparent = value < 0.379
+    for (const { material, base,opacity,transparent:baseTransparent,depthWrite,emissive } of materials.current) {
+      const transparent = baseTransparent||value < 0.379
       if (material.transparent !== transparent) { material.transparent = transparent; material.needsUpdate = true }
-      material.opacity = Math.min(1, value / 0.38)
-      material.depthWrite = !transparent
+      material.opacity = opacity*Math.min(1, value / 0.38)
+      material.depthWrite = depthWrite&&value>=0.379
       material.color.copy(base).multiplyScalar(0.4 + 0.6 * value).lerp(mist, (1 - value) * 0.2)
+      if(emissive&&'emissive' in material)material.emissive.copy(emissive).multiplyScalar(value)
     }
   })
 

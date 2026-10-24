@@ -26,8 +26,8 @@ function Arm({form,variant,side,motion,hand,castOrigin}:{form:CharacterForm;vari
   },-0.8)
   return <group name={`${side===-1?'left':'right'}-shoulder`} position={[side*characterDesigns[form].shoulder,0.81,0]}>
     <group ref={upper} name="upper-arm-joint">
-      <Part {...costume} shape="pauldron" size={[heavy?0.24:0.18,0.17,0.24]} at={[side*0.01,-0.01,0]} rotate={[0,0,side*(variant==='dark'&&side===-1?-0.4:-0.17)]} tone={form==='pawn'?'armor':variant==='light'?'ivory':'metal'}/>
-      <Part {...costume} shape="upperLimb" size={[heavy?0.14:0.115,0.23,0.13]} at={[0,-0.13,0]} tone="cloth"/>
+      <Part {...costume} shape={form==='rook'?'towerHelm':form==='king'?'royalTorso':'pauldron'} size={[form==='pawn'?0.115:heavy?0.22:form==='bishop'?0.13:0.15,form==='pawn'?0.095:heavy?0.15:0.12,form==='pawn'?0.13:heavy?0.23:0.18]} at={[side*0.01,-0.01,0]} rotate={[0,0,side*(variant==='dark'&&side===-1?-0.3:-0.17)]} tone={form==='pawn'?'armor':variant==='light'?'ivory':'metal'}/>
+      <Part {...costume} shape="upperLimb" size={[heavy?0.14:form==='queen'?0.085:0.105,0.23,form==='queen'?0.10:0.13]} at={[0,-0.13,0]} tone="cloth"/>
       {form==='bishop'&&<Part {...costume} shape="raggedCloth" size={[0.18,0.25,0.2]} at={[0,-0.14,-0.04]} tone={variant==='dark'?'cloth':'ivory'}/>}
       <group ref={elbow} name="elbow-joint" position={[0,-armLengths.upper,0]}>
         <Part {...costume} shape="sphere" size={[0.053,0.052,0.052]} tone="dark" ink={false}/>

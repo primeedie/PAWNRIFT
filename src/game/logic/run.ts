@@ -1,5 +1,5 @@
 import { createGame, type GameState } from './combat'
-import { createCampaignFloor, canInteract, pendingChest, type RunProgress } from './floorContent'
+import { createCampaignFloor, canInteract, pendingChest, initialWorldAlignment, type RunProgress } from './floorContent'
 import { completeTransformationFloor } from './transformations'
 import { emptyPassives } from './passives'
 import { emptySignatures } from './signatures'
@@ -14,7 +14,7 @@ export function campaignGame(master:string,floor:number,progress:RunProgress){
     enemies:built.enemyCells.map((cell,index)=>({...enemy,id:`rookling-${index+1}`,cell,from:cell}))}
 }
 export function newCampaign(master:string,id:string,mode:RunProgress['mode'],style?:import('./dungeon').LayoutStyle){
-  const progress:RunProgress={id,mode,routes:[],cleared:[],bossSkips:[],introduced:['porta'],finished:false,layouts:style?{1:{seed:master,style}}:{}}
+  const progress:RunProgress={id,mode,initialAlignment:initialWorldAlignment(master),completedAlignments:[],routes:[],cleared:[],bossSkips:[],introduced:['porta'],finished:false,layouts:style?{1:{seed:master,style}}:{}}
   return {...campaignGame(master,1,progress),deck:createRunDeck(master),progress,introBiome:'porta' as const}
 }
 type CampaignState=GameState&{masterSeed:string;floorNumber:number;progress:RunProgress|null;playtestMode:boolean}
@@ -28,6 +28,7 @@ export function advanceCampaign(state:CampaignState,token:string,alignment?:Attu
     if(boss||state.status!=='playing'||state.enemies.some(enemy=>enemy.hp>0)||!exit||!canInteract(state,exit.cell,true)||progress.routes.some(vote=>vote.floor===state.floorNumber))return null
   }
   const updated:RunProgress={...progress,routes:boss?progress.routes:[...progress.routes,{floor:state.floorNumber,alignment:alignment??'light'}],
+    completedAlignments:boss?progress.completedAlignments:[...progress.completedAlignments,{floor:state.floorNumber,alignment:floorContent.alignment}],
     cleared:[...progress.cleared,state.floorNumber],bossSkips:boss?[...progress.bossSkips,state.floorNumber]:progress.bossSkips}
   if(state.floorNumber===24)return {progress:{...updated,finished:true},status:'victory' as const,playtestMode:state.playtestMode||development,
     transformations:completeTransformationFloor(state.transformations),passives:emptyPassives(),block:0,blockSources:[],fortified:undefined,preparedCounter:0,guarding:false,

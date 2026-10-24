@@ -133,7 +133,7 @@ describe('Hallowed/Void equipment and geometry',()=>{
     const staff=parts(Weapon({form:'bishop',variant:'light',side:1}))
     expect(staff.some(p=>p.name==='hallowed-ceremonial-staff')).toBe(true)
     expect(staff.some(p=>p.shape==='cylinder')).toBe(true)
-    expect(equipmentByForm.rook).toEqual({light:'hallowed-hammer',dark:'void-hammer'})
+    expect(equipmentByForm.rook).toEqual({light:'hallowed-hammer',dark:'void-mace'})
     for(const variant of ['light','dark'] as const)expect(parts(Weapon({form:'rook',variant})).some(p=>p.shape==='axe')).toBe(false)
   })
   it.each(['knight','bishop','rook','queen','king'] as const)('%s uses structurally different headwear, armor and stance',form=>{

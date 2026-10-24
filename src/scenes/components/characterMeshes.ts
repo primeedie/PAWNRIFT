@@ -49,6 +49,12 @@ function carvedPlate(){
   const result=new ExtrudeGeometry(shape,{depth:0.18,bevelEnabled:true,bevelSize:0.035,bevelThickness:0.035,bevelSegments:1,steps:1});result.translate(0,0,-0.09);return result
 }
 export const sculpted={
+  lancerTorso:sculptSections([[-0.5,0.23,0.31],[-0.17,0.32,0.38],[0.24,0.49,0.51],[0.43,0.37,0.39],[0.5,0.19,0.25]],10),
+  sovereignTorso:sculptSections([[-0.5,0.42,0.40],[-0.20,0.25,0.31],[0.20,0.38,0.46],[0.40,0.43,0.40],[0.5,0.20,0.28]],12),
+  fortressTorso:sculptSections([[-0.5,0.43,0.40],[-0.31,0.48,0.44],[0.32,0.52,0.49],[0.50,0.38,0.41]],4),
+  royalTorso:sculptSections([[-0.5,0.33,0.36],[-0.20,0.40,0.45],[0.24,0.51,0.50],[0.43,0.47,0.43],[0.50,0.24,0.31]],8),
+  queenSkirt:sculptSections([[-0.5,0.50,0.48],[-0.36,0.43,0.44],[0.1,0.23,0.29],[0.5,0.20,0.25]],12,true),
+  towerSkirt:sculptSections([[-0.5,0.48,0.48],[-0.30,0.50,0.50],[0.35,0.42,0.42],[0.5,0.31,0.33]],4,true),
   cuirass:sculptSections([[-0.5,0.31,0.34],[-0.27,0.39,0.42],[0.12,0.50,0.50],[0.37,0.42,0.40],[0.5,0.24,0.30]]),
   abdomen:sculptSections([[-0.5,0.34,0.35],[-0.2,0.43,0.42],[0.25,0.42,0.44],[0.5,0.35,0.37]]),
   upperLimb:sculptSections([[-0.5,0.35,0.36],[-0.15,0.40,0.45],[0.22,0.48,0.45],[0.5,0.35,0.34]],10),

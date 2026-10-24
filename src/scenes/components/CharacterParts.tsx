@@ -12,7 +12,20 @@ function profile(outline: [number, number][],holes:[number,number][][]=[]) {
   for(const points of holes){const hole=new Path();points.forEach(([x,y],i)=>i?hole.lineTo(x,y):hole.moveTo(x,y));hole.closePath();shape.holes.push(hole)}
   const mesh = new ExtrudeGeometry(shape, { depth: 1, bevelEnabled: true, bevelSize:0.022,bevelThickness:0.025,bevelSegments:1, steps: 1 }); mesh.translate(0, 0, -0.5); return mesh
 }
+function bishopProfile(){
+  const s=new Shape();s.moveTo(-0.19,-0.50);s.lineTo(0.19,-0.50);s.lineTo(0.19,-0.34)
+  s.quadraticCurveTo(0.52,-0.23,0.47,0.06);s.quadraticCurveTo(0.44,0.23,0.32,0.34)
+  s.lineTo(-0.05,0.02);s.lineTo(-0.14,0.14);s.lineTo(0.22,0.43)
+  s.quadraticCurveTo(0.12,0.53,0,0.62);s.quadraticCurveTo(-0.15,0.50,-0.28,0.34)
+  s.quadraticCurveTo(-0.48,0.13,-0.47,-0.04);s.quadraticCurveTo(-0.48,-0.24,-0.19,-0.34);s.closePath()
+  const mesh=new ExtrudeGeometry(s,{depth:1,bevelEnabled:true,bevelSize:0.015,bevelThickness:0.02,bevelSegments:1,curveSegments:3});mesh.translate(0,0,-0.5);return mesh
+}
 export const geometry = { ...sculpted, box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 12, 8),
+  equine:profile([[-0.34,-0.50],[-0.42,0.14],[-0.25,0.47],[-0.12,0.50],[0.10,0.36],[0.22,0.07],[0.59,-0.10],[0.62,-0.29],[0.39,-0.34],[0.08,-0.20],[-0.04,-0.48]]),
+  mane:profile([[-0.10,0.50],[0.14,0.36],[0.08,0.20],[0.20,0.03],[0.09,-0.08],[0.18,-0.29],[-0.06,-0.50],[-0.21,-0.39],[-0.20,0.25]]),
+  chessMitre:bishopProfile(),
+  towerHelm:profile([[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[0.27,0.5],[0.27,0.23],[0.10,0.23],[0.10,0.5],[-0.10,0.5],[-0.10,0.23],[-0.27,0.23],[-0.27,0.5],[-0.5,0.5]]),
+  royalCross:profile([[-0.10,-0.50],[0.10,-0.50],[0.10,0.03],[0.35,0.03],[0.35,0.20],[0.10,0.20],[0.10,0.50],[-0.10,0.50],[-0.10,0.20],[-0.35,0.20],[-0.35,0.03],[-0.10,0.03]]),
   cylinder: new CylinderGeometry(1, 1, 1, 8), cone: new ConeGeometry(1, 1, 4), octahedron: new OctahedronGeometry(1), ring: new RingGeometry(0.12, 0.15, 12), arc: new RingGeometry(0.18, 0.20, 8, 1, 0, 1.8),
   blade: profile([[-0.16,-0.5],[0.16,-0.5],[0.5,-0.30],[0.32,0.25],[0,0.5],[-0.32,0.25],[-0.5,-0.30]]),
   greatblade: profile([[-0.18,-0.5],[0.18,-0.5],[0.18,-0.40],[0.48,-0.30],[0.37,0.30],[0,0.5],[-0.37,0.30],[-0.48,-0.30],[-0.18,-0.40]]),

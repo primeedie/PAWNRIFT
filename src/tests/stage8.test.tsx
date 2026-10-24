@@ -324,7 +324,7 @@ describe('versioned run persistence and practice isolation',()=>{
   })
   it('keeps new progression information compact and marks unimplemented bosses honestly',()=>{
     let markup=renderToStaticMarkup(<RunHUD/>);expect(markup).toContain('PORTA BARRACKS');expect(markup).toContain('Floor 1/6');expect(markup).toContain('Manual seed')
-    usePawnStore.getState().debugProgress(6,['dark','dark','dark','light','light']);markup=renderToStaticMarkup(<RunHUD/>);expect(markup).toContain('Dark 3')
+    usePawnStore.getState().debugProgress(6,['dark','dark','dark','light','light']);markup=renderToStaticMarkup(<RunHUD/>);expect(markup).toContain('Floor 6/6 · Void')
     expect(biomes.map(biome=>biome.identity)).toEqual(['knight','bishop','rook','queen'])
   })
 })

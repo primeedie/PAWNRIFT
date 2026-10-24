@@ -17,6 +17,7 @@ import { tutorialStep } from './game/logic/tutorial'
 import { RunHUD, FloorInteractions, BiomeIntroduction } from './ui/RunHUD'
 import { TreasureReward } from './ui/TreasureReward'
 import { useArtSettings } from './ui/artSettingsStore'
+import { ExitConfirmation } from './ui/ExitConfirmation'
 
 const FoundationScene = lazy(() => import('./scenes/FoundationScene'))
 const TrainingTools = lazy(() => import('./ui/TrainingTools'))
@@ -89,6 +90,7 @@ export function App() {
       <InspectionPanels />
       <BiomeIntroduction/>
       <TreasureReward/>
+      <ExitConfirmation/>
       {viewerOpen&&<Suspense fallback={null}><ModelViewer/></Suspense>}
       {tutorial&&<TutorialPanel/>}
       {defeated && !tutorial && <GameOver />}

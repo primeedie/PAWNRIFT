@@ -13,7 +13,7 @@ import { tutorials, tutorialLesson, type LessonId } from '../../data/tutorials'
 import { lessonCompleted, newTutorial, observeTutorial, tutorialExercise, tutorialRejection, tutorialStep, type PracticeForm, type TutorialSession, type TutorialSignal } from '../logic/tutorial'
 import { useTutorialProgress } from './tutorialProgress'
 import { newCampaign, campaignGame, advanceCampaign, enterCampaignFloor, floorToken } from '../logic/run'
-import { bossVariant, floorContentIssues, pendingChest, treasureOffer, type RunProgress } from '../logic/floorContent'
+import { bossVariant, worldAlignment, completedAlignmentHistory, floorContentIssues, pendingChest, treasureOffer, type RunProgress } from '../logic/floorContent'
 import { floorLocation, type BiomeId } from '../../data/biomes'
 import { deserializeRun, localRunStorage, readRunSave, runSaveKey, serializeRun } from './runPersistence'
 import { emptyPassives } from '../logic/passives'
@@ -108,7 +108,7 @@ export const usePawnStore = create<PawnState>((set, get) => ({
       const result=raw===undefined?readRunSave():{data:deserializeRun(raw)}
       if(result.error){set({saveError:result.error});return false}
       if(!result.data)return false
-      set({...result.data,saveError:undefined,saveNotice:undefined,actionId:get().actionId+1});return true
+      set({...result.data,saveError:undefined,saveNotice:result.data.saveNotice,actionId:get().actionId+1});return true
     }catch(error){set({saveError:`Run save unavailable: ${error instanceof Error?error.message:'invalid data'}. Original data preserved.`});return false}
   },
   discardSavedRun:()=>{
@@ -152,10 +152,11 @@ export const usePawnStore = create<PawnState>((set, get) => ({
     const base=floorLocation(floor).index*6
     const routes=Array.from({length:floor-1},(_,index)=>index+1).filter(index=>index%6!==0).map(index=>({floor:index,
       alignment:votes&&index>base?votes[index-base-1]:state.progress!.routes.find(vote=>vote.floor===index)?.alignment??'light' as Attunement}))
-    const progress={...state.progress,routes,cleared:Array.from({length:floor-1},(_,index)=>index+1),bossSkips:Array.from({length:Math.floor((floor-1)/6)},(_,index)=>(index+1)*6),finished:false}
+    const cleared=Array.from({length:floor-1},(_,index)=>index+1)
+    const progress={...state.progress,routes,cleared,completedAlignments:completedAlignmentHistory(state.masterSeed,cleared,routes,state.progress.initialAlignment),bossSkips:Array.from({length:Math.floor((floor-1)/6)},(_,index)=>(index+1)*6),finished:false}
     if(floor===state.floorNumber){
       const boss=state.floorContent?.boss
-      set({progress,playtestMode:true,...(boss?{floorContent:{...state.floorContent!,boss:{...boss,variant:bossVariant(progress.routes,floor)}}}:{})})
+      set({progress,playtestMode:true,floorContent:{...state.floorContent!,alignment:worldAlignment(state.masterSeed,floor,routes,progress.initialAlignment),...(boss?{boss:{...boss,variant:bossVariant(progress.routes,floor)}}:{})}})
       return true
     }
     const next=enterCampaignFloor(state,floor,progress,true)

@@ -5,6 +5,7 @@ import { aimBasicAttack, inspectedEnemy, useInspectionStore } from './inspection
 import { closeHudPanels } from './hudInteraction'
 import { usePawnStore } from '../game/state/pawnStore'
 import { blockWindowLabel } from '../game/logic/protection'
+import { eligibleInteractions } from '../game/logic/interactions'
 
 function describeEvent(event: CombatEvent) {
   switch (event.kind) {
@@ -49,12 +50,13 @@ export function CombatHUD() {
   const inspection=useInspectionStore()
   const locked = state.phase !== 'ready' || state.status !== 'playing'
   const feedback = state.events.filter((event) => event.seen).map(describeEvent).filter(Boolean).slice(-3).join(' · ')
+  const context=!(state.selectedCardId||state.selectedAbility||inspection.aimingAttack)&&eligibleInteractions(state).length>0
   return (
     <div className="combat-hud">
       <div className="combat-actions" aria-label="Combat actions">
         {state.block>0&&<span className="protection-status">Block <strong>{state.block}</strong> · {blockWindowLabel(state)}</span>}
         {state.fortified&&<span className="protection-status">Fortified · {state.fortified.windowsLeft} retaliation response{state.fortified.windowsLeft===1?'':'s'}</span>}
-        <button disabled={locked || attackTargets(state).length === 0} onClick={() => state.tryAttack()} title="Attack one eligible enemy (E); directions depend on current form"><kbd>E</kbd><span>– Attack</span></button>
+        <button disabled={locked || attackTargets(state).length === 0} onClick={() => state.tryAttack()} title="Explicit basic Attack; directions depend on current form">{!context&&<kbd>E</kbd>}<span>– Attack</span></button>
         <button disabled={locked || attackTargets(state).length===0} aria-pressed={inspection.aimingAttack} onClick={()=>{closeHudPanels();aimBasicAttack()}}>Choose target</button>
         {inspection.aimingAttack && <button onClick={()=>useInspectionStore.setState({aimingAttack:false})}>Cancel attack</button>}
         <button disabled={locked} onClick={() => state.submitAction({ kind: 'defend' })} title="Guard and counter this turn (Q)"><kbd>Q</kbd><span>– Defend</span></button>

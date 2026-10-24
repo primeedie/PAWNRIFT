@@ -1,5 +1,6 @@
+import { useInteractionStore } from './interactionStore'
 export function gameplayBlocked() {
-  return !!document.querySelector('details[name="hud-panels"][open], dialog[open]')
+  return !!useInteractionStore.getState().pending||!!document.querySelector('details[name="hud-panels"][open], dialog[open]')
 }
 export function restoreGameFocus() {
   document.querySelector<HTMLElement>('.scene-screen')?.focus({ preventScroll: true })

@@ -92,7 +92,13 @@ export function characterPose(form: CharacterForm, cue: AnimationCue, progress: 
   if (cue === 'hit') { pose.lean = wave * 0.15; pose.twist = -wave * 0.06 }
   if(variant==='dark'&&form==='knight'){pose.lean*=0.5;pose.crouch+=0.008}
   if(variant==='dark'&&form==='queen'){pose.twist*=0.6;pose.crouch+=0.018;pose.hip*=0.5}
-  if(form!=='pawn'&&variant==='light'&&cue==='idle'){pose.twist=0;pose.hip=0}
+  if(cue==='idle'){
+    if(form==='knight'){pose.lean=variant==='light'?-0.09:-0.025;pose.twist=variant==='light'?0.04:-0.06;pose.leftLeg=-0.06;pose.rightLeg=0.035}
+    if(form==='bishop'){pose.twist=variant==='light'?0.045:-0.04;pose.head=variant==='light'?0.02:0.09}
+    if(form==='rook'){pose.twist=0.015;pose.crouch=0.028;pose.leftLeg=-0.025;pose.rightLeg=0.025}
+    if(form==='queen'){pose.twist=-0.09;pose.hip=0.014;pose.leftLeg=-0.04;pose.rightLeg=0.025}
+    if(form==='king'){pose.twist=-0.035;pose.head=-0.035;pose.leftLeg=-0.025;pose.rightLeg=0.025}
+  }
   if(variant==='dark'&&(form==='bishop'||form==='rook'||form==='king')){pose.twist-=0.07;pose.head+=0.025;pose.hip=-0.008;pose.crouch+=0.008}
   if(variant==='dark'&&form==='bishop')pose.lean+=0.055
   if (reduced) { pose.lean = 0; pose.twist = 0; pose.leftLeg = pose.rightLeg = 0; pose.cape = 0; pose.scale = 1; pose.pulse = 0; pose.slash *= 0.2;if(form==='queen'&&variant==='dark')pose.cast=0 }

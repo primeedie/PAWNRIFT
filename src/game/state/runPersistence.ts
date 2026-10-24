@@ -3,7 +3,7 @@ import { cards, rarities } from '../../data/cards'
 import { biomes, floorLocation } from '../../data/biomes'
 import { bossForms, testForms } from '../../data/forms'
 import { cellId, validCell, validateDungeon, layoutStyles } from '../logic/dungeon'
-import { bossVariant, floorContentIssues } from '../logic/floorContent'
+import { bossVariant, floorContentIssues, initialWorldAlignment, worldAlignment, completedAlignmentHistory } from '../logic/floorContent'
 import { blockTotal } from '../logic/protection'
 
 export const runSaveKey='pawnrift:active-run:v1'
@@ -12,7 +12,7 @@ const keys=['dungeon','floorContent','cell','facing','hp','maxHp','enemies','occ
 export function serializeRun(state:PawnState){
   if(state.training||state.tutorial||!state.progress||!state.hasStartedRun)throw Error('Only an actual run can be saved')
   const data=Object.fromEntries(keys.map(key=>[key,key==='visible'||key==='explored'?[...state[key]]:state[key]]))
-  return JSON.stringify({version:1,data})
+  return JSON.stringify({version:2,data})
 }
 function requireValue(condition:unknown,message:string):asserts condition{if(!condition)throw Error(message)}
 const integer=(value:unknown,low=0,high=1e9)=>Number.isInteger(value)&&Number(value)>=low&&Number(value)<=high
@@ -28,7 +28,7 @@ function inspectNumbers(value:unknown,depth=0){
 export function deserializeRun(raw:string):Partial<PawnState>{
   requireValue(raw.length<2_000_000,'Save exceeds supported size')
   const envelope=JSON.parse(raw) as {version?:unknown;data?:unknown}
-  requireValue(envelope?.version===1,'Unsupported save version; the original save has been preserved')
+  requireValue(envelope?.version===1||envelope?.version===2,'Unsupported save version; the original save has been preserved')
   requireValue(object(envelope.data),'Missing run data')
   inspectNumbers(envelope.data)
   const d=envelope.data as PawnState,p=d.progress
@@ -39,6 +39,14 @@ export function deserializeRun(raw:string):Partial<PawnState>{
   requireValue(typeof d.playtestMode==='boolean'&&(!p!.bossSkips.length||d.playtestMode),'Development skip lost its classification')
   requireValue(Object.entries(p!.layouts).every(([floor,override])=>integer(Number(floor),1,24)&&object(override)&&string(override.seed,300)&&(override.style===undefined||layoutStyles.includes(override.style))),'Invalid floor override')
   requireValue(p!.routes.every(vote=>vote.floor<d.floorNumber)&&p!.cleared.every(floor=>floor<d.floorNumber||(p!.finished&&floor===24)),'History is ahead of the floor')
+  if(envelope.version===1){
+    p!.initialAlignment=initialWorldAlignment(d.masterSeed)
+    p!.completedAlignments=completedAlignmentHistory(d.masterSeed,p!.cleared,p!.routes,p!.initialAlignment)
+    if(object(d.floorContent))d.floorContent!.alignment=worldAlignment(d.masterSeed,d.floorNumber,p!.routes,p!.initialAlignment)
+  }
+  requireValue(p!.initialAlignment===initialWorldAlignment(d.masterSeed),'Invalid initial world alignment')
+  const expectedHistory=completedAlignmentHistory(d.masterSeed,p!.cleared,p!.routes,p!.initialAlignment)
+  requireValue(Array.isArray(p!.completedAlignments)&&JSON.stringify(p!.completedAlignments)===JSON.stringify(expectedHistory),'Invalid completed alignment history')
   requireValue(object(d.dungeon)&&Array.isArray(d.dungeon.tiles)&&d.dungeon.tiles.every(tile=>cell(tile)&&typeof tile.blocksMovement==='boolean'&&typeof tile.blocksSight==='boolean')&&validateDungeon(d.dungeon),'Invalid saved map')
   requireValue(d.dungeon.tiles.every(tile=>{
     const decoration=tile.decoration
@@ -74,6 +82,7 @@ export function deserializeRun(raw:string):Partial<PawnState>{
   requireValue(Array.isArray(d.events)&&d.events.length<=300&&d.events.every(event=>object(event)&&cell(event.cell)&&string(event.actor)&&integer(event.id)&&typeof event.seen==='boolean'),'Invalid event state')
   requireValue(d.floorContent&&object(d.floorContent),'Missing floor content')
   requireValue(d.floorContent.floor===d.floorNumber&&d.floorContent.biome===floorLocation(d.floorNumber).biome.id&&string(d.floorContent.id)&&Array.isArray(d.floorContent.chests)&&d.floorContent.chests.length<=4&&Array.isArray(d.floorContent.exits),'Invalid floor content')
+  requireValue(d.floorContent.alignment===worldAlignment(d.masterSeed,d.floorNumber,p!.routes,p!.initialAlignment),'Invalid current world alignment')
   requireValue(d.floorContent.chests.every(chest=>object(chest)&&string(chest.id)&&cell(chest.cell)&&['closed','opened','claimed','skipped'].includes(chest.state)&&Array.isArray(chest.offer)&&chest.offer.length===3&&chest.offer.every(card=>Object.hasOwn(cards,card.definitionId)&&rarities.includes(card.rarity)))&&unique(d.floorContent.chests.map(chest=>chest.id))&&d.floorContent.chests.filter(chest=>chest.state==='opened').length<=1,'Invalid treasure state')
   requireValue(d.floorContent.exits.every(exit=>cell(exit.cell)&&['light','dark'].includes(exit.alignment)),'Invalid exits')
   if(floorLocation(d.floorNumber).boss)requireValue(d.floorContent.boss?.status==='unimplemented'&&cell(d.floorContent.boss.spawn)&&d.floorContent.boss.variant===bossVariant(p!.routes,d.floorNumber),'Invalid boss manifestation')
@@ -87,7 +96,8 @@ export function deserializeRun(raw:string):Partial<PawnState>{
   requireValue(d.dungeon.tiles.some(tile=>cellId(tile)===cellId(d.cell)&&(!tile.blocksMovement||(t.active?.form==='knight'&&tile.perchHeight!==undefined))),'Player in solid terrain')
   requireValue(Array.isArray(d.diagnosticLayers)&&typeof d.diagnosticsEnabled==='boolean'&&typeof d.deathRetentionDone==='boolean'&&typeof d.selectedAbility==='boolean'&&typeof d.revealAll==='boolean','Invalid controls')
   const restored=Object.fromEntries(keys.map(key=>[key,key==='visible'?new Set(fog.visible):key==='explored'?new Set(fog.explored):d[key]])) as Partial<PawnState>
-  return {...restored,mode:'run',training:null,tutorial:null,runActive:false,hasStartedRun:true,introBiome:undefined}
+  return {...restored,mode:'run',training:null,tutorial:null,runActive:false,hasStartedRun:true,introBiome:undefined,
+    saveNotice:envelope.version===1?'Save upgraded: historical world themes inferred from the seed and exit history. All run data preserved.':undefined}
 }
 export function localRunStorage(){try{return typeof localStorage==='undefined'?undefined:localStorage}catch{return undefined}}
 export function readRunSave(storage:Pick<Storage,'getItem'>|undefined=localRunStorage()):{data?:Partial<PawnState>;error?:string}{
