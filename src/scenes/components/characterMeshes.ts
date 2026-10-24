@@ -1,22 +1,22 @@
 import { BufferGeometry, Float32BufferAttribute, ExtrudeGeometry, Path, Shape } from 'three'
 
-type Station=readonly [number,number,number,number?]
+type Station=readonly [number,number,number,number?,number?]
 // Editable sculpt profiles. Closed anatomical sections replace stretched box limbs/torso.
 // Coordinates are normalized; joint lengths and weapon sockets remain in characterRig.
 export function sculptSections(stations:readonly Station[],segments=12,openFront=false){
   const positions:number[]=[],indices:number[]=[]
   const count=openFront?segments+1:segments
-  for(const [y,width,depth,forward=0] of stations)for(let j=0;j<count;j++){
+  for(const [y,width,depth,forward=0,offset=0] of stations)for(let j=0;j<count;j++){
     const angle=openFront?0.62+(Math.PI*2-1.24)*j/segments:Math.PI*2*j/segments
     const facet=Math.cos(angle*4)*0.018
-    positions.push(Math.sin(angle)*width,y,Math.cos(angle)*depth+forward+facet*depth)
+    positions.push(Math.sin(angle)*width+offset,y,Math.cos(angle)*depth+forward+facet*depth)
   }
   for(let row=0;row<stations.length-1;row++)for(let j=0;j<(openFront?segments:count);j++){
     const next=openFront?j+1:(j+1)%count,a=row*count+j,b=row*count+next,c=(row+1)*count+j,d=(row+1)*count+next
     indices.push(a,b,c,b,d,c)
   }
   if(!openFront)for(const row of [0,stations.length-1]){
-    const center=positions.length/3;positions.push(0,stations[row][0],stations[row][3]??0)
+    const center=positions.length/3;positions.push(stations[row][4]??0,stations[row][0],stations[row][3]??0)
     for(let j=0;j<count;j++){
       const a=row*count+j,b=row*count+(j+1)%count
       indices.push(...(row===0?[center,b,a]:[center,a,b]))
@@ -49,6 +49,12 @@ function carvedPlate(){
   const result=new ExtrudeGeometry(shape,{depth:0.18,bevelEnabled:true,bevelSize:0.035,bevelThickness:0.035,bevelSegments:1,steps:1});result.translate(0,0,-0.09);return result
 }
 export const sculpted={
+  pawnCrown:sculptSections([[-0.5,0.20,0.22],[-0.36,0.37,0.37],[-0.08,0.49,0.48],[0.20,0.47,0.45],[0.40,0.32,0.32],[0.49,0.10,0.11],[0.51,0.015,0.02]],16),
+  pawnCowl:sculptSections([[-0.5,0.26,0.27],[-0.32,0.42,0.40],[0,0.51,0.49],[0.28,0.44,0.44],[0.46,0.27,0.29],[0.52,0.015,0.02]],16,true),
+  roninMantle:sculptSections([[-0.50,0.5,0.48],[-0.10,0.49,0.46],[0.20,0.35,0.36],[0.50,0.22,0.25]],14,true),
+  roninCoat:sculptSections([[-0.5,0.50,0.49],[-0.32,0.48,0.46],[0.12,0.31,0.33],[0.5,0.27,0.30]],14,true),
+  voidLancer:sculptSections([[-0.5,0.26,0.32,0,0.06],[-0.05,0.34,0.36,0,-0.03],[0.30,0.42,0.43,-0.04,-0.10],[0.5,0.20,0.25,-0.03,-0.05]],9,true),
+  voidRegalia:sculptSections([[-0.5,0.44,0.44,0,-0.06],[-0.28,0.42,0.38,0,-0.10],[0.18,0.20,0.28,0,0.04],[0.5,0.23,0.30,0,0.02]],11,true),
   lancerTorso:sculptSections([[-0.5,0.23,0.31],[-0.17,0.32,0.38],[0.24,0.49,0.51],[0.43,0.37,0.39],[0.5,0.19,0.25]],10),
   sovereignTorso:sculptSections([[-0.5,0.42,0.40],[-0.20,0.25,0.31],[0.20,0.38,0.46],[0.40,0.43,0.40],[0.5,0.20,0.28]],12),
   fortressTorso:sculptSections([[-0.5,0.43,0.40],[-0.31,0.48,0.44],[0.32,0.52,0.49],[0.50,0.38,0.41]],4),

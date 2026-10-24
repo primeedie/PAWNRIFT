@@ -62,7 +62,10 @@ export function handPose(form:CharacterForm,p:CharacterPose,side:-1|1,variant:At
     rotation=[-0.25+p.swing*1.73,0.08-p.swing*0.30,-0.95+p.swing*0.97]
     if(form==='king') {position=[0.13-Math.max(0,p.swing)*0.05,0.68+Math.max(0,-p.swing)*0.32,0.17+Math.max(0,p.swing)*0.17];rotation=[0.15+p.swing*1.43,-0.10-p.swing*0.20,-0.75+p.swing*0.82]}
     if(variant==='dark'){
-      if(form==='rook')position=[0.10-Math.max(0,p.swing)*0.12,0.61+Math.max(0,p.swing)*0.05+Math.max(0,-p.swing)*0.26,0.18+Math.max(0,p.swing)*0.14]
+      if(form==='rook'){
+        position=[0.10-Math.max(0,p.swing)*0.12,0.61+Math.max(0,p.swing)*0.05+Math.max(0,-p.swing)*0.26,0.18+Math.max(0,p.swing)*0.14]
+        rotation=[-0.16+p.swing*1.62,-0.28-p.swing*0.12,-0.78+p.swing*0.80]
+      }
       else {position=[0.11-Math.max(0,p.swing)*0.07,0.65+Math.max(0,-p.swing)*0.29,0.17+Math.max(0,p.swing)*0.17];rotation=[0.12+p.swing*1.40,0.10-p.swing*0.40,-0.75+p.swing*0.84]}
     }
     rotation=surfaceGrip(p,rotation,Math.max(0,p.swing))

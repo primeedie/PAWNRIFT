@@ -1,7 +1,7 @@
 import type { Attunement } from './forms'
 export type CharacterForm = 'pawn' | 'knight' | 'bishop' | 'rook' | 'queen' | 'king'
 export const characterDesigns = {
-  pawn: { title: 'The Duelist', head: 'angular ronin hood and pawn mask', chest: [0.29, 0.31, 0.22], shoulder: 0.19, headY: 0.96, height: 1.23, light: 'crimson katana', dark: 'crimson katana' },
+  pawn: { title: 'The Ivory Ronin', head: 'rounded Pawn crown, layered cowl and narrow collar', chest: [0.28, 0.31, 0.22], shoulder: 0.17, headY: 1.045, height: 1.23, light: 'crimson katana', dark: 'crimson katana' },
   knight: { title: 'The Lancer', head: 'elongated equine chess head and sculpted mane', chest: [0.32, 0.37, 0.24], shoulder: 0.21, headY: 1.05, height: 1.43, light: 'cavalry lance', dark: 'combat spear' },
   bishop: { title: 'The Arcanist', head: 'split mitre', chest: [0.25, 0.37, 0.19], shoulder: 0.18, headY: 1.02, height: 1.45, light: 'ceremonial staff', dark: 'void tome' },
   rook: { title: 'The Bulwark', head: 'castle battlement helm', chest: [0.49, 0.35, 0.36], shoulder: 0.23, headY: 0.98, height: 1.29, light: 'hallowed warhammer', dark: 'void battle mace' },

@@ -74,10 +74,17 @@ export function characterPose(form: CharacterForm, cue: AnimationCue, progress: 
       pose.bladeTurn=ramp(t,0.255,0.274)*(1-ramp(t,0.37,0.43))
       pose.rightArm = -0.45 * pose.draw; pose.twist = -0.18*envelope(t,0,0.16,0.26)+0.24*envelope(t,0.24,0.32,0.64)
       pose.crouch = 0.025 * envelope(t,0,0.15,0.6)
-    } else if (form === 'knight') { pose.thrust=envelope(t,0.22,impact,0.76); pose.lean=-0.10*pose.thrust }
-    else if (form === 'bishop') { pose.cast=envelope(t,0.04,impact,0.84); pose.pulse=pose.cast; pose.head=-0.06*pose.cast }
+    } else if (form === 'knight') { pose.thrust=envelope(t,variant==='dark'?0.12:0.22,impact,variant==='dark'?0.87:0.76); pose.lean=-0.10*pose.thrust }
+    else if (form === 'bishop') { pose.cast=envelope(t,variant==='dark'?0.14:0.04,impact,variant==='dark'?0.94:0.84); pose.pulse=pose.cast; pose.head=(variant==='dark'?0.08:-0.06)*pose.cast }
     else if (form === 'rook' || form==='king') { pose.twist=pose.swing*(form==='king'?0.32:0.23); pose.crouch=0.035*wave; pose.lean=-0.055*pose.swing }
     else { pose.leftArm=-0.32*wave; pose.twist=pose.swing*0.32; pose.hip=-0.02*pose.swing }
+    if(form!=='pawn'){
+      const prepare=envelope(t,0,impact*0.55,impact),recover=envelope(t,impact+0.05,0.78,1)
+      // Distinct wind-ups/recovery with unchanged contact time and socket-led aim.
+      pose.twist+=(variant==='dark'?-0.14:0.04)*prepare+(variant==='dark'?0.08:0)*recover
+      pose.head+=(variant==='dark'?0.05:-0.03)*prepare
+      pose.cape+=(variant==='dark'?-0.12:0.04)*prepare
+    }
   }
   if (cue === 'signature') {
     pose.pulse = wave
@@ -101,6 +108,12 @@ export function characterPose(form: CharacterForm, cue: AnimationCue, progress: 
   }
   if(variant==='dark'&&(form==='bishop'||form==='rook'||form==='king')){pose.twist-=0.07;pose.head+=0.025;pose.hip=-0.008;pose.crouch+=0.008}
   if(variant==='dark'&&form==='bishop')pose.lean+=0.055
+  if(form!=='pawn'&&cue==='move'&&variant==='dark'){
+    pose.leftLeg*=0.78;pose.rightLeg*=1.10;pose.twist-=Math.sin(t*Math.PI*2)*0.07;pose.cape-=Math.sin(t*Math.PI)*0.08
+  }
+  if(form!=='pawn'&&cue==='idle'&&variant==='dark'){
+    pose.leftLeg-=form==='rook'?0.045:0.025;pose.rightLeg+=0.012;pose.head+=0.025
+  }
   if (reduced) { pose.lean = 0; pose.twist = 0; pose.leftLeg = pose.rightLeg = 0; pose.cape = 0; pose.scale = 1; pose.pulse = 0; pose.slash *= 0.2;if(form==='queen'&&variant==='dark')pose.cast=0 }
   return pose
 }

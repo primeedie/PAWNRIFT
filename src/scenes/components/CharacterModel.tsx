@@ -14,6 +14,7 @@ import { createArmSolver, armLengths, handPose } from '../../utils/characterRig'
 import { WeaponStrike } from './WeaponStrike'
 import { VoidMantleWings } from './VoidMantleWings'
 import { InkedMesh } from './InkedMesh'
+import { PawnCostume } from './PawnCostume'
 
 export type ModelPreview={cue:AnimationCue;progress:number;time:number}
 type Motion=RefObject<CharacterPose>
@@ -26,12 +27,14 @@ function Arm({form,variant,side,motion,hand,castOrigin}:{form:CharacterForm;vari
   },-0.8)
   return <group name={`${side===-1?'left':'right'}-shoulder`} position={[side*characterDesigns[form].shoulder,0.81,0]}>
     <group ref={upper} name="upper-arm-joint">
-      <Part {...costume} shape={form==='rook'?'towerHelm':form==='king'?'royalTorso':'pauldron'} size={[form==='pawn'?0.115:heavy?0.22:form==='bishop'?0.13:0.15,form==='pawn'?0.095:heavy?0.15:0.12,form==='pawn'?0.13:heavy?0.23:0.18]} at={[side*0.01,-0.01,0]} rotate={[0,0,side*(variant==='dark'&&side===-1?-0.3:-0.17)]} tone={form==='pawn'?'armor':variant==='light'?'ivory':'metal'}/>
+      <Part {...costume} shape={form==='pawn'?'pauldron':variant==='dark'?'fracturedPlate':form==='rook'?'towerHelm':form==='king'?'royalTorso':'cathedralPlate'}
+        size={form==='pawn'?[0.105,0.085,0.13]:variant==='dark'?[side===-1?(heavy?0.27:0.22):0.11,side===-1?0.23:0.11,side===-1?0.18:0.12]:[heavy?0.23:form==='knight'?0.20:0.14,heavy?0.16:0.17,heavy?0.24:0.19]}
+        at={[side*0.01,-0.01,0]} rotate={[0,variant==='dark'?side*0.18:0,side*(variant==='dark'&&side===-1?-0.36:-0.17)]} tone={form==='pawn'?'ivory':variant==='light'?'ivory':'metal'}/>
       <Part {...costume} shape="upperLimb" size={[heavy?0.14:form==='queen'?0.085:0.105,0.23,form==='queen'?0.10:0.13]} at={[0,-0.13,0]} tone="cloth"/>
-      {form==='bishop'&&<Part {...costume} shape="raggedCloth" size={[0.18,0.25,0.2]} at={[0,-0.14,-0.04]} tone={variant==='dark'?'cloth':'ivory'}/>}
+      {form==='bishop'&&<Part {...costume} shape={variant==='dark'?'raggedCloth':'cloth'} size={[variant==='dark'?(side===-1?0.21:0.13):0.19,variant==='dark'?(side===-1?0.32:0.19):0.27,0.2]} at={[0,-0.14,-0.04]} tone={variant==='dark'?'cloth':'ivory'}/>}
       <group ref={elbow} name="elbow-joint" position={[0,-armLengths.upper,0]}>
         <Part {...costume} shape="sphere" size={[0.053,0.052,0.052]} tone="dark" ink={false}/>
-        <Part {...costume} shape="vambrace" size={[heavy?0.155:0.125,0.21,0.15]} at={[0,-0.115,0]} tone={form==='pawn'?'armor':variant==='dark'?'metal':'ivory'}/>
+        <Part {...costume} shape={variant==='dark'&&form!=='pawn'&&side===-1?'fracturedPlate':'vambrace'} size={[heavy?0.155:0.125,0.21,0.15]} at={[0,-0.115,0]} tone={form==='pawn'?'armor':variant==='dark'?'metal':'ivory'}/>
         <Part {...costume} shape="plate" size={[0.1,0.15,0.025]} at={[0,-0.11,0.072]} tone="metal"/>
         <Part {...costume} size={[0.12,0.022,0.135]} at={[0,-0.20,0]} tone="accent"/>
         <group ref={hand} name="wrist-and-grip" position={[0,-armLengths.forearm,0]}>
@@ -82,9 +85,10 @@ export function CharacterModel({form,variant,reducedMotion=false,preview}:{form:
     if(target)p.reach=Math.min(Math.SQRT2,Math.hypot(target.column-state.cell.column,target.row-state.cell.row))
     if(!preview&&form==='pawn'&&state.signatures.samuraiCharges>0){p.crouch+=0.018;p.lean-=0.035}
     if(!preview&&form==='rook'&&state.fortified&&(cue==='idle'||cue==='defend'||cue==='signature')){p.guard=1;p.crouch+=0.012}
-    if(body.current){body.current.position.set(p.hip,(reducedMotion?0:Math.sin(time*(form==='rook'?1.3:form==='queen'?1.9:2.1))*0.004)-p.crouch,0);body.current.scale.setScalar(p.scale)}
+    const breath=variant==='dark'&&form!=='pawn'?Math.sin(time*1.45)*0.65+Math.sin(time*3.15+0.8)*0.25:Math.sin(time*(form==='rook'?1.3:form==='queen'?1.9:2.1))
+    if(body.current){body.current.position.set(p.hip,(reducedMotion?0:breath*0.004)-p.crouch,0);body.current.scale.setScalar(p.scale)}
     if(torso.current)torso.current.rotation.set(p.lean,p.twist,form==='queen'?-0.025:0)
-    if(head.current)head.current.rotation.set(p.head,-p.twist*0.65,0)
+    if(head.current)head.current.rotation.set(p.head,-p.twist*0.65,variant==='dark'&&form!=='pawn'?-0.035:form==='pawn'?0.025:0)
     if(cape.current)cape.current.rotation.x=p.cape+(reducedMotion?0:Math.sin(time*1.6)*0.025)
     if(mane.current)mane.current.rotation.x=reducedMotion?0:p.leftLeg*0.12+p.lean*0.3
     if(barrier.current)barrier.current.visible=p.guard>0&&heavy
@@ -95,19 +99,19 @@ export function CharacterModel({form,variant,reducedMotion=false,preview}:{form:
     {[-1,1].map(s=><Leg key={s} form={form} variant={variant} side={s as -1|1} motion={pose}/>)}
     <Part {...costume} shape="abdomen" size={[design.chest[0],0.18,0.22]} at={[0,0.46,0]} tone="cloth"/>
     <group ref={torso} name="articulated-torso">
-      {form==='pawn'?<><Part {...costume} shape="cuirass" size={design.chest} at={[0,0.68,0]} tone="armor"/>
-        <Part {...costume} shape="raggedCloth" size={[0.18,0.32,0.32]} at={[-0.045,0.67,0.11]} rotate={[0,0,-0.13]} tone="cloth"/>
-        {[-1,1].map(s=><Part key={s} {...costume} shape="raggedCloth" size={[0.14,0.25,0.28]} at={[s*0.09,0.38,0.12]} rotate={[0,s*0.1,s*-0.09]} tone="cloth"/>)}</>:<CorruptionArmor form={form} variant={variant}/>}
+      {form==='pawn'?<PawnCostume/>:<CorruptionArmor form={form} variant={variant}/>}
       <Part {...costume} shape="abdomen" size={[design.chest[0]*1.05,0.075,0.27]} at={[0,0.49,0]} tone={form==='pawn'?'accent':'dark'}/>
       <Part {...costume} shape="plate" size={[0.06,0.07,0.025]} at={[0,0.49,0.14]} tone="metal"/>
-      <Part {...costume} shape="abdomen" size={[0.17,0.08,0.17]} at={[0,0.88,0]} tone="dark"/>
+      {form!=='pawn'&&<Part {...costume} shape="abdomen" size={[0.17,0.08,0.17]} at={[0,0.88,0]} tone="dark"/>}
       <group ref={head} position={[0,design.headY,0]}><Head form={form} variant={variant} mane={mane}/></group>
       <Arm form={form} variant={variant} side={-1} motion={pose} hand={leftHand} castOrigin={castOrigin}/>
       <Arm form={form} variant={variant} side={1} motion={pose} hand={rightHand} castOrigin={castOrigin}/>
       {(form==='pawn'||form==='king'||form==='queen'&&variant==='light')&&<group ref={cape} position={[form==='pawn'?0.105:0,0.82,-0.14]}>
-        <group position={[form==='pawn'?0.04:0,-(form==='king'?0.23:0.13),0]} rotation={[0,0,form==='pawn'?-0.2:0]} scale={form==='king'?[0.48,0.62,1.2]:form==='queen'?[0.36,0.45,1]:[0.32,0.34,1]}>
-          <InkedMesh geometry={variant==='dark'||form==='pawn'?geometry.raggedCloth:geometry.cloth} material={form==='pawn'?roninPalette.ivory:palettes[variant].cloth}/>
-        </group><Part {...costume} shape="plate" size={[0.16,0.06,0.025]} at={[0,-0.02,-0.01]} tone="metal"/>
+        {form==='king'&&variant==='dark'?[-1,1].map((s,i)=><group key={s} position={[s*0.11,i?-0.16:-0.25,0]} rotation={[0,s*0.2,s*0.14]} scale={[i?0.18:0.25,i?0.46:0.66,1.1]}>
+          <InkedMesh geometry={geometry.raggedCloth} material={palettes.dark.cloth}/>
+        </group>):<group position={[form==='pawn'?0.04:0,-(form==='king'?0.23:0.13),0]} rotation={[0,0,form==='pawn'?-0.2:0]} scale={form==='king'?[0.48,0.62,1.2]:form==='queen'?[0.36,0.45,1]:[0.34,0.38,1]}>
+          <InkedMesh geometry={form==='pawn'?geometry.raggedCloth:geometry.cloth} material={form==='pawn'?roninPalette.ivory:palettes[variant].cloth}/>
+        </group>}<Part {...costume} shape="plate" size={[0.16,0.06,0.025]} at={[0,-0.02,-0.01]} tone="metal"/>
       </group>}
       {form==='queen'&&variant==='dark'&&<VoidMantleWings motion={pose} strikeOrigin={wingOrigin}/>}
       {form==='pawn'&&<SheathedKatana motion={pose} hand={rightHand}/>}

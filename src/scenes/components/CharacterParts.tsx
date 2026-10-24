@@ -22,6 +22,14 @@ function bishopProfile(){
 }
 export const geometry = { ...sculpted, box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 12, 8),
   equine:profile([[-0.34,-0.50],[-0.42,0.14],[-0.25,0.47],[-0.12,0.50],[0.10,0.36],[0.22,0.07],[0.59,-0.10],[0.62,-0.29],[0.39,-0.34],[0.08,-0.20],[-0.04,-0.48]]),
+  voidEquine:profile([[-0.34,-0.48],[-0.49,0.08],[-0.30,0.30],[-0.34,0.55],[-0.08,0.36],[0.14,0.24],[0.20,-0.04],[0.71,-0.12],[0.62,-0.32],[0.39,-0.36],[0.17,-0.22],[-0.04,-0.45]],[[[0.17,-0.12],[0.51,-0.16],[0.46,-0.26],[0.18,-0.23]],[[-0.20,0.07],[-0.08,-0.05],[0.03,0.08],[-0.11,0.25]]]),
+  voidMane:profile([[-0.2,0.52],[0.29,0.38],[0.04,0.18],[0.30,0.09],[0.02,-0.07],[0.23,-0.26],[-0.10,-0.56],[-0.34,-0.43],[-0.26,0.20]]),
+  voidMitre:profile([[-0.22,-0.50],[0.19,-0.45],[0.28,-0.18],[0.39,-0.22],[0.48,0.05],[0.31,0.24],[-0.07,-0.02],[-0.17,0.10],[0.22,0.44],[0.07,0.69],[-0.04,0.50],[-0.22,0.46],[-0.36,0.17],[-0.51,0.05],[-0.37,-0.17],[-0.43,-0.34]]),
+  brokenTower:profile([[-0.50,-0.50],[0.26,-0.47],[0.48,-0.22],[0.34,0.04],[0.46,0.16],[0.43,0.34],[0.20,0.30],[0.20,0.02],[0.02,0.09],[0.05,0.48],[-0.12,0.58],[-0.20,0.30],[-0.34,0.28],[-0.31,0.69],[-0.51,0.59]],[[[-0.30,-0.25],[-0.02,-0.27],[0.05,-0.03],[-0.24,0.02]]]),
+  rupturedTorso:profile([[-0.34,-0.50],[0.32,-0.46],[0.46,-0.16],[0.30,-0.07],[0.45,0.29],[0.15,0.38],[0.03,0.50],[-0.21,0.42],[-0.5,0.34],[-0.44,0.05],[-0.50,-0.10]],[[[-0.23,-0.14],[0.08,-0.24],[0.20,0.09],[-0.04,0.29],[-0.27,0.18]]]),
+  voidRoyalMask:profile([[-0.30,-0.50],[0.13,-0.34],[0.36,-0.12],[0.27,0.26],[0.05,0.48],[-0.33,0.43],[-0.48,0.14],[-0.32,-0.03]],[[[-0.20,-0.12],[0.02,-0.19],[0.11,0.17],[-0.17,0.25]]]),
+  cathedralPlate:profile([[-0.5,-0.30],[-0.43,0.20],[-0.20,0.50],[0,0.29],[0.20,0.50],[0.43,0.20],[0.5,-0.30],[0,-0.5]]),
+  fracturedCross:profile([[-0.12,-0.50],[0.12,-0.50],[0.05,0.05],[0.39,0.13],[0.30,0.30],[0.08,0.22],[0.01,0.56],[-0.16,0.43],[-0.10,0.19],[-0.35,0.07],[-0.27,-0.05],[-0.10,0.05]]),
   mane:profile([[-0.10,0.50],[0.14,0.36],[0.08,0.20],[0.20,0.03],[0.09,-0.08],[0.18,-0.29],[-0.06,-0.50],[-0.21,-0.39],[-0.20,0.25]]),
   chessMitre:bishopProfile(),
   towerHelm:profile([[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[0.27,0.5],[0.27,0.23],[0.10,0.23],[0.10,0.5],[-0.10,0.5],[-0.10,0.23],[-0.27,0.23],[-0.27,0.5],[-0.5,0.5]]),
@@ -43,14 +51,14 @@ export const palettes = Object.fromEntries(Object.entries(characterPalettes).map
   Object.fromEntries(Object.entries(colors).map(([tone, color]) => [tone, new MeshStandardMaterial({color,
     roughness:finish[tone as Tone][0],metalness:finish[tone as Tone][1],flatShading:false,
     ...(tone==='glow'?{emissive:color,emissiveIntensity:0.12}:{})})]))])) as Record<Attunement, Record<Tone, MeshStandardMaterial>>
-// Pawn has one uncorrupted charcoal/ivory material set, never either corrupted palette.
+// Ivory Ronin: one neutral appearance. Light values belong to the costume, not added ambient light.
 export const roninPalette={...palettes.light,
-  armor:new MeshStandardMaterial({color:'#34343d',roughness:0.7,metalness:0.22}),
-  cloth:new MeshStandardMaterial({color:'#24252e',roughness:0.98}),
-  ivory:new MeshStandardMaterial({color:'#c5c0ad',roughness:0.93}),
-  metal:new MeshStandardMaterial({color:'#9299a3',roughness:0.45,metalness:0.58}),
-  accent:new MeshStandardMaterial({color:'#7b2c3b',roughness:0.85}),
-  dark:new MeshStandardMaterial({color:'#181c25',roughness:0.87}),
+  armor:new MeshStandardMaterial({color:'#c6c0ad',roughness:0.8,metalness:0.08}),
+  cloth:new MeshStandardMaterial({color:'#41434b',roughness:0.98}),
+  ivory:new MeshStandardMaterial({color:'#ded7c5',roughness:0.93}),
+  metal:new MeshStandardMaterial({color:'#989fa5',roughness:0.51,metalness:0.52}),
+  accent:new MeshStandardMaterial({color:'#7c3440',roughness:0.85}),
+  dark:new MeshStandardMaterial({color:'#292d37',roughness:0.87}),
 }
 export const effects = { light: new MeshBasicMaterial({ color: characterPalettes.light.glow, transparent: true, opacity: 0.40, depthWrite: false, side: DoubleSide }),
   dark: new MeshBasicMaterial({ color: characterPalettes.dark.glow, transparent: true, opacity: 0.40, depthWrite: false, side: DoubleSide }),
